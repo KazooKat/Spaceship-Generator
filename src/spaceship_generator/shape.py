@@ -1,0 +1,263 @@
+"""Parts-based procedural ship shape generation.
+
+Pipeline:
+
+    hull  →  cockpit  →  engines  →  (maybe) wings  →  greebles  →  mirror on X
+
+The grid is indexed ``grid[x, y, z]`` where:
+
+* ``x`` = width (mirror axis — ship is bilaterally symmetric across ``x = W/2``)
+* ``y`` = height (Minecraft Y-up)
+* ``z`` = length — ``z = 0`` is the rear (engine end), ``z = L - 1`` is the nose
+
+Values are integer :class:`Role` codes. Only coarse roles are set here
+(``HULL``, ``COCKPIT_GLASS``, ``ENGINE``, ``WING``, ``GREEBLE``). Fine detailing
+(windows, accent stripes, engine glow cores, running lights) is the job of
+:mod:`spaceship_generator.texture`.
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+from enum import Enum
+
+import numpy as np
+
+from .palette import Role
+
+
+class CockpitStyle(str, Enum):
+    BUBBLE = "bubble"
+    POINTED = "pointed"
+    INTEGRATED = "integrated"
+
+
+@dataclass
+class ShapeParams:
+    """User-tunable parameters for ship shape."""
+
+    length: int = 40          # Z dimension (nose-to-tail)
+    width_max: int = 20       # X dimension
+    height_max: int = 12      # Y dimension
+    engine_count: int = 2
+    wing_prob: float = 0.75
+    greeble_density: float = 0.05
+    cockpit_style: CockpitStyle = CockpitStyle.BUBBLE
+
+    def __post_init__(self) -> None:
+        if self.length < 8:
+            raise ValueError("length must be >= 8")
+        if self.width_max < 4:
+            raise ValueError("width_max must be >= 4")
+        if self.height_max < 4:
+            raise ValueError("height_max must be >= 4")
+        if self.engine_count < 0 or self.engine_count > 6:
+            raise ValueError("engine_count must be in [0, 6]")
+        if not 0.0 <= self.wing_prob <= 1.0:
+            raise ValueError("wing_prob must be in [0, 1]")
+        if not 0.0 <= self.greeble_density <= 0.5:
+            raise ValueError("greeble_density must be in [0, 0.5]")
+
+
+def generate_shape(seed: int, params: ShapeParams | None = None) -> np.ndarray:
+    """Return a ``(W, H, L)`` int8 array of :class:`Role` codes.
+
+    Deterministic given ``seed`` and ``params``.
+    """
+    params = params or ShapeParams()
+    rng = np.random.default_rng(seed)
+    W, H, L = params.width_max, params.height_max, params.length
+    grid = np.zeros((W, H, L), dtype=np.int8)
+
+    _place_hull(grid, rng, params)
+    _place_cockpit(grid, rng, params)
+    _place_engines(grid, rng, params)
+    if rng.random() < params.wing_prob:
+        _place_wings(grid, rng, params)
+    _place_greebles(grid, rng, params)
+    _enforce_x_symmetry(grid)
+
+    return grid
+
+
+# ---------------------------------------------------------------------------
+# Stages
+# ---------------------------------------------------------------------------
+
+
+def _place_hull(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
+    """Fill a tapered ellipsoid-of-revolution along Z with HULL voxels."""
+    W, H, L = grid.shape
+    cx, cy = (W - 1) / 2.0, (H - 1) / 2.0
+
+    # Slight random thickness variation per axis so not every ship is identical.
+    thickness = 0.9 + rng.random() * 0.1
+
+    for z in range(L):
+        t = z / max(L - 1, 1)          # 0 at rear, 1 at nose
+        profile = _body_profile(t)     # [0..1] bell-ish
+        rx = max(0.5, (W * 0.5 - 0.5) * profile * thickness)
+        ry = max(0.5, (H * 0.5 - 0.5) * profile * thickness * 0.7)  # flatter than wide
+
+        for x in range(W):
+            for y in range(H):
+                dx = (x - cx) / rx
+                dy = (y - cy) / ry
+                if dx * dx + dy * dy <= 1.0:
+                    grid[x, y, z] = Role.HULL
+
+
+def _body_profile(t: float) -> float:
+    """Taper profile along ship length.
+
+    ``t = 0`` is the rear, ``t = 1`` is the nose. Peaks a little forward of
+    the middle so the nose tapers more than the tail.
+    """
+    peak = 0.55
+    sigma = 0.32
+    f = math.exp(-((t - peak) ** 2) / (2 * sigma * sigma))
+    return max(0.0, min(1.0, f))
+
+
+def _place_cockpit(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
+    """Attach a small bulge to the nose of the ship."""
+    W, H, L = grid.shape
+    cx = (W - 1) / 2.0
+    cy = min(H - 2, (H - 1) / 2.0 + 1.0)  # sit slightly above center
+    cz = L - max(3, L // 8)
+
+    rx = max(1.2, W / 10.0)
+    ry = max(1.0, H / 9.0)
+    rz = max(1.5, L / 14.0)
+
+    for x in range(W):
+        for y in range(H):
+            for z in range(max(0, int(cz - rz - 1)), L):
+                dx = (x - cx) / rx
+                dy = (y - cy) / ry
+                dz = (z - cz) / rz
+                if dx * dx + dy * dy + dz * dz <= 1.1:
+                    grid[x, y, z] = Role.COCKPIT_GLASS
+
+
+def _place_engines(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
+    """Add N engine cylinders at the rear of the ship."""
+    n = params.engine_count
+    if n == 0:
+        return
+    W, H, L = grid.shape
+
+    engine_length = max(2, L // 8)
+    engine_radius = max(1, min(W, H) // 10)
+
+    xs = _engine_x_positions(n, W, engine_radius)
+    cy_engine = max(engine_radius + 1, H // 2 - 1)
+
+    for ex in xs:
+        for x in range(ex - engine_radius - 1, ex + engine_radius + 2):
+            for y in range(cy_engine - engine_radius - 1, cy_engine + engine_radius + 2):
+                for z in range(0, engine_length):
+                    if not (0 <= x < W and 0 <= y < H and 0 <= z < L):
+                        continue
+                    dx = x - ex
+                    dy = y - cy_engine
+                    if dx * dx + dy * dy <= engine_radius * engine_radius:
+                        grid[x, y, z] = Role.ENGINE
+
+
+def _engine_x_positions(n: int, width: int, radius: int) -> list[int]:
+    """Return engine X positions spread symmetrically across the ship width."""
+    if n == 1:
+        return [width // 2]
+    cx = (width - 1) / 2.0
+    half = n // 2
+    usable = (width - 2 * radius - 2) / 2.0   # space to each side of center
+    spacing = usable / max(half, 1)
+    xs: list[int] = []
+    for i in range(1, half + 1):
+        offset = spacing * i
+        xs.append(int(round(cx - offset)))
+        xs.append(int(round(cx + offset)))
+    if n % 2 == 1:
+        xs.append(int(round(cx)))
+    return xs
+
+
+def _place_wings(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
+    """Flat slabs protruding from the hull on the X axis. Mirrored."""
+    W, H, L = grid.shape
+    wing_span = max(2, W // 5)
+    wing_thickness = max(1, H // 10)
+    wing_length = max(4, L // 3)
+    cy = (H - 1) // 2
+    cz = L // 3 + int(rng.integers(-L // 12, L // 12 + 1))
+    cz = max(0, min(L - wing_length, cz))
+
+    y_lo = cy - wing_thickness // 2
+    y_hi = y_lo + wing_thickness
+
+    # Left wing — right side is produced by the final mirror pass.
+    for x in range(0, wing_span):
+        for y in range(max(0, y_lo), min(H, y_hi + 1)):
+            for z in range(cz, min(L, cz + wing_length)):
+                grid[x, y, z] = Role.WING
+
+
+def _place_greebles(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
+    """Sprinkle 1-voxel bumps on the hull surface."""
+    if params.greeble_density <= 0:
+        return
+
+    surface = _surface_mask(grid)
+    coords = np.argwhere(surface)
+    if coords.size == 0:
+        return
+
+    count = int(len(coords) * params.greeble_density)
+    if count == 0:
+        return
+
+    order = rng.permutation(len(coords))
+    W, H, L = grid.shape
+    directions = [(0, 1, 0), (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1)]
+
+    for i in range(count):
+        x, y, z = coords[order[i]]
+        # Don't drop greebles on engines or cockpit glass.
+        if grid[x, y, z] not in (Role.HULL, Role.WING):
+            continue
+        for dx, dy, dz in directions:
+            nx, ny, nz = int(x + dx), int(y + dy), int(z + dz)
+            if not (0 <= nx < W and 0 <= ny < H and 0 <= nz < L):
+                continue
+            if grid[nx, ny, nz] == Role.EMPTY:
+                grid[nx, ny, nz] = Role.GREEBLE
+                break
+
+
+def _surface_mask(grid: np.ndarray) -> np.ndarray:
+    """Boolean array: True where voxel is filled and has at least one empty neighbor."""
+    filled = grid != Role.EMPTY
+    W, H, L = grid.shape
+    surface = np.zeros_like(filled)
+    for dx, dy, dz in [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]:
+        # Treat out-of-bounds neighbors as EMPTY so ship's outer shell is surface.
+        shifted = np.zeros_like(filled, dtype=bool)
+        xs = slice(max(0, -dx), W - max(0, dx))
+        ys = slice(max(0, -dy), H - max(0, dy))
+        zs = slice(max(0, -dz), L - max(0, dz))
+        src_xs = slice(xs.start + dx, xs.stop + dx)
+        src_ys = slice(ys.start + dy, ys.stop + dy)
+        src_zs = slice(zs.start + dz, zs.stop + dz)
+        shifted[xs, ys, zs] = filled[src_xs, src_ys, src_zs]
+        surface |= filled & ~shifted
+    return surface
+
+
+def _enforce_x_symmetry(grid: np.ndarray) -> None:
+    """Copy the left half onto the right half so the ship is X-symmetric."""
+    W = grid.shape[0]
+    half = W // 2
+    for x in range(half):
+        grid[W - 1 - x, :, :] = grid[x, :, :]
