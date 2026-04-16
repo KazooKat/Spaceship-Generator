@@ -44,6 +44,7 @@ from ..generator import GenerationResult, generate
 from ..palette import Palette, Role, list_palettes, load_palette
 from ..shape import CockpitStyle, ShapeParams, StructureStyle
 from ..texture import TextureParams
+from ..wing_styles import WingStyle
 
 
 _DEFAULT_MAX_RESULTS = 100
@@ -164,6 +165,7 @@ PARAM_HELP: dict[str, str] = {
     "greeble_density": "Fraction (0-0.5) of hull surface covered in small detail blocks.",
     "cockpit": "Shape of the cockpit at the nose: bubble, pointed, or integrated.",
     "structure_style": "Overall ship archetype (frigate, fighter, dreadnought, shuttle, hammerhead, carrier). Changes hull profile, engine layout, and wings.",
+    "wing_style": "Wing silhouette: straight (legacy slab), swept (tip angled rearward), delta (triangular), tapered (shrinking chord), gull (raised outer section), split (two stacked wings).",
     "window_period": "Block spacing between window lights along the hull. Lower = more windows.",
     "accent_stripe_period": "Block spacing between accent-colored stripes down the hull.",
     "engine_glow_depth": "How many blocks deep the engine glow core extends into the nozzle.",
@@ -399,6 +401,16 @@ def create_app() -> Flask:
                 f"{[s.value for s in StructureStyle]}; got {raw_structure!r}"
             ) from exc
 
+        # Resolve wing_style. Default STRAIGHT keeps legacy silhouette.
+        raw_wing = source.get("wing_style", WingStyle.STRAIGHT.value)
+        try:
+            wing_style = WingStyle(raw_wing)
+        except ValueError as exc:
+            raise ValueError(
+                f"wing_style must be one of "
+                f"{[s.value for s in WingStyle]}; got {raw_wing!r}"
+            ) from exc
+
         shape_params = ShapeParams(
             length=int(source.get("length", 40)),
             width_max=int(source.get("width", 20)),
@@ -410,6 +422,7 @@ def create_app() -> Flask:
                 source.get("cockpit", CockpitStyle.BUBBLE.value)
             ),
             structure_style=structure_style,
+            wing_style=wing_style,
         )
         # "engine_glow_ring" accepts bool, "on"/"true"/"1" from forms, or a truthy
         # JSON bool. Treat any non-empty value other than "false"/"0" as True.
@@ -437,6 +450,7 @@ def create_app() -> Flask:
             palettes=list_palettes(),
             cockpit_styles=[c.value for c in CockpitStyle],
             structure_styles=[s.value for s in StructureStyle],
+            wing_styles=[w.value for w in WingStyle],
             param_help=PARAM_HELP,
             defaults={
                 "seed": random.randint(0, 2**31 - 1),
@@ -456,6 +470,7 @@ def create_app() -> Flask:
                 "engine_glow_ring": False,
                 "cockpit": CockpitStyle.BUBBLE.value,
                 "structure_style": StructureStyle.FRIGATE.value,
+                "wing_style": WingStyle.STRAIGHT.value,
             },
         )
 
@@ -526,6 +541,7 @@ def create_app() -> Flask:
                     palettes=list_palettes(),
                     cockpit_styles=[c.value for c in CockpitStyle],
                     structure_styles=[s.value for s in StructureStyle],
+                    wing_styles=[w.value for w in WingStyle],
                     param_help=PARAM_HELP,
                     defaults=request.form.to_dict(),
                     error=str(exc),
@@ -789,6 +805,7 @@ def create_app() -> Flask:
                 "palettes": list_palettes(),
                 "cockpit_styles": [c.value for c in CockpitStyle],
                 "structure_styles": [s.value for s in StructureStyle],
+                "wing_styles": [w.value for w in WingStyle],
                 "param_help": dict(help_map),
                 "defaults": {
                     "seed": 42,
@@ -808,6 +825,7 @@ def create_app() -> Flask:
                     "engine_glow_ring": False,
                     "cockpit": CockpitStyle.BUBBLE.value,
                     "structure_style": StructureStyle.FRIGATE.value,
+                    "wing_style": WingStyle.STRAIGHT.value,
                 },
                 "version": version,
             }

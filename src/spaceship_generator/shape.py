@@ -35,6 +35,7 @@ from .structure_styles import (
     wing_prob_override,
     wing_size_scale,
 )
+from .wing_styles import WingStyle, place_wings as _place_wing_cells
 
 
 class CockpitStyle(str, Enum):
@@ -55,6 +56,10 @@ class ShapeParams:
     greeble_density: float = 0.05
     cockpit_style: CockpitStyle = CockpitStyle.BUBBLE
     structure_style: StructureStyle = StructureStyle.FRIGATE
+    # Wing silhouette archetype. STRAIGHT reproduces legacy behavior
+    # byte-for-byte; new styles (swept, delta, tapered, gull, split)
+    # change only the cells written by ``_place_wings``.
+    wing_style: WingStyle = WingStyle.STRAIGHT
 
     def __post_init__(self) -> None:
         if self.length < 8:
@@ -86,6 +91,24 @@ class ShapeParams:
             raise ValueError(
                 f"structure_style must be a StructureStyle; got "
                 f"{type(self.structure_style).__name__}"
+            )
+
+        # Validate wing_style — same shape as structure_style above.
+        if isinstance(self.wing_style, str) and not isinstance(
+            self.wing_style, WingStyle
+        ):
+            try:
+                self.wing_style = WingStyle(self.wing_style)
+            except ValueError as exc:  # pragma: no cover - re-raised
+                raise ValueError(
+                    f"wing_style must be one of "
+                    f"{[s.value for s in WingStyle]}; got "
+                    f"{self.wing_style!r}"
+                ) from exc
+        elif not isinstance(self.wing_style, WingStyle):
+            raise ValueError(
+                f"wing_style must be a WingStyle; got "
+                f"{type(self.wing_style).__name__}"
             )
 
 
@@ -379,7 +402,11 @@ def _place_wings(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams
     """Flat slabs protruding from the hull on the X axis. Mirrored.
 
     Wing span/thickness/length are scaled per
-    :attr:`ShapeParams.structure_style`; ``FRIGATE`` uses the original values.
+    :attr:`ShapeParams.structure_style`; ``FRIGATE`` uses the original
+    values. The actual cell-writing pattern is chosen by
+    :attr:`ShapeParams.wing_style` and implemented in
+    :mod:`spaceship_generator.wing_styles` — this function is just the
+    placement-box math.
     """
     W, H, L = grid.shape
     span_s, thick_s, length_s = wing_size_scale(params.structure_style)
@@ -398,10 +425,17 @@ def _place_wings(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams
     y_hi = y_lo + wing_thickness
 
     # Left wing — right side is produced by the final mirror pass.
-    for x in range(0, wing_span):
-        for y in range(max(0, y_lo), min(H, y_hi + 1)):
-            for z in range(cz, min(L, cz + wing_length)):
-                grid[x, y, z] = Role.WING
+    _place_wing_cells(
+        grid,
+        params.wing_style,
+        span=wing_span,
+        thickness=wing_thickness,
+        length=wing_length,
+        cy=cy,
+        cz=cz,
+        y_lo=y_lo,
+        y_hi=y_hi,
+    )
 
 
 def _place_greebles(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:

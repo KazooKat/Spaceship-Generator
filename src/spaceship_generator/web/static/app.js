@@ -263,6 +263,14 @@
             ].value;
         }
 
+        // Wing style: uniform over available silhouettes.
+        var wingStyle = form.querySelector('select[name="wing_style"]');
+        if (wingStyle && wingStyle.options.length) {
+            wingStyle.value = wingStyle.options[
+                Math.floor(Math.random() * wingStyle.options.length)
+            ].value;
+        }
+
         // Engine glow ring: 50/50.
         var ring = form.querySelector('input[name="engine_glow_ring"]');
         if (ring) ring.checked = Math.random() < 0.5;

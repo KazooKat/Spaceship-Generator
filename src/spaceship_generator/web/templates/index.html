@@ -233,6 +233,15 @@
                             </select>
                         </label>
                     </div>
+                    <div class="control" data-param="wing_style">
+                        <label>Wing style {{ tip("wing_style") }}
+                            <select name="wing_style">
+                                {% for w in wing_styles %}
+                                <option value="{{ w }}" {% if w == defaults.wing_style %}selected{% endif %}>{{ w }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
                 </div>
             </section>
 

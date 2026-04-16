@@ -11,6 +11,7 @@ from pathlib import Path
 from .generator import GenerationResult, generate
 from .palette import list_palettes
 from .shape import CockpitStyle, ShapeParams, StructureStyle
+from .wing_styles import WingStyle
 from .texture import TextureParams
 
 
@@ -118,6 +119,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=StructureStyle.FRIGATE.value,
         help="Ship archetype (frigate, fighter, dreadnought, shuttle, hammerhead, carrier).",
     )
+    p.add_argument(
+        "--wing-style",
+        choices=[w.value for w in WingStyle],
+        default=WingStyle.STRAIGHT.value,
+        help="Wing silhouette (straight, swept, delta, tapered, gull, split).",
+    )
 
     # Texture params
     p.add_argument("--window-period", type=int, default=4,
@@ -179,6 +186,7 @@ def _run_one(
         greeble_density=args.greeble_density,
         cockpit_style=CockpitStyle(args.cockpit),
         structure_style=StructureStyle(args.structure_style),
+        wing_style=WingStyle(args.wing_style),
     )
     texture_params = TextureParams(
         window_period_cells=args.window_period,
