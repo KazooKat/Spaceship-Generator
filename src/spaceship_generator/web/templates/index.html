@@ -8,6 +8,27 @@
     {%- endif -%}
 {%- endmacro %}
 
+{#
+  num_range(name, lo, hi, step, value): paired slider + number input.
+  The slider gives quick visual tuning; the number box accepts typed values
+  including ones outside the slider's [lo, hi] range so users can manually
+  define bounds. Only the number input carries the form `name`, so exactly
+  one value is submitted. JS below keeps the two in sync.
+#}
+{% macro num_range(name, lo, hi, step, value) -%}
+<div class="num-ctl" data-num-ctl>
+    <input type="range" class="num-slider"
+           min="{{ lo }}" max="{{ hi }}" step="{{ step }}"
+           value="{{ value }}"
+           aria-label="{{ name }} slider"
+           tabindex="-1">
+    <input type="number" class="num-input"
+           name="{{ name }}" step="{{ step }}"
+           value="{{ value }}"
+           data-slider-lo="{{ lo }}" data-slider-hi="{{ hi }}">
+</div>
+{%- endmacro %}
+
 {% block content %}
 <div class="layout">
     <form action="{{ url_for('do_generate') }}" method="POST" class="gen-form"
@@ -44,22 +65,22 @@
         <fieldset>
             <legend>Shape</legend>
             <label>Length (Z) {{ tip("length") }}
-                <input type="number" name="length" min="8" max="128" value="{{ defaults.length }}" required>
+                {{ num_range("length", 8, 128, 1, defaults.length) }}
             </label>
             <label>Max width (X) {{ tip("width") }}
-                <input type="number" name="width" min="4" max="64" value="{{ defaults.width }}" required>
+                {{ num_range("width", 4, 64, 1, defaults.width) }}
             </label>
             <label>Max height (Y) {{ tip("height") }}
-                <input type="number" name="height" min="4" max="64" value="{{ defaults.height }}" required>
+                {{ num_range("height", 4, 64, 1, defaults.height) }}
             </label>
             <label>Engines {{ tip("engines") }}
-                <input type="number" name="engines" min="0" max="6" value="{{ defaults.engines }}" required>
+                {{ num_range("engines", 0, 6, 1, defaults.engines) }}
             </label>
             <label>Wing probability {{ tip("wing_prob") }}
-                <input type="number" name="wing_prob" step="0.05" min="0" max="1" value="{{ defaults.wing_prob }}">
+                {{ num_range("wing_prob", 0, 1, 0.05, defaults.wing_prob) }}
             </label>
             <label>Greeble density {{ tip("greeble_density") }}
-                <input type="number" name="greeble_density" step="0.01" min="0" max="0.5" value="{{ defaults.greeble_density }}">
+                {{ num_range("greeble_density", 0, 0.5, 0.01, defaults.greeble_density) }}
             </label>
             <label>Cockpit style {{ tip("cockpit") }}
                 <select name="cockpit">
@@ -68,30 +89,34 @@
                     {% endfor %}
                 </select>
             </label>
+            <label>Structure style {{ tip("structure_style") }}
+                <select name="structure_style">
+                    {% for s in structure_styles %}
+                    <option value="{{ s }}" {% if s == defaults.structure_style %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </label>
         </fieldset>
 
         <fieldset>
             <legend>Texture</legend>
             <label>Window spacing (blocks) {{ tip("window_period") }}
-                <input type="number" name="window_period" min="2" max="16" value="{{ defaults.window_period }}">
+                {{ num_range("window_period", 2, 16, 1, defaults.window_period) }}
             </label>
             <label>Accent stripe period {{ tip("accent_stripe_period") }}
-                <input type="number" name="accent_stripe_period" min="2" max="32" value="{{ defaults.accent_stripe_period }}">
+                {{ num_range("accent_stripe_period", 2, 32, 1, defaults.accent_stripe_period) }}
             </label>
             <label>Engine glow depth {{ tip("engine_glow_depth") }}
-                <input type="number" name="engine_glow_depth" min="1" max="8" value="{{ defaults.engine_glow_depth }}">
+                {{ num_range("engine_glow_depth", 1, 8, 1, defaults.engine_glow_depth) }}
             </label>
             <label>Hull noise ratio (60-30-10) {{ tip("hull_noise_ratio") }}
-                <input type="number" name="hull_noise_ratio" step="0.05" min="0" max="1"
-                       value="{{ defaults.hull_noise_ratio }}">
+                {{ num_range("hull_noise_ratio", 0, 1, 0.05, defaults.hull_noise_ratio) }}
             </label>
             <label>Panel line bands {{ tip("panel_line_bands") }}
-                <input type="number" name="panel_line_bands" min="1" max="3"
-                       value="{{ defaults.panel_line_bands }}">
+                {{ num_range("panel_line_bands", 1, 3, 1, defaults.panel_line_bands) }}
             </label>
             <label>Rivet period (0 off) {{ tip("rivet_period") }}
-                <input type="number" name="rivet_period" min="0" max="32"
-                       value="{{ defaults.rivet_period }}">
+                {{ num_range("rivet_period", 0, 32, 1, defaults.rivet_period) }}
             </label>
             <label class="checkbox">
                 <input type="checkbox" name="engine_glow_ring" value="true"
@@ -132,8 +157,13 @@
                 // and round to the input's step precision.
                 form.querySelectorAll('input[type="number"]').forEach(function (inp) {
                     if (inp.name === "seed") return;
-                    var lo = parseFloat(inp.min);
-                    var hi = parseFloat(inp.max);
+                    // Prefer the paired slider's bounds (data-slider-lo/hi)
+                    // since the number input itself intentionally has no
+                    // min/max (users can type out-of-range values manually).
+                    var lo = parseFloat(inp.dataset.sliderLo);
+                    var hi = parseFloat(inp.dataset.sliderHi);
+                    if (!Number.isFinite(lo)) lo = parseFloat(inp.min);
+                    if (!Number.isFinite(hi)) hi = parseFloat(inp.max);
                     if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo) return;
                     var step = parseFloat(inp.step);
                     if (!Number.isFinite(step) || step <= 0) step = 1;
@@ -146,6 +176,8 @@
                         v = parseFloat(v.toFixed(4));
                     }
                     inp.value = String(v);
+                    // Cascade to the paired slider.
+                    inp.dispatchEvent(new Event("input", { bubbles: true }));
                 });
 
                 // Palette: pick any concrete palette (skip the 'random' meta-option
@@ -167,6 +199,13 @@
                     cockpit.value = cockpit.options[ci].value;
                 }
 
+                // Structure style: uniform over available archetypes.
+                var structureStyle = form.querySelector('select[name="structure_style"]');
+                if (structureStyle && structureStyle.options.length) {
+                    var si = Math.floor(Math.random() * structureStyle.options.length);
+                    structureStyle.value = structureStyle.options[si].value;
+                }
+
                 // Engine glow ring: 50/50.
                 var ring = form.querySelector('input[name="engine_glow_ring"]');
                 if (ring) ring.checked = Math.random() < 0.5;
@@ -182,7 +221,35 @@
             document.addEventListener("DOMContentLoaded", function () {
                 var btn = document.getElementById("randomize-all");
                 if (btn) btn.addEventListener("click", randomizeAndSubmit);
+                bindNumCtls(document);
             });
+
+            // Keep each paired slider + number input in sync. The slider
+            // drives the number (1:1 within its own [lo, hi] range); the
+            // number drives the slider (clamped to the slider's range so
+            // typed out-of-range values still show a sensible slider
+            // position without destroying the typed value).
+            function bindNumCtls(root) {
+                var ctls = (root || document).querySelectorAll(".num-ctl");
+                ctls.forEach(function (ctl) {
+                    if (ctl.dataset.numCtlBound === "1") return;
+                    ctl.dataset.numCtlBound = "1";
+                    var slider = ctl.querySelector("input.num-slider");
+                    var num = ctl.querySelector("input.num-input");
+                    if (!slider || !num) return;
+                    slider.addEventListener("input", function () {
+                        num.value = slider.value;
+                    });
+                    num.addEventListener("input", function () {
+                        var v = parseFloat(num.value);
+                        if (!Number.isFinite(v)) return;
+                        var lo = parseFloat(slider.min);
+                        var hi = parseFloat(slider.max);
+                        var clamped = Math.max(lo, Math.min(hi, v));
+                        slider.value = String(clamped);
+                    });
+                });
+            }
         })();
     </script>
 

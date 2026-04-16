@@ -3,13 +3,17 @@
 // Architecture:
 //   * Fetches /voxels/<gen_id>.json once after the result partial is swapped in.
 //   * Decodes a base64 Int16 buffer of interleaved (x, y, z, role) tuples into
-//     two GPU buffers: per-instance offset (vec3) and per-instance color (vec4).
+//     per-instance offset (vec3) and color (vec4) buffers, split into an
+//     opaque group (alpha >= 0.99) and a translucent group (alpha < 0.99).
 //   * Draws a single unit cube with instanced rendering so 20k voxels cost one
-//     draw call. Prefers WebGL2 (native instancing); falls back to WebGL1 +
-//     ANGLE_instanced_arrays if needed.
+//     draw call per pass. Prefers WebGL2 (native instancing); falls back to
+//     WebGL1 + ANGLE_instanced_arrays if needed.
+//   * Two-pass render: opaque voxels first with depth writes enabled, then
+//     translucent voxels (glass, ice, honey, slime) with alpha blending and
+//     depth writes disabled so they don't occlude each other.
 //   * Orbit camera in spherical coordinates around the model's center. Mouse
 //     drag updates theta/phi, wheel updates radius, shift-left/middle/right
-//     drag pans the target point.
+//     drag pans the target point with drag-to-scroll behavior.
 //   * Lighting: one directional light + ambient, with a flat per-face normal
 //     produced by a provoking-vertex trick so cube faces shade independently.
 
@@ -225,24 +229,58 @@
         // Int16 little-endian, 4 entries per voxel (x, y, z, role).
         const i16 = new Int16Array(bytes.buffer, bytes.byteOffset, (bytes.byteLength / 2) | 0);
 
-        // Build interleaved per-instance arrays.
-        const offsets = new Float32Array(count * 3);
-        const colors = new Float32Array(count * 4);
+        // Partition voxels into opaque (alpha >= ALPHA_OPAQUE) and translucent
+        // (alpha < ALPHA_OPAQUE). Opaque voxels draw first with depth writes
+        // enabled; translucent voxels draw second with blending and depth
+        // writes disabled so they don't occlude each other in arbitrary
+        // order.
+        const ALPHA_OPAQUE = 0.99;
         const cx = W / 2, cy = H / 2, cz = L / 2;
+
+        // First pass: count opaque vs translucent so we can allocate tightly.
+        let opaqueCount = 0;
+        let transCount = 0;
+        for (let i = 0; i < count; i++) {
+            const role = i16[i * 4 + 3];
+            const c = data.colors[String(role)];
+            const a = (c && c[3] != null) ? c[3] : 1.0;
+            if (a >= ALPHA_OPAQUE) opaqueCount++;
+            else transCount++;
+        }
+
+        const opaqueOffsets = new Float32Array(opaqueCount * 3);
+        const opaqueColors = new Float32Array(opaqueCount * 4);
+        const transOffsets = new Float32Array(transCount * 3);
+        const transColors = new Float32Array(transCount * 4);
+
+        // Second pass: populate the split buffers. Center model on origin.
+        let oi = 0, ti = 0;
         for (let i = 0; i < count; i++) {
             const x = i16[i * 4 + 0];
             const y = i16[i * 4 + 1];
             const z = i16[i * 4 + 2];
             const role = i16[i * 4 + 3];
-            // Center the model on origin so the orbit camera looks at (0,0,0).
-            offsets[i * 3 + 0] = x - cx;
-            offsets[i * 3 + 1] = y - cy;
-            offsets[i * 3 + 2] = z - cz;
             const c = data.colors[String(role)] || [0.6, 0.6, 0.6, 1.0];
-            colors[i * 4 + 0] = c[0];
-            colors[i * 4 + 1] = c[1];
-            colors[i * 4 + 2] = c[2];
-            colors[i * 4 + 3] = c[3] != null ? c[3] : 1.0;
+            const a = c[3] != null ? c[3] : 1.0;
+            if (a >= ALPHA_OPAQUE) {
+                opaqueOffsets[oi * 3 + 0] = x - cx;
+                opaqueOffsets[oi * 3 + 1] = y - cy;
+                opaqueOffsets[oi * 3 + 2] = z - cz;
+                opaqueColors[oi * 4 + 0] = c[0];
+                opaqueColors[oi * 4 + 1] = c[1];
+                opaqueColors[oi * 4 + 2] = c[2];
+                opaqueColors[oi * 4 + 3] = a;
+                oi++;
+            } else {
+                transOffsets[ti * 3 + 0] = x - cx;
+                transOffsets[ti * 3 + 1] = y - cy;
+                transOffsets[ti * 3 + 2] = z - cz;
+                transColors[ti * 4 + 0] = c[0];
+                transColors[ti * 4 + 1] = c[1];
+                transColors[ti * 4 + 2] = c[2];
+                transColors[ti * 4 + 3] = a;
+                ti++;
+            }
         }
 
         // --- GL context selection ---------------------------------------------
@@ -281,14 +319,22 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, nrmBuf);
         gl.bufferData(gl.ARRAY_BUFFER, cube.nrm, gl.STATIC_DRAW);
 
-        // Instanced per-voxel buffers
-        const offBuf = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, offBuf);
-        gl.bufferData(gl.ARRAY_BUFFER, offsets, gl.STATIC_DRAW);
+        // Instanced per-voxel buffers — one pair per opacity pass.
+        const offBufOpaque = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, offBufOpaque);
+        gl.bufferData(gl.ARRAY_BUFFER, opaqueOffsets, gl.STATIC_DRAW);
 
-        const colBuf = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
-        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+        const colBufOpaque = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, colBufOpaque);
+        gl.bufferData(gl.ARRAY_BUFFER, opaqueColors, gl.STATIC_DRAW);
+
+        const offBufTrans = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, offBufTrans);
+        gl.bufferData(gl.ARRAY_BUFFER, transOffsets, gl.STATIC_DRAW);
+
+        const colBufTrans = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, colBufTrans);
+        gl.bufferData(gl.ARRAY_BUFFER, transColors, gl.STATIC_DRAW);
 
         const aPos = gl.getAttribLocation(prog, "aPos");
         const aNormal = gl.getAttribLocation(prog, "aNormal");
@@ -310,15 +356,28 @@
         gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, 0, 0);
         vertexAttribDivisor(aNormal, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, offBuf);
+        // The per-instance aOffset / aColor attributes are re-bound to the
+        // appropriate (opaque / translucent) buffers each pass inside draw().
         gl.enableVertexAttribArray(aOffset);
-        gl.vertexAttribPointer(aOffset, 3, gl.FLOAT, false, 0, 0);
         vertexAttribDivisor(aOffset, 1);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
         gl.enableVertexAttribArray(aColor);
-        gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, 0, 0);
         vertexAttribDivisor(aColor, 1);
+
+        function bindInstanceBuffers(offBuf, colBuf) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, offBuf);
+            gl.vertexAttribPointer(aOffset, 3, gl.FLOAT, false, 0, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
+            gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, 0, 0);
+        }
+
+        function drawInstances(n) {
+            if (n <= 0) return;
+            if (isWebGL2) {
+                gl.drawArraysInstanced(gl.TRIANGLES, 0, cube.count, n);
+            } else {
+                instancedExt.drawArraysInstancedANGLE(gl.TRIANGLES, 0, cube.count, n);
+            }
+        }
 
         const uProj = gl.getUniformLocation(prog, "uProj");
         const uView = gl.getUniformLocation(prog, "uView");
@@ -402,10 +461,26 @@
             gl.uniform3f(uLightDir, 0.5, 1.0, 0.35);
             gl.uniform1f(uAmbient, 0.55);
 
-            if (isWebGL2) {
-                gl.drawArraysInstanced(gl.TRIANGLES, 0, cube.count, count);
-            } else {
-                instancedExt.drawArraysInstancedANGLE(gl.TRIANGLES, 0, cube.count, count);
+            // Pass 1: opaque voxels with standard depth buffering.
+            gl.disable(gl.BLEND);
+            gl.depthMask(true);
+            gl.enable(gl.DEPTH_TEST);
+            bindInstanceBuffers(offBufOpaque, colBufOpaque);
+            drawInstances(opaqueCount);
+
+            // Pass 2: translucent voxels with alpha blending. Depth test
+            // stays on so we don't draw behind solid geometry, but depth
+            // writes are disabled so translucent voxels don't occlude each
+            // other awkwardly when drawn in arbitrary order.
+            if (transCount > 0) {
+                gl.enable(gl.BLEND);
+                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                gl.depthMask(false);
+                bindInstanceBuffers(offBufTrans, colBufTrans);
+                drawInstances(transCount);
+                // Restore state for the next frame / any later draws.
+                gl.depthMask(true);
+                gl.disable(gl.BLEND);
             }
 
             frameCount++;
@@ -475,9 +550,13 @@
                 const uy = rz * fnx - rx * fnz;
                 const uz = rx * fny - ry * fnx;
                 const pxScale = (2 * cam.radius * Math.tan(cam.fov / 2)) / Math.max(1, canvas.clientHeight);
-                cam.target[0] -= (rx * dx - ux * dy) * pxScale;
-                cam.target[1] -= (ry * dx - uy * dy) * pxScale;
-                cam.target[2] -= (rz * dx - uz * dy) * pxScale;
+                // Drag-to-scroll convention: dragging the mouse right by dx
+                // pixels should move the pan target LEFT along the camera's
+                // right axis so the feature under the cursor appears to
+                // travel with the cursor. Vertical (dy) keeps its sign.
+                cam.target[0] += (rx * dx + ux * dy) * pxScale;
+                cam.target[1] += (ry * dx + uy * dy) * pxScale;
+                cam.target[2] += (rz * dx + uz * dy) * pxScale;
             }
             requestDraw();
         });

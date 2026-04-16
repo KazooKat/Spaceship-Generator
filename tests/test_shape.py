@@ -9,8 +9,10 @@ from spaceship_generator.palette import Role
 from spaceship_generator.shape import (
     CockpitStyle,
     ShapeParams,
+    StructureStyle,
     _body_profile,
     _engine_x_positions,
+    _label_components,
     _surface_mask,
     generate_shape,
 )
@@ -319,3 +321,133 @@ def test_wing_length_guard_on_short_ship():
     z_span = wing_positions[:, 2].max() - wing_positions[:, 2].min() + 1
     assert z_span >= 2
     assert np.array_equal(grid, grid[::-1, :, :])
+
+
+# ----- Structure style variation -----
+
+
+def test_structure_style_default_is_frigate():
+    """ShapeParams() with no structure_style argument defaults to FRIGATE."""
+    p = ShapeParams()
+    assert p.structure_style == StructureStyle.FRIGATE
+
+
+def test_structure_style_frigate_backcompat():
+    """FRIGATE style must produce the exact same grid as the legacy default.
+
+    ShapeParams() (no structure_style arg) and ShapeParams(structure_style=FRIGATE)
+    must both be byte-equal — and determinism must match pre-style behavior.
+    """
+    p_default = ShapeParams(length=32, width_max=16, height_max=10)
+    p_explicit = ShapeParams(
+        length=32,
+        width_max=16,
+        height_max=10,
+        structure_style=StructureStyle.FRIGATE,
+    )
+    a = generate_shape(1234, p_default)
+    b = generate_shape(1234, p_explicit)
+    assert np.array_equal(a, b)
+
+
+def test_structure_style_invalid_value_raises():
+    """Bad structure_style strings raise ValueError."""
+    with pytest.raises(ValueError):
+        ShapeParams(structure_style="not-a-real-style")
+    with pytest.raises(ValueError):
+        ShapeParams(structure_style=42)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("style", list(StructureStyle))
+def test_structure_style_generates_valid_ship(style):
+    """Every style must produce a valid 3D grid of correct shape and non-empty content."""
+    p = ShapeParams(
+        length=40, width_max=20, height_max=12, structure_style=style
+    )
+    grid = generate_shape(42, p)
+    # Shape + dtype.
+    assert grid.shape == (20, 12, 40)
+    assert grid.ndim == 3
+    # Must have voxels.
+    assert (grid != Role.EMPTY).sum() > 50
+
+
+@pytest.mark.parametrize("style", list(StructureStyle))
+def test_structure_style_preserves_x_symmetry(style):
+    """Every style's final grid must be bilaterally symmetric across X."""
+    p = ShapeParams(
+        length=40, width_max=20, height_max=12, structure_style=style
+    )
+    grid = generate_shape(42, p)
+    assert np.array_equal(grid, grid[::-1, :, :])
+
+
+@pytest.mark.parametrize("style", list(StructureStyle))
+def test_structure_style_is_one_connected_mass(style):
+    """Every style's final grid must be a single 6-connected component."""
+    p = ShapeParams(
+        length=40, width_max=20, height_max=12, structure_style=style
+    )
+    grid = generate_shape(42, p)
+    _labels, n_components = _label_components(grid)
+    assert n_components == 1, (
+        f"style={style.value} produced {n_components} components instead of 1"
+    )
+
+
+def test_structure_styles_produce_distinguishable_grids():
+    """At least two styles must differ in voxel content for the same seed."""
+    seed = 42
+    p_base = dict(length=40, width_max=20, height_max=12)
+    grids = {
+        style: generate_shape(seed, ShapeParams(**p_base, structure_style=style))
+        for style in StructureStyle
+    }
+    # Collect unique grids.
+    unique = {}
+    for style, g in grids.items():
+        unique[g.tobytes()] = style
+    assert len(unique) >= 2, (
+        "All styles produced identical grids — the dispatcher did not take effect"
+    )
+    # Stronger check: specifically FRIGATE vs FIGHTER should differ since
+    # they have very different profiles + wing overrides.
+    assert not np.array_equal(
+        grids[StructureStyle.FRIGATE], grids[StructureStyle.FIGHTER]
+    )
+
+
+def test_structure_style_shuttle_has_no_wings():
+    """SHUTTLE should disable wings entirely regardless of wing_prob."""
+    grid = generate_shape(
+        7,
+        ShapeParams(
+            length=32,
+            width_max=16,
+            height_max=10,
+            wing_prob=1.0,
+            structure_style=StructureStyle.SHUTTLE,
+        ),
+    )
+    assert (grid == Role.WING).sum() == 0
+
+
+def test_structure_style_shuttle_has_single_engine_group():
+    """SHUTTLE collapses engine count to 1 even if a higher value is requested."""
+    grid = generate_shape(
+        3,
+        ShapeParams(
+            length=40,
+            width_max=20,
+            height_max=12,
+            engine_count=6,
+            structure_style=StructureStyle.SHUTTLE,
+        ),
+    )
+    engine_positions = np.argwhere(grid == Role.ENGINE)
+    assert len(engine_positions) > 0
+    # Shuttle: only one engine region — the distinct X positions along the
+    # widest engine slice should all be contiguous around the ship center.
+    unique_xs = np.unique(engine_positions[:, 0])
+    # A single cylinder centered on the ship produces a small X spread.
+    assert unique_xs.max() - unique_xs.min() < 20

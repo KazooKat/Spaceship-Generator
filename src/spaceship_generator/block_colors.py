@@ -318,3 +318,71 @@ def hex_to_rgba(hex_color: str) -> tuple[float, float, float, float]:
     g = int(s[2:4], 16) / 255.0
     b = int(s[4:6], 16) / 255.0
     return (r, g, b, 1.0)
+
+
+def _bare_block_name(block_id: str) -> str:
+    """Return the lowercase bare block name (no namespace, no state spec).
+
+    ``"minecraft:light_blue_stained_glass[waterlogged=true]"`` ->
+    ``"light_blue_stained_glass"``. Unrecognized inputs are returned
+    lowercased with whitespace stripped.
+    """
+    s = block_id.strip().lower()
+    # Strip any ``[state=...]`` trailing state spec.
+    i = s.find("[")
+    if i != -1:
+        s = s[:i]
+    # Strip ``minecraft:`` (or any other namespace) prefix.
+    j = s.rfind(":")
+    if j != -1:
+        s = s[j + 1 :]
+    return s
+
+
+def is_translucent(block_id: str) -> bool:
+    """Return True if ``block_id`` renders with partial opacity in Minecraft.
+
+    Matches common translucent blocks: glass (including stained glass and
+    glass panes), ice variants, honey block, slime block. Matching is
+    case-insensitive and ignores namespace prefixes and any ``[state]`` suffix.
+    """
+    name = _bare_block_name(block_id)
+    if not name:
+        return False
+    if "glass" in name:
+        return True
+    # Ice family: ice, packed_ice, blue_ice, frosted_ice.
+    if name == "ice" or name.endswith("_ice"):
+        return True
+    if name in ("honey_block", "slime_block"):
+        return True
+    return False
+
+
+def block_alpha(block_id: str) -> float:
+    """Return a suggested render alpha in ``(0, 1]`` for ``block_id``.
+
+    Opaque blocks (the default) return ``1.0``. Translucent blocks return a
+    value tuned to give a Minecraft-like glass/ice/slime look when composited
+    with a standard over-operator. Honey and slime are only mildly
+    translucent; stained glass is quite transparent; clear glass is the most
+    see-through of the bunch.
+    """
+    if not is_translucent(block_id):
+        return 1.0
+    name = _bare_block_name(block_id)
+    # Clear / tinted glass with no color qualifier: most see-through.
+    if name in ("glass", "glass_pane", "tinted_glass"):
+        return 0.35
+    # Stained glass (and stained-glass panes): slightly less transparent so
+    # the tint reads clearly.
+    if "stained_glass" in name:
+        return 0.4
+    # Ice variants.
+    if name == "ice" or name.endswith("_ice"):
+        return 0.4
+    # Honey and slime are thick and only lightly translucent.
+    if name in ("honey_block", "slime_block"):
+        return 0.75
+    # Any other glass-containing id falls back to a mid value.
+    return 0.4

@@ -25,6 +25,16 @@ from enum import Enum
 import numpy as np
 
 from .palette import Role
+from .structure_styles import (
+    StructureStyle,
+    default_cockpit_for,
+    engine_count_override,
+    engine_radius_scale,
+    hull_rx_ry_scale,
+    profile_fn,
+    wing_prob_override,
+    wing_size_scale,
+)
 
 
 class CockpitStyle(str, Enum):
@@ -44,6 +54,7 @@ class ShapeParams:
     wing_prob: float = 0.75
     greeble_density: float = 0.05
     cockpit_style: CockpitStyle = CockpitStyle.BUBBLE
+    structure_style: StructureStyle = StructureStyle.FRIGATE
 
     def __post_init__(self) -> None:
         if self.length < 8:
@@ -58,6 +69,24 @@ class ShapeParams:
             raise ValueError("wing_prob must be in [0, 1]")
         if not 0.0 <= self.greeble_density <= 0.5:
             raise ValueError("greeble_density must be in [0, 0.5]")
+        # Validate structure_style: accept enum or a string value; raise
+        # ValueError on anything else (the web layer relies on this).
+        if isinstance(self.structure_style, str) and not isinstance(
+            self.structure_style, StructureStyle
+        ):
+            try:
+                self.structure_style = StructureStyle(self.structure_style)
+            except ValueError as exc:  # pragma: no cover - re-raised
+                raise ValueError(
+                    f"structure_style must be one of "
+                    f"{[s.value for s in StructureStyle]}; got "
+                    f"{self.structure_style!r}"
+                ) from exc
+        elif not isinstance(self.structure_style, StructureStyle):
+            raise ValueError(
+                f"structure_style must be a StructureStyle; got "
+                f"{type(self.structure_style).__name__}"
+            )
 
 
 def generate_shape(seed: int, params: ShapeParams | None = None) -> np.ndarray:
@@ -73,7 +102,8 @@ def generate_shape(seed: int, params: ShapeParams | None = None) -> np.ndarray:
     _place_hull(grid, rng, params)
     _place_cockpit(grid, rng, params)
     _place_engines(grid, rng, params)
-    if rng.random() < params.wing_prob:
+    effective_wing_prob = wing_prob_override(params.structure_style, params.wing_prob)
+    if rng.random() < effective_wing_prob:
         _place_wings(grid, rng, params)
     _place_greebles(grid, rng, params)
     _enforce_x_symmetry(grid)
@@ -89,18 +119,29 @@ def generate_shape(seed: int, params: ShapeParams | None = None) -> np.ndarray:
 
 
 def _place_hull(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
-    """Fill a tapered ellipsoid-of-revolution along Z with HULL voxels."""
+    """Fill a tapered ellipsoid-of-revolution along Z with HULL voxels.
+
+    The taper profile, and the X/Y radius scaling, are picked per
+    :attr:`ShapeParams.structure_style`. ``FRIGATE`` preserves the original
+    behavior exactly.
+    """
     W, H, L = grid.shape
     cx, cy = (W - 1) / 2.0, (H - 1) / 2.0
 
     # Slight random thickness variation per axis so not every ship is identical.
     thickness = 0.9 + rng.random() * 0.1
 
+    # Style dispatchers: profile function + rx/ry scale multipliers.
+    profile_f = profile_fn(params.structure_style)
+    rx_scale, ry_scale = hull_rx_ry_scale(params.structure_style)
+
     for z in range(L):
         t = z / max(L - 1, 1)          # 0 at rear, 1 at nose
-        profile = _body_profile(t)     # [0..1] bell-ish
-        rx = max(0.5, (W * 0.5 - 0.5) * profile * thickness)
-        ry = max(0.5, (H * 0.5 - 0.5) * profile * thickness * 0.7)  # flatter than wide
+        profile = profile_f(t)         # [0..1] bell-ish
+        rx = max(0.5, (W * 0.5 - 0.5) * profile * thickness * rx_scale)
+        ry = max(
+            0.5, (H * 0.5 - 0.5) * profile * thickness * 0.7 * ry_scale
+        )  # flatter than wide
 
         for x in range(W):
             for y in range(H):
@@ -114,7 +155,9 @@ def _body_profile(t: float) -> float:
     """Taper profile along ship length.
 
     ``t = 0`` is the rear, ``t = 1`` is the nose. Peaks a little forward of
-    the middle so the nose tapers more than the tail.
+    the middle so the nose tapers more than the tail. This is the legacy
+    (``FRIGATE``) profile; per-style profiles live in
+    :mod:`spaceship_generator.structure_styles`.
     """
     peak = 0.55
     sigma = 0.32
@@ -132,7 +175,7 @@ def _place_cockpit(grid: np.ndarray, rng: np.random.Generator, params: ShapePara
     * :attr:`CockpitStyle.INTEGRATED` — flat strip along the upper-forward hull
       (no protrusion; just converts hull voxels to cockpit glass).
     """
-    style = params.cockpit_style
+    style = default_cockpit_for(params.structure_style, params.cockpit_style)
     if style == CockpitStyle.POINTED:
         _place_cockpit_pointed(grid)
     elif style == CockpitStyle.INTEGRATED:
@@ -251,14 +294,21 @@ def _place_cockpit_integrated(grid: np.ndarray) -> None:
 
 
 def _place_engines(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
-    """Add N engine cylinders at the rear of the ship."""
-    n = params.engine_count
+    """Add N engine cylinders at the rear of the ship.
+
+    Engine count and nozzle size are modulated by :attr:`ShapeParams.structure_style`.
+    """
+    style = params.structure_style
+    n = engine_count_override(style, params.engine_count)
     if n == 0:
         return
     W, H, L = grid.shape
 
     engine_length = max(2, L // 8)
-    engine_radius = max(1, min(W, H) // 10)
+    base_radius = max(1, min(W, H) // 10)
+    engine_radius = max(
+        1, int(round(base_radius * engine_radius_scale(style)))
+    )
 
     xs = _engine_x_positions(n, W, engine_radius)
     cy_engine = max(engine_radius + 1, H // 2 - 1)
@@ -294,11 +344,16 @@ def _engine_x_positions(n: int, width: int, radius: int) -> list[int]:
 
 
 def _place_wings(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
-    """Flat slabs protruding from the hull on the X axis. Mirrored."""
+    """Flat slabs protruding from the hull on the X axis. Mirrored.
+
+    Wing span/thickness/length are scaled per
+    :attr:`ShapeParams.structure_style`; ``FRIGATE`` uses the original values.
+    """
     W, H, L = grid.shape
-    wing_span = max(2, W // 5)
-    wing_thickness = max(1, H // 10)
-    wing_length = max(4, L // 3)
+    span_s, thick_s, length_s = wing_size_scale(params.structure_style)
+    wing_span = max(2, int(round((W // 5) * span_s)))
+    wing_thickness = max(1, int(round((H // 10) * thick_s)))
+    wing_length = max(4, int(round((L // 3) * length_s)))
     # Guard: on very short ships ``L - wing_length`` may be <= 0, which would
     # collapse ``cz`` to 0 and truncate the wing. Clamp wing_length so the
     # wing still has a valid placement window.

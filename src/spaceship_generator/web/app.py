@@ -29,10 +29,16 @@ from flask import (
 
 import re
 
-from ..block_colors import approximate_block_color, block_texture_png, hex_to_rgba
+from ..block_colors import (
+    approximate_block_color,
+    block_alpha,
+    block_texture_png,
+    hex_to_rgba,
+    is_translucent,
+)
 from ..generator import GenerationResult, generate
 from ..palette import Palette, Role, list_palettes, load_palette
-from ..shape import CockpitStyle, ShapeParams
+from ..shape import CockpitStyle, ShapeParams, StructureStyle
 from ..texture import TextureParams
 
 
@@ -55,6 +61,7 @@ PARAM_HELP: dict[str, str] = {
     "wing_prob": "Probability (0-1) that the ship grows wings off the hull.",
     "greeble_density": "Fraction (0-0.5) of hull surface covered in small detail blocks.",
     "cockpit": "Shape of the cockpit at the nose: bubble, pointed, or integrated.",
+    "structure_style": "Overall ship archetype (frigate, fighter, dreadnought, shuttle, hammerhead, carrier). Changes hull profile, engine layout, and wings.",
     "window_period": "Block spacing between window lights along the hull. Lower = more windows.",
     "accent_stripe_period": "Block spacing between accent-colored stripes down the hull.",
     "engine_glow_depth": "How many blocks deep the engine glow core extends into the nozzle.",
@@ -195,6 +202,17 @@ def create_app() -> Flask:
                 raise ValueError("no palettes available")
             palette_name = available[abs(int(seed)) % len(available)]
 
+        # Resolve structure_style. Default to FRIGATE for back-compat. Unknown
+        # values raise ValueError here (converted to 400 by the caller).
+        raw_structure = source.get("structure_style", StructureStyle.FRIGATE.value)
+        try:
+            structure_style = StructureStyle(raw_structure)
+        except ValueError as exc:
+            raise ValueError(
+                f"structure_style must be one of "
+                f"{[s.value for s in StructureStyle]}; got {raw_structure!r}"
+            ) from exc
+
         shape_params = ShapeParams(
             length=int(source.get("length", 40)),
             width_max=int(source.get("width", 20)),
@@ -205,6 +223,7 @@ def create_app() -> Flask:
             cockpit_style=CockpitStyle(
                 source.get("cockpit", CockpitStyle.BUBBLE.value)
             ),
+            structure_style=structure_style,
         )
         # "engine_glow_ring" accepts bool, "on"/"true"/"1" from forms, or a truthy
         # JSON bool. Treat any non-empty value other than "false"/"0" as True.
@@ -231,6 +250,7 @@ def create_app() -> Flask:
             "index.html",
             palettes=list_palettes(),
             cockpit_styles=[c.value for c in CockpitStyle],
+            structure_styles=[s.value for s in StructureStyle],
             param_help=PARAM_HELP,
             defaults={
                 "seed": random.randint(0, 2**31 - 1),
@@ -249,6 +269,7 @@ def create_app() -> Flask:
                 "rivet_period": 0,
                 "engine_glow_ring": False,
                 "cockpit": CockpitStyle.BUBBLE.value,
+                "structure_style": StructureStyle.FRIGATE.value,
             },
         )
 
@@ -315,6 +336,7 @@ def create_app() -> Flask:
                     "index.html",
                     palettes=list_palettes(),
                     cockpit_styles=[c.value for c in CockpitStyle],
+                    structure_styles=[s.value for s in StructureStyle],
                     param_help=PARAM_HELP,
                     defaults=request.form.to_dict(),
                     error=str(exc),
@@ -450,9 +472,17 @@ def create_app() -> Flask:
         except (FileNotFoundError, ValueError):
             abort(404)
         approx = _approximate_role_colors(pal)
-        # JSON keys must be strings.
+        # JSON keys must be strings. Translucent Minecraft blocks (glass,
+        # ice, honey, slime) get their alpha channel replaced with a
+        # suggested translucency so the WebGL renderer can draw them with
+        # blending. RGB is preserved from the approximated block color.
         colors_json: dict[str, list[float]] = {}
         for role, rgba in approx.items():
+            block = pal.blocks.get(role)
+            block_str = str(block) if block is not None else ""
+            if block_str and is_translucent(block_str):
+                alpha = block_alpha(block_str)
+                rgba = (rgba[0], rgba[1], rgba[2], alpha)
             colors_json[str(int(role))] = [float(v) for v in rgba]
 
         W, H, L = grid.shape

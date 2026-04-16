@@ -425,3 +425,26 @@ code {
     pointer-events: none;
 }
 
+
+/* --- Slider + number paired control --- */
+.num-ctl {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+.num-ctl .num-slider {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+.num-ctl .num-input {
+    flex: 0 0 auto;
+    width: 5.5rem;
+    margin-top: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}

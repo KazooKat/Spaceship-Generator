@@ -330,6 +330,99 @@ def test_preview_accepts_view_params(client):
     assert bad.status_code == 400
 
 
+def test_voxels_endpoint_applies_alpha_to_translucent_roles(client):
+    """/voxels/<id>.json should emit alpha < 1 for roles mapped to translucent blocks."""
+    # sci_fi_industrial maps WINDOW -> light_blue_stained_glass and
+    # COCKPIT_GLASS -> tinted_glass, so both should come back translucent.
+    resp = client.post(
+        "/generate",
+        data=_minimal_form(),
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    gen_id = resp.headers["Location"].rsplit("/", 1)[-1]
+
+    from spaceship_generator.palette import Role
+
+    vox_resp = client.get(f"/voxels/{gen_id}.json")
+    assert vox_resp.status_code == 200
+    data = vox_resp.get_json()
+    assert "colors" in data
+    colors = data["colors"]
+
+    window_rgba = colors.get(str(int(Role.WINDOW)))
+    cockpit_rgba = colors.get(str(int(Role.COCKPIT_GLASS)))
+    hull_rgba = colors.get(str(int(Role.HULL)))
+
+    assert window_rgba is not None and len(window_rgba) == 4
+    assert cockpit_rgba is not None and len(cockpit_rgba) == 4
+    assert hull_rgba is not None and len(hull_rgba) == 4
+
+    # Translucent roles get alpha < 1.
+    assert window_rgba[3] < 1.0, window_rgba
+    assert cockpit_rgba[3] < 1.0, cockpit_rgba
+    # Opaque roles keep full alpha.
+    assert hull_rgba[3] == 1.0, hull_rgba
+
+
+def test_index_has_structure_style_select(client):
+    """Index page must expose a <select name='structure_style'> with options."""
+    resp = client.get("/")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert 'name="structure_style"' in body
+    # At least the default must be rendered.
+    assert "frigate" in body
+    assert "fighter" in body
+
+
+def test_generate_with_structure_style_fighter(client):
+    """POST /generate with structure_style=fighter returns 200 and a new ship."""
+    data = _minimal_form()
+    data["structure_style"] = "fighter"
+    resp = client.post("/generate", data=data, follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["Location"].startswith("/result/")
+    gen_id = resp.headers["Location"].rsplit("/", 1)[-1]
+    # Fetch the result page and verify it rendered.
+    result_resp = client.get(f"/result/{gen_id}")
+    assert result_resp.status_code == 200
+    body = result_resp.get_data(as_text=True)
+    assert "Download .litematic" in body
+
+
+def test_generate_with_invalid_structure_style_returns_400(client):
+    """Invalid structure_style values yield a 400 error."""
+    data = _minimal_form()
+    data["structure_style"] = "not-a-real-archetype"
+    resp = client.post("/generate", data=data)
+    assert resp.status_code == 400
+    body = resp.get_data(as_text=True)
+    assert "Error" in body
+    assert "structure_style" in body.lower()
+
+
+def test_api_generate_with_structure_style(client):
+    """JSON API accepts structure_style and returns a generated ship."""
+    body = _minimal_json()
+    body["structure_style"] = "dreadnought"
+    resp = client.post("/api/generate", json=body)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "gen_id" in data
+    assert data["blocks"] > 0
+
+
+def test_api_generate_invalid_structure_style(client):
+    """JSON API rejects unknown structure_style with 400."""
+    body = _minimal_json()
+    body["structure_style"] = "not-a-style"
+    resp = client.post("/api/generate", json=body)
+    assert resp.status_code == 400
+    data = resp.get_json()
+    assert "error" in data
+
+
 def test_memory_eviction_cleans_up_litematic(small_client):
     """Oldest .litematic on disk should be deleted when evicted from cache."""
     app, client = small_client
