@@ -101,12 +101,18 @@ hr { border: 0; border-top: 1px solid var(--border-subtle); margin: var(--space-
 }
 
 /* === LAYOUT GRID ======================================================= */
+/* Clamp the whole app to the viewport height so the sidebar's tall form
+ * scrolls internally instead of making the grid itself grow past 100vh. The
+ * ``minmax(0, 1fr)`` middle row is critical — a bare ``1fr`` lets the row
+ * expand to fit its content (which is exactly what we DON'T want here).
+ */
 #app {
     display: grid;
-    grid-template-rows: 48px 1fr 32px;
+    grid-template-rows: 48px minmax(0, 1fr) 32px;
     grid-template-columns: 320px 1fr;
     grid-template-areas: "topbar topbar" "sidebar main" "bottom bottom";
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     position: relative;
     z-index: 1;
 }
@@ -168,7 +174,29 @@ header .tag {
     font-size: var(--fs-sm); font-family: var(--mono); letter-spacing: 0.12em;
 }
 
-main { padding: var(--space-5); max-width: 1480px; margin: 0 auto; }
+/* The outer <main> from base.html was the primary layout container in
+ * the pre-revamp UI; now #app runs edge-to-edge, so the wrapper must be
+ * transparent. Standalone / fallback pages set their own padding via
+ * .standalone-result below.
+ */
+body > main { padding: 0; max-width: none; margin: 0; }
+.standalone-result {
+    max-width: 1480px; margin: 0 auto;
+    padding: var(--space-5);
+    display: grid; gap: var(--space-4);
+}
+.standalone-result .standalone-header,
+.standalone-result .standalone-footer {
+    display: flex; align-items: center; gap: var(--space-4);
+    color: var(--text-secondary); font-family: var(--mono);
+    font-size: var(--fs-sm); letter-spacing: 0.12em;
+}
+.standalone-result .standalone-viewport { padding: 0; }
+.standalone-result .brand {
+    display: flex; align-items: center; gap: var(--space-2);
+    font-family: var(--mono); letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--text-primary);
+}
 
 footer {
     padding: var(--space-4) var(--space-5);
@@ -522,10 +550,61 @@ input[type="range"]:focus-visible::-webkit-slider-thumb,
 }
 #viewport {
     position: relative; width: 100%; height: 100%; min-height: 420px;
-    display: flex; align-items: stretch; justify-content: stretch;
+    display: block;
     background: var(--bg-void);
-    /* No padding/border — canvas is client-size driven */
+    /* No padding/border — canvas is client-size driven. Result content
+     * (placeholder or _result.html partial) fills the whole box via the
+     * absolute-positioned rules below, so the canvas gets the full
+     * viewport area instead of a narrow flex column. */
+    overflow: hidden;
 }
+#viewport > #result-panel {
+    position: absolute; inset: 0;
+    padding: 0; margin: 0; min-height: 0;
+    background: transparent; border: 0; border-radius: 0;
+    box-shadow: none; clip-path: none;
+}
+#viewport > #result-panel > .placeholder {
+    position: absolute; inset: 0; margin: 0;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: var(--space-2); text-align: center;
+    pointer-events: none;
+}
+#viewport > #result-panel > .placeholder i { width: 48px; height: 48px; opacity: 0.6; }
+#viewport > #result-panel > .placeholder p { margin: 0; }
+#viewport .result-inner {
+    position: absolute; inset: 0;
+    display: block;
+}
+#viewport .result-inner .preview,
+#viewport .result-inner .preview-canvas,
+#viewport .result-inner > canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    border: 0; border-radius: 0; box-shadow: none;
+}
+/* Inline result-actions (Download / Open standalone) are kept in the
+ * partial for the non-JS fallback + test substring assertions, but the
+ * live console already surfaces the download via #btn-download in the
+ * footer, so we hide them inside #viewport to keep the canvas clean.
+ * They're still full-size + visible inside .standalone-result. */
+#viewport .result-inner .result-actions { display: none; }
+
+#viewport .result-inner .block-key-inline {
+    position: absolute; left: var(--space-3); bottom: var(--space-5);
+    max-width: 380px; max-height: 46vh; overflow-y: auto;
+    background: var(--bg-panel); border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    padding: var(--space-2) var(--space-3);
+    z-index: calc(var(--z-hud) - 1);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    font-family: var(--mono); font-size: var(--fs-xs);
+}
+#viewport .result-inner .block-key-inline summary {
+    cursor: pointer; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-secondary);
+}
+#viewport .result-inner .block-key-inline[open] summary { margin-bottom: var(--space-2); }
 #viewport canvas, .preview-canvas {
     display: block; width: 100%; height: 100%; min-height: 420px;
     background: transparent; outline: none;
@@ -549,6 +628,15 @@ input[type="range"]:focus-visible::-webkit-slider-thumb,
 .hud-tr { top: 0; right: 0; }
 .hud-bl { bottom: 0; left: 0; }
 .hud-br { bottom: 0; right: 0; }
+
+#axis-gizmo {
+    width: 112px; height: 112px;
+    background: rgba(5,7,11,0.55);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    box-shadow: var(--shadow-panel);
+}
 
 .hud-chip {
     background: var(--bg-panel); border: 1px solid var(--border-subtle);
@@ -777,6 +865,24 @@ dd { margin: 0; color: var(--text-primary); font-family: var(--mono); font-varia
     border: 1px solid var(--border-subtle); overflow: hidden;
     opacity: 0; visibility: hidden; position: relative;
     transition: opacity 180ms ease, visibility 0s linear 180ms;
+}
+
+/* Progress bar anchored to the top edge of the viewport. Overrides the
+ * inline-block flow above so the bar doesn't steal 180px of horizontal
+ * space from the canvas when sitting inside the flex #viewport container.
+ */
+.progress-bar.viewport-progress {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    width: auto; height: 3px;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    z-index: calc(var(--z-hud) + 1);
+    pointer-events: none;
+}
+.progress-bar.viewport-progress .progress-bar__track {
+    border-radius: 0;
 }
 .progress-bar::after {
     content: ""; position: absolute; inset: 0;

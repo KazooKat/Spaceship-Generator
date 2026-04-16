@@ -690,3 +690,113 @@ def test_index_has_randomize_all_button(client):
     assert script_hook.search(body), (
         "inline randomizer script not found — random button would be inert"
     )
+
+
+# --- Rate limiting ---------------------------------------------------------
+#
+# Tests build a dedicated client whose app has a small rate-limit window so
+# the 429 path is exercised quickly. The default-client cap is 10/min which
+# is generous enough that all other tests stay under it.
+
+
+@pytest.fixture
+def rate_limited_client(tmp_path, monkeypatch):
+    """Client with rate limit = 2 per 60s for deterministic 429 behavior."""
+    monkeypatch.setenv("SHIPFORGE_RATE_LIMIT", "2")
+    monkeypatch.setenv("SHIPFORGE_RATE_WINDOW", "60")
+    app = create_app()
+    app.config["TESTING"] = True
+    monkeypatch.setattr(app, "instance_path", str(tmp_path))
+    with app.test_client() as c:
+        yield c
+
+
+def test_rate_limit_html_generate(rate_limited_client):
+    """Third /generate POST inside the window returns 429 with Retry-After."""
+    form = _minimal_form()
+    r1 = rate_limited_client.post("/generate", data=form, follow_redirects=False)
+    r2 = rate_limited_client.post("/generate", data=form, follow_redirects=False)
+    assert r1.status_code in (200, 302)
+    assert r2.status_code in (200, 302)
+    r3 = rate_limited_client.post("/generate", data=form, follow_redirects=False)
+    assert r3.status_code == 429
+    assert "Retry-After" in r3.headers
+    retry = int(r3.headers["Retry-After"])
+    assert 1 <= retry <= 60
+
+
+def test_rate_limit_json_api(rate_limited_client):
+    """Third /api/generate hit returns JSON 429 with ``retry_after``."""
+    body = _minimal_json()
+    r1 = rate_limited_client.post("/api/generate", json=body)
+    r2 = rate_limited_client.post("/api/generate", json=body)
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    r3 = rate_limited_client.post("/api/generate", json=body)
+    assert r3.status_code == 429
+    payload = r3.get_json()
+    assert payload["error"] == "rate_limited"
+    assert isinstance(payload["retry_after"], int)
+    assert payload["retry_after"] >= 1
+    assert payload["limit"] == 2
+    assert payload["window_seconds"] == 60
+    assert "Retry-After" in r3.headers
+
+
+def test_rate_limit_htmx_variant_returns_error_partial(rate_limited_client):
+    """When the limited request is an HTMX form POST, the 429 body is the
+    ``_error.html`` partial so HTMX can swap it into the error slot."""
+    form = _minimal_form()
+    rate_limited_client.post("/generate", data=form)
+    rate_limited_client.post("/generate", data=form)
+    r3 = rate_limited_client.post(
+        "/generate", data=form, headers={"HX-Request": "true"}
+    )
+    assert r3.status_code == 429
+    body = r3.get_data(as_text=True)
+    assert "slow down" in body.lower() or "too many" in body.lower()
+
+
+def test_rate_limit_disabled_with_env_zero(tmp_path, monkeypatch):
+    """Setting SHIPFORGE_RATE_LIMIT=0 turns the limiter off entirely."""
+    monkeypatch.setenv("SHIPFORGE_RATE_LIMIT", "0")
+    app = create_app()
+    app.config["TESTING"] = True
+    monkeypatch.setattr(app, "instance_path", str(tmp_path))
+    with app.test_client() as c:
+        body = _minimal_json()
+        # 5 > default 10, but here we've disabled it entirely.
+        for _ in range(5):
+            resp = c.post("/api/generate", json=body)
+            assert resp.status_code == 200
+
+
+def test_rate_limit_isolates_by_ip(rate_limited_client):
+    """Different X-Forwarded-For heads get their own counters."""
+    form = _minimal_form()
+    rate_limited_client.post(
+        "/generate", data=form, headers={"X-Forwarded-For": "10.0.0.1"}
+    )
+    rate_limited_client.post(
+        "/generate", data=form, headers={"X-Forwarded-For": "10.0.0.1"}
+    )
+    # 10.0.0.1 now exhausted.
+    exhausted = rate_limited_client.post(
+        "/generate", data=form, headers={"X-Forwarded-For": "10.0.0.1"}
+    )
+    assert exhausted.status_code == 429
+    # Different IP is still fresh.
+    ok = rate_limited_client.post(
+        "/generate", data=form, headers={"X-Forwarded-For": "10.0.0.2"}
+    )
+    assert ok.status_code in (200, 302)
+
+
+def test_csp_allows_unsafe_eval_for_alpine(client):
+    """Alpine.js compiles reactive expressions via ``new Function()``. That
+    requires ``'unsafe-eval'`` in ``script-src`` or every ``x-data`` /
+    ``@click`` directive throws and the sidebar / modal UI is inert."""
+    resp = client.get("/")
+    csp = resp.headers.get("Content-Security-Policy", "")
+    assert "script-src" in csp
+    assert "'unsafe-eval'" in csp

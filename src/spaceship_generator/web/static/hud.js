@@ -31,7 +31,7 @@
 
     const IDLE_MS = 3000;
     const GIZMO_TICK_MS = 1000 / 15;  // ~15Hz even when the preview is idle
-    const GIZMO_SIZE = 96;
+    const GIZMO_SIZE = 112;
 
     // One state object per page lifetime; reused across HTMX swaps so we
     // don't re-add listeners on top of themselves.
@@ -91,8 +91,11 @@
         let zz = eye[2] - cam.target[2];
         const zlen = Math.hypot(zx, zy, zz) || 1;
         zx /= zlen; zy /= zlen; zz /= zlen;
-        // up: swap near poles to avoid degeneracy.
-        const up = Math.abs(Math.cos(cam.phi)) < 1e-3 ? [0, 0, 1] : [0, 1, 0];
+        // up: swap well before the pole so cross(up, z) doesn't collapse.
+        // The top preset parks phi at π/2-0.01 (|cos| ≈ 0.01); a 1e-3
+        // threshold let that slip through and produced a zero-length x
+        // basis.
+        const up = Math.abs(Math.cos(cam.phi)) < 0.05 ? [0, 0, 1] : [0, 1, 0];
         // right = normalize(cross(up, z))
         let xx = up[1] * zz - up[2] * zy;
         let xy = up[2] * zx - up[0] * zz;
@@ -121,7 +124,23 @@
         };
     }
 
+    function pollStats() {
+        // preview.js only dispatches ship-preview-stats inside draw(), and
+        // draw() is on-demand (rAF triggered by user input). So onFrame
+        // subscribers can go silent when the camera is idle. Poll
+        // getStats() from the gizmo tick so the readout stays fresh.
+        const sp = safeShipPreview();
+        if (!sp || typeof sp.getStats !== "function") return;
+        let stats = null;
+        try { stats = sp.getStats(); } catch (e) { stats = null; }
+        if (stats && typeof stats.voxelCount === "number") {
+            renderStats(stats);
+            kickIdleTimer();
+        }
+    }
+
     function drawGizmo() {
+        pollStats();
         const canvas = state.gizmoCanvas;
         const ctx = state.gizmoCtx;
         if (!canvas || !ctx) return;
@@ -152,13 +171,17 @@
             try { cam = window.shipPreview.getCamera(); } catch (e) { cam = null; }
         }
 
+        // Before the first ship loads there's no active renderer, so
+        // getCamera() returns null. Fall back to the default perspective
+        // pose so users still see a three-axis readout idle — otherwise
+        // the gizmo looks broken (just a dot) before first generate.
         if (!cam) {
-            // Idle placeholder: small dot only.
-            ctx.fillStyle = state.accentCyan;
-            ctx.beginPath();
-            ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
-            ctx.fill();
-            return;
+            cam = {
+                theta: -Math.PI / 3,
+                phi: 0.5,
+                radius: 1,
+                target: [0, 0, 0],
+            };
         }
 
         const basis = buildCameraBasis(cam);

@@ -524,7 +524,12 @@
             const eye = computeEye();
             // View "up" is (0,1,0) unless we're near the poles — then fall
             // back to a sideways up so lookAt doesn't produce NaNs.
-            const up = Math.abs(Math.cos(cam.phi)) < 1e-3 ? [0, 0, 1] : [0, 1, 0];
+            // Switch the up vector well before the pole to avoid a
+            // near-parallel cross product in mat4LookAt. The top preset
+            // sits at phi = π/2 - 0.01 (|cos| ≈ 0.01); anything tighter
+            // than 0.05 produces a degenerate basis and the view matrix
+            // collapses.
+            const up = Math.abs(Math.cos(cam.phi)) < 0.05 ? [0, 0, 1] : [0, 1, 0];
             const view = mat4LookAt(eye, cam.target, up);
             const aspect = w / h;
             const proj = mat4Perspective(cam.fov, aspect, cam.near, cam.far);

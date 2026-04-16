@@ -13,6 +13,7 @@ import math
 import os
 import random
 import threading
+import time
 import uuid
 from collections import OrderedDict
 from pathlib import Path
@@ -46,6 +47,85 @@ from ..texture import TextureParams
 
 
 _DEFAULT_MAX_RESULTS = 100
+
+
+# --- Rate limiting -----------------------------------------------------------
+#
+# Generation is CPU + memory heavy (numpy voxel grid + palette mapping +
+# litematic serialization + optional preview PNG). Without a cap, a single
+# impatient client holding Enter on Generate can pin the server. The limiter
+# is a per-client fixed-window token counter keyed by the best-effort client
+# IP, thread-safe under the default Flask dev + gunicorn-sync workers.
+#
+# Tunables (env vars, both honored on app creation):
+#   SHIPFORGE_RATE_LIMIT   — max requests per window per IP (default 10)
+#                            set to 0 to disable the limiter entirely
+#   SHIPFORGE_RATE_WINDOW  — window length in seconds (default 60)
+#
+# The limiter does NOT persist across restarts — that's fine for the
+# protection we want here (absorb local bursts). A reverse proxy with
+# proper throttling (nginx, Cloudflare) should be used in production.
+
+
+class _RateLimiter:
+    """Per-key fixed-window counter. Not a token bucket — simpler and
+    adequate for the small-abuse case we care about. Zero deps."""
+
+    def __init__(self, max_requests: int, window_s: float) -> None:
+        self.max_requests = int(max_requests)
+        self.window_s = float(window_s)
+        self._lock = threading.Lock()
+        # key -> (window_start_ts, count)
+        self._windows: dict[str, tuple[float, int]] = {}
+        # Opportunistic GC threshold to bound memory if we see many unique
+        # IPs over time.
+        self._max_keys = 4096
+
+    def check(self, key: str, now: float | None = None) -> tuple[bool, float]:
+        """Return ``(allowed, retry_after_seconds)``.
+
+        ``retry_after_seconds`` is 0 when allowed, otherwise the number of
+        seconds until the current window rolls over.
+        """
+        if self.max_requests <= 0:
+            # Disabled: always allow.
+            return True, 0.0
+        ts = now if now is not None else time.monotonic()
+        with self._lock:
+            start, count = self._windows.get(key, (ts, 0))
+            elapsed = ts - start
+            if elapsed >= self.window_s:
+                # Fresh window.
+                self._windows[key] = (ts, 1)
+                self._maybe_gc(ts)
+                return True, 0.0
+            if count < self.max_requests:
+                self._windows[key] = (start, count + 1)
+                return True, 0.0
+            retry = max(0.0, self.window_s - elapsed)
+            return False, retry
+
+    def _maybe_gc(self, ts: float) -> None:
+        # Called under the lock. Drops stale windows if the dict is big.
+        if len(self._windows) < self._max_keys:
+            return
+        cutoff = ts - self.window_s
+        stale = [k for k, (start, _) in self._windows.items() if start < cutoff]
+        for k in stale:
+            self._windows.pop(k, None)
+
+
+def _client_ip_key() -> str:
+    """Best-effort client key for rate limiting. Honors X-Forwarded-For's
+    first hop (common behind a reverse proxy); falls back to
+    ``request.remote_addr``; finally uses the literal "anon" bucket so we
+    still have *some* cap even when the request has no address."""
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        head = xff.split(",", 1)[0].strip()
+        if head:
+            return head
+    return request.remote_addr or "anon"
 
 # Accept namespaced block ids, with optional state spec (e.g. ``[lit=true]``).
 # Matches what ``block_colors._BLOCKID_RE`` accepts so the route can safely
@@ -166,6 +246,57 @@ def _palette_key(palette_name: str) -> list[dict]:
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config.setdefault("MAX_RESULTS", _DEFAULT_MAX_RESULTS)
+
+    # Rate limiter — per-app instance so tests get fresh state.
+    try:
+        _rate_max = int(os.environ.get("SHIPFORGE_RATE_LIMIT", "10"))
+    except ValueError:
+        _rate_max = 10
+    try:
+        _rate_window = float(os.environ.get("SHIPFORGE_RATE_WINDOW", "60"))
+    except ValueError:
+        _rate_window = 60.0
+    app.config.setdefault("RATE_LIMIT_MAX", _rate_max)
+    app.config.setdefault("RATE_LIMIT_WINDOW", _rate_window)
+    rate_limiter = _RateLimiter(_rate_max, _rate_window)
+    # Exposed for tests that want to reset state between cases.
+    app.extensions["shipforge_rate_limiter"] = rate_limiter
+
+    def _rate_limited_response(retry_after: float, *, as_json: bool):
+        """Build a 429 response with a ``Retry-After`` header. ``retry_after``
+        is rounded UP to the next whole second per RFC 9110."""
+        retry_s = max(1, int(math.ceil(retry_after)))
+        if as_json:
+            resp = jsonify({
+                "error": "rate_limited",
+                "retry_after": retry_s,
+                "limit": rate_limiter.max_requests,
+                "window_seconds": int(rate_limiter.window_s),
+            })
+        else:
+            is_htmx = request.headers.get("HX-Request", "").lower() == "true"
+            msg = (
+                f"Too many generations — slow down. Try again in {retry_s}s."
+            )
+            if is_htmx:
+                resp = app.response_class(
+                    render_template("_error.html", error=msg),
+                    mimetype="text/html",
+                )
+            else:
+                resp = app.response_class(msg, mimetype="text/plain")
+        resp.status_code = 429
+        resp.headers["Retry-After"] = str(retry_s)
+        return resp
+
+    def _check_rate_limit(*, as_json: bool):
+        """Return a 429 response if the request is over the limit, else
+        None to let the view proceed."""
+        allowed, retry = rate_limiter.check(_client_ip_key())
+        if allowed:
+            return None
+        return _rate_limited_response(retry, as_json=as_json)
+
     results: "OrderedDict[str, GenerationResult]" = OrderedDict()
     # Guards the insert + eviction loop in ``_store``. ``OrderedDict`` is not
     # safe for concurrent mutation under a threaded WSGI server — without this
@@ -337,6 +468,9 @@ def create_app() -> Flask:
 
     @app.route("/generate", methods=["POST"])
     def do_generate():
+        limited = _check_rate_limit(as_json=False)
+        if limited is not None:
+            return limited
         is_htmx = request.headers.get("HX-Request", "").lower() == "true"
         try:
             seed, palette_name, shape_params, texture_params = (
@@ -568,6 +702,9 @@ def create_app() -> Flask:
 
     @app.route("/api/generate", methods=["POST"])
     def api_generate():
+        limited = _check_rate_limit(as_json=True)
+        if limited is not None:
+            return limited
         payload = request.get_json(silent=True) or {}
         try:
             seed, palette_name, shape_params, texture_params = (
@@ -677,15 +814,21 @@ def create_app() -> Flask:
     #    none is already set (the /block-texture/ route sets its own long
     #    immutable header and is left alone).
     #
-    # KNOWN RELAXATION: ``'unsafe-inline'`` is required in script-src and
-    # style-src because the existing Jinja templates use htmx hx-* inline
-    # attributes, Alpine.js ``x-data`` / ``@click`` directives, and inline
-    # <style> blocks. Tightening with per-request nonces is a future
-    # improvement — it would require refactoring the templates to thread a
-    # nonce into every inline script/style tag.
+    # KNOWN RELAXATIONS:
+    # * ``'unsafe-inline'`` (script-src + style-src): htmx hx-* inline attrs,
+    #   Alpine ``x-data`` / ``@click`` directives, and inline ``<style>`` blocks
+    #   are used throughout the templates.
+    # * ``'unsafe-eval'`` (script-src): Alpine.js evaluates reactive
+    #   expressions via ``new Function(...)``, which is classified as an eval.
+    #   Without it every ``x-data`` / ``@click`` / ``:class`` directive throws
+    #   "unsafe-eval is not an allowed source of script" and the entire
+    #   sidebar / modal / drawer UI is dead. The CSP-safe Alpine build avoids
+    #   this but requires a build step we don't run.
+    # Tightening with per-request nonces + the CSP-safe Alpine bundle is a
+    # future improvement; for now this is the working tradeoff.
     _CSP_POLICY = (
         "default-src 'self'; "
-        "script-src 'self' https://unpkg.com 'unsafe-inline'; "
+        "script-src 'self' https://unpkg.com 'unsafe-inline' 'unsafe-eval'; "
         "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data:; "
