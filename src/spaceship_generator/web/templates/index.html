@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if error %}
+<div class="error">Error: {{ error }}</div>
+{% endif %}
+
+<form action="{{ url_for('do_generate') }}" method="POST" class="gen-form">
+    <fieldset>
+        <legend>Seed &amp; palette</legend>
+        <label>Seed
+            <input type="number" name="seed" value="{{ defaults.seed }}" required>
+        </label>
+        <label>Palette
+            <select name="palette">
+                {% for p in palettes %}
+                <option value="{{ p }}" {% if p == defaults.palette %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </fieldset>
+
+    <fieldset>
+        <legend>Shape</legend>
+        <label>Length (Z)
+            <input type="number" name="length" min="8" max="128" value="{{ defaults.length }}" required>
+        </label>
+        <label>Max width (X)
+            <input type="number" name="width" min="4" max="64" value="{{ defaults.width }}" required>
+        </label>
+        <label>Max height (Y)
+            <input type="number" name="height" min="4" max="64" value="{{ defaults.height }}" required>
+        </label>
+        <label>Engines
+            <input type="number" name="engines" min="0" max="6" value="{{ defaults.engines }}" required>
+        </label>
+        <label>Wing probability
+            <input type="number" name="wing_prob" step="0.05" min="0" max="1" value="{{ defaults.wing_prob }}">
+        </label>
+        <label>Greeble density
+            <input type="number" name="greeble_density" step="0.01" min="0" max="0.5" value="{{ defaults.greeble_density }}">
+        </label>
+        <label>Cockpit style
+            <select name="cockpit">
+                {% for c in cockpit_styles %}
+                <option value="{{ c }}" {% if c == defaults.cockpit %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </fieldset>
+
+    <fieldset>
+        <legend>Texture</legend>
+        <label>Window spacing (blocks)
+            <input type="number" name="window_period" min="2" max="16" value="{{ defaults.window_period }}">
+        </label>
+    </fieldset>
+
+    <button type="submit">Generate</button>
+</form>
+{% endblock %}

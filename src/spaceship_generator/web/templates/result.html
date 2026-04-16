@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="result">
+    <div class="preview">
+        <img src="{{ url_for('preview', gen_id=gen_id) }}" alt="Spaceship preview">
+    </div>
+
+    <div class="meta">
+        <h2>Ship {{ seed }}</h2>
+        <dl>
+            <dt>Seed</dt><dd>{{ seed }}</dd>
+            <dt>Palette</dt><dd>{{ palette }}</dd>
+            <dt>Grid (W &times; H &times; L)</dt>
+            <dd>{{ shape[0] }} &times; {{ shape[1] }} &times; {{ shape[2] }}</dd>
+            <dt>Blocks</dt><dd>{{ blocks }}</dd>
+            <dt>Filename</dt><dd><code>{{ filename }}</code></dd>
+        </dl>
+        <p>
+            <a class="btn" href="{{ url_for('download', gen_id=gen_id) }}">Download .litematic</a>
+            <a class="btn secondary" href="{{ url_for('index') }}">Generate another</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

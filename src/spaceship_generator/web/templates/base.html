@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Spaceship Generator{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1><a href="{{ url_for('index') }}">Spaceship Generator</a></h1>
+        <p class="tag">Procedural Minecraft ships &rarr; <code>.litematic</code></p>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <p>Drop the output file into <code>.minecraft/schematics/</code> and load it with
+           <a href="https://www.curseforge.com/minecraft/mc-mods/litematica">Litematica</a>.</p>
+    </footer>
+</body>
+</html>
