@@ -1,0 +1,26 @@
+name: ice_crystal
+description: Glacial cruiser. Blue-ice hull with packed-ice highlights and sea-lantern glow.
+
+blocks:
+  HULL:          minecraft:blue_ice
+  HULL_DARK:     minecraft:packed_ice
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:prismarine_bricks
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:white_stained_glass
+  WING:          minecraft:snow_block
+  GREEBLE:       minecraft:dark_prismarine
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:smooth_quartz
+
+preview_colors:
+  HULL:          "#76a8d8"
+  HULL_DARK:     "#b9d8e8"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#5a7a78"
+  ENGINE_GLOW:   "#d8f0ff"
+  COCKPIT_GLASS: "#e8f2ff"
+  WING:          "#f4fbff"
+  GREEBLE:       "#2f5048"
+  LIGHT:         "#c8e8ff"
+  INTERIOR:      "#eae6d8"

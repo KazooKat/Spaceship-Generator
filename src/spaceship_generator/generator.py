@@ -32,6 +32,23 @@ class GenerationResult:
     def block_count(self) -> int:
         return filled_voxel_count(self.role_grid)
 
+    def save_preview(self, path: str | Path) -> Path:
+        """Write ``preview_png`` bytes to ``path`` and return the path.
+
+        Raises
+        ------
+        ValueError
+            If ``preview_png`` is ``None`` (no preview was rendered).
+        """
+        if self.preview_png is None:
+            raise ValueError(
+                "No preview available; call generate(..., with_preview=True) first."
+            )
+        out = Path(path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(self.preview_png)
+        return out
+
 
 def generate(
     seed: int,

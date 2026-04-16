@@ -1,0 +1,26 @@
+name: crimson_nether
+description: Infernal corsair. Crimson planks, magma block engines, shroomlight glow.
+
+blocks:
+  HULL:          minecraft:crimson_planks
+  HULL_DARK:     minecraft:crimson_hyphae
+  WINDOW:        minecraft:red_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:red_stained_glass
+  WING:          minecraft:nether_bricks
+  GREEBLE:       minecraft:netherrack
+  LIGHT:         minecraft:jack_o_lantern
+  INTERIOR:      minecraft:warped_planks
+
+preview_colors:
+  HULL:          "#6a2633"
+  HULL_DARK:     "#3a1a20"
+  WINDOW:        "#8c2020"
+  ENGINE:        "#8a3018"
+  ENGINE_GLOW:   "#ffb048"
+  COCKPIT_GLASS: "#a02828"
+  WING:          "#2a1616"
+  GREEBLE:       "#5a2220"
+  LIGHT:         "#f0a040"
+  INTERIOR:      "#2a7068"

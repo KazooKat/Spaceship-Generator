@@ -1,0 +1,26 @@
+name: stealth_black
+description: Matte-black stealth fighter. Smoky tinted glass, sparse cyan glow, blackstone greebles.
+
+blocks:
+  HULL:          minecraft:black_concrete
+  HULL_DARK:     minecraft:gray_concrete
+  WINDOW:        minecraft:cyan_stained_glass
+  ENGINE:        minecraft:blackstone
+  ENGINE_GLOW:   minecraft:soul_lantern
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:polished_blackstone
+  GREEBLE:       minecraft:polished_blackstone_bricks
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:black_concrete
+
+preview_colors:
+  HULL:          "#0a0a0a"
+  HULL_DARK:     "#1a1a1a"
+  WINDOW:        "#1f6e78"
+  ENGINE:        "#1a1622"
+  ENGINE_GLOW:   "#4ed0d8"
+  COCKPIT_GLASS: "#0a0a14"
+  WING:          "#2a2230"
+  GREEBLE:       "#3a3244"
+  LIGHT:         "#b8e8ff"
+  INTERIOR:      "#141414"

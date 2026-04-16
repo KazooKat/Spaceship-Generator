@@ -113,11 +113,18 @@ class Palette:
 
     @classmethod
     def load(cls, path: str | Path) -> "Palette":
-        """Load a palette from a YAML file."""
+        """Load a palette from a YAML file.
+
+        Errors raised by :meth:`from_dict` are wrapped so that the offending
+        file path is included in the message.
+        """
         path = Path(path)
         with path.open("r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
-        return cls.from_dict(data)
+        try:
+            return cls.from_dict(data)
+        except ValueError as exc:
+            raise ValueError(f"{path}: {exc}") from exc
 
     @classmethod
     def from_dict(cls, data: dict) -> "Palette":
@@ -157,9 +164,105 @@ def load_palette(name: str, search_dir: str | Path | None = None) -> Palette:
     return Palette.load(path)
 
 
-def list_palettes(search_dir: str | Path | None = None) -> list[str]:
-    """List palette names available in the palettes directory."""
+def validate_palette_file(path: str | Path) -> list[str]:
+    """Return a list of human-readable warnings for a palette YAML.
+
+    This is intended for "lint my palette" tooling. It never raises; if the
+    file cannot be opened or parsed, that becomes a warning itself.
+
+    Checks performed:
+      * File exists and parses as a YAML mapping.
+      * Required top-level keys ``name`` and ``blocks`` are present.
+      * Every role in :data:`REQUIRED_ROLES` has a block state string.
+      * Each block state string parses via :func:`parse_block_state`.
+      * Each role has a preview color; unparseable colors are flagged.
+      * Unknown top-level keys or unknown role names are flagged.
+    """
+    path = Path(path)
+    warnings: list[str] = []
+
+    if not path.exists():
+        warnings.append(f"file does not exist: {path}")
+        return warnings
+
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        warnings.append(f"invalid YAML: {exc}")
+        return warnings
+
+    if not isinstance(data, dict):
+        warnings.append("top-level YAML must be a mapping")
+        return warnings
+
+    if "name" not in data:
+        warnings.append("missing top-level 'name' key")
+    if "blocks" not in data:
+        warnings.append("missing top-level 'blocks' key")
+
+    known_top_keys = {"name", "description", "blocks", "preview_colors"}
+    unknown = sorted(set(data.keys()) - known_top_keys)
+    for key in unknown:
+        warnings.append(f"unknown top-level key: {key!r}")
+
+    raw_blocks = data.get("blocks") or {}
+    if not isinstance(raw_blocks, dict):
+        warnings.append("'blocks' must be a mapping of role -> block state")
+        raw_blocks = {}
+    raw_colors = data.get("preview_colors") or {}
+    if not isinstance(raw_colors, dict):
+        warnings.append("'preview_colors' must be a mapping of role -> color")
+        raw_colors = {}
+
+    required = set(REQUIRED_ROLES)
+    for role in REQUIRED_ROLES:
+        if role not in raw_blocks:
+            warnings.append(f"missing block for role: {role}")
+        else:
+            spec = raw_blocks[role]
+            if not isinstance(spec, str):
+                warnings.append(
+                    f"block for role {role!r} must be a string, got {type(spec).__name__}"
+                )
+            else:
+                try:
+                    parse_block_state(spec)
+                except ValueError as exc:
+                    warnings.append(f"invalid block state for role {role!r}: {exc}")
+
+        if role not in raw_colors:
+            warnings.append(f"missing preview_color for role: {role}")
+        else:
+            try:
+                _parse_color(raw_colors[role])
+            except (ValueError, TypeError) as exc:
+                warnings.append(f"invalid preview_color for role {role!r}: {exc}")
+
+    unknown_block_roles = sorted(set(raw_blocks.keys()) - required)
+    for role in unknown_block_roles:
+        warnings.append(f"unknown role in 'blocks': {role!r}")
+    unknown_color_roles = sorted(set(raw_colors.keys()) - required)
+    for role in unknown_color_roles:
+        warnings.append(f"unknown role in 'preview_colors': {role!r}")
+
+    return warnings
+
+
+def list_palettes(
+    search_dir: str | Path | None = None,
+    include_errors: bool = False,
+) -> list[str] | list[tuple[str, list[str]]]:
+    """List palette names available in the palettes directory.
+
+    With ``include_errors=True``, returns a ``list[tuple[name, warnings]]``
+    where ``warnings`` is the output of :func:`validate_palette_file` for
+    each discovered YAML. Otherwise returns a plain ``list[str]`` of names.
+    """
     directory = Path(search_dir) if search_dir else palettes_dir()
     if not directory.exists():
         return []
-    return sorted(p.stem for p in directory.glob("*.yaml"))
+    paths = sorted(directory.glob("*.yaml"))
+    if not include_errors:
+        return [p.stem for p in paths]
+    return [(p.stem, validate_palette_file(p)) for p in paths]

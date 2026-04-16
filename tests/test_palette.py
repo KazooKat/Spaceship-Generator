@@ -15,6 +15,7 @@ from spaceship_generator.palette import (
     load_palette,
     palettes_dir,
     parse_block_state,
+    validate_palette_file,
 )
 
 
@@ -112,3 +113,168 @@ def test_palettes_dir_exists():
 def test_load_missing_palette_raises(tmp_path: Path):
     with pytest.raises(FileNotFoundError):
         load_palette("nonexistent_palette_xyz", search_dir=tmp_path)
+
+
+# ----- New themed palettes -----
+
+NEW_PALETTES = ("stealth_black", "ice_crystal", "crimson_nether")
+
+
+@pytest.mark.parametrize("palette_name", NEW_PALETTES)
+def test_new_palette_loads(palette_name: str):
+    """Each new palette must load via load_palette() without errors."""
+    pal = load_palette(palette_name)
+    assert pal.name == palette_name
+
+
+@pytest.mark.parametrize("palette_name", NEW_PALETTES)
+def test_new_palette_has_all_roles(palette_name: str):
+    """Each new palette must define all 10 required roles with valid BlockStates."""
+    pal = load_palette(palette_name)
+    for role_name in REQUIRED_ROLES:
+        role = Role[role_name]
+        bs = pal.block_state(role)
+        assert isinstance(bs, BlockState)
+        assert "minecraft:" in str(bs)
+        color = pal.preview_color(role)
+        assert len(color) == 4
+        for v in color:
+            assert 0.0 <= v <= 1.0
+
+
+def test_list_palettes_includes_new_palettes():
+    names = list_palettes()
+    for n in NEW_PALETTES:
+        assert n in names
+
+
+# ----- validate_palette_file -----
+
+def _write_full_palette(path: Path, name: str = "valid", *, drop_color: str | None = None):
+    """Write a fully-populated palette YAML, optionally dropping one preview_color."""
+    lines = [f"name: {name}", "blocks:"]
+    for role in REQUIRED_ROLES:
+        lines.append(f"  {role}: minecraft:stone")
+    lines.append("preview_colors:")
+    for role in REQUIRED_ROLES:
+        if role == drop_color:
+            continue
+        lines.append(f'  {role}: "#808080"')
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def test_validate_palette_file_returns_empty_for_valid(tmp_path: Path):
+    good = tmp_path / "good.yaml"
+    _write_full_palette(good)
+    assert validate_palette_file(good) == []
+
+
+def test_validate_palette_file_flags_missing_preview_color(tmp_path: Path):
+    pal = tmp_path / "no_color.yaml"
+    _write_full_palette(pal, drop_color="WINDOW")
+    warnings = validate_palette_file(pal)
+    assert any("preview_color" in w and "WINDOW" in w for w in warnings), warnings
+
+
+def test_validate_palette_file_flags_missing_block(tmp_path: Path):
+    pal = tmp_path / "broken.yaml"
+    pal.write_text(
+        "name: broken\nblocks:\n  HULL: minecraft:stone\n",
+        encoding="utf-8",
+    )
+    warnings = validate_palette_file(pal)
+    # Should flag 9 missing blocks + missing preview_colors entries.
+    assert any("missing block" in w for w in warnings)
+
+
+def test_validate_palette_file_flags_unknown_key(tmp_path: Path):
+    pal = tmp_path / "extra.yaml"
+    _write_full_palette(pal)
+    # Append an unknown top-level key.
+    with pal.open("a", encoding="utf-8") as f:
+        f.write("bogus_key: 42\n")
+    warnings = validate_palette_file(pal)
+    assert any("unknown top-level key" in w and "bogus_key" in w for w in warnings), warnings
+
+
+def test_validate_palette_file_flags_invalid_block_state(tmp_path: Path):
+    pal = tmp_path / "bad_bs.yaml"
+    _write_full_palette(pal)
+    # Overwrite with one invalid block state.
+    text = pal.read_text(encoding="utf-8")
+    text = text.replace("  HULL: minecraft:stone", "  HULL: not a block")
+    pal.write_text(text, encoding="utf-8")
+    warnings = validate_palette_file(pal)
+    assert any("invalid block state" in w and "HULL" in w for w in warnings), warnings
+
+
+def test_validate_palette_file_missing_file(tmp_path: Path):
+    warnings = validate_palette_file(tmp_path / "nope.yaml")
+    assert any("does not exist" in w for w in warnings)
+
+
+def test_validate_builtin_palettes_clean():
+    """All shipped palettes should validate with zero warnings."""
+    for name in list_palettes():
+        path = palettes_dir() / f"{name}.yaml"
+        assert validate_palette_file(path) == [], f"{name} had warnings"
+
+
+# ----- list_palettes(include_errors=True) -----
+
+def test_list_palettes_include_errors_returns_tuples(tmp_path: Path):
+    _write_full_palette(tmp_path / "alpha.yaml", name="alpha")
+    _write_full_palette(tmp_path / "beta.yaml", name="beta", drop_color="HULL")
+    entries = list_palettes(search_dir=tmp_path, include_errors=True)
+    assert isinstance(entries, list)
+    assert all(isinstance(e, tuple) and len(e) == 2 for e in entries)
+    names = [name for name, _ in entries]
+    assert names == ["alpha", "beta"]
+    by_name = dict(entries)
+    assert by_name["alpha"] == []
+    assert any("preview_color" in w and "HULL" in w for w in by_name["beta"])
+
+
+def test_list_palettes_default_unchanged(tmp_path: Path):
+    """include_errors=False must return plain list[str] (backward compat)."""
+    _write_full_palette(tmp_path / "one.yaml", name="one")
+    _write_full_palette(tmp_path / "two.yaml", name="two")
+    names = list_palettes(search_dir=tmp_path)
+    assert names == ["one", "two"]
+    assert all(isinstance(n, str) for n in names)
+
+
+# ----- Path-aware error messages -----
+
+def test_palette_load_error_includes_path(tmp_path: Path):
+    bad = tmp_path / "incomplete.yaml"
+    bad.write_text(
+        "name: incomplete\nblocks:\n  HULL: minecraft:stone\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError) as excinfo:
+        Palette.load(bad)
+    msg = str(excinfo.value)
+    assert str(bad) in msg
+    assert "missing block roles" in msg
+
+
+def test_load_palette_error_includes_path(tmp_path: Path):
+    bad = tmp_path / "incomplete.yaml"
+    bad.write_text(
+        "name: incomplete\nblocks:\n  HULL: minecraft:stone\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError) as excinfo:
+        load_palette("incomplete", search_dir=tmp_path)
+    msg = str(excinfo.value)
+    assert str(bad) in msg
+
+
+def test_from_dict_error_does_not_include_path():
+    """from_dict should not mention a path — only load() wraps the error."""
+    with pytest.raises(ValueError) as excinfo:
+        Palette.from_dict({"name": "bare", "blocks": {"HULL": "minecraft:stone"}})
+    assert "missing block roles" in str(excinfo.value)
+    # Ensure no path-injection leaked in.
+    assert ".yaml" not in str(excinfo.value)

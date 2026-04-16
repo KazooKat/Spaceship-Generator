@@ -202,3 +202,120 @@ def test_surface_mask_hollow_center():
 def test_surface_mask_all_empty_is_empty():
     grid = np.zeros((4, 4, 4), dtype=np.int8)
     assert _surface_mask(grid).sum() == 0
+
+
+# ----- Cockpit style variation -----
+
+def _shape_without_randoms(seed: int, style: CockpitStyle) -> np.ndarray:
+    """Generate a deterministic ship with randomness-heavy stages disabled."""
+    p = ShapeParams(
+        length=24,
+        width_max=12,
+        height_max=10,
+        cockpit_style=style,
+        greeble_density=0.0,
+        wing_prob=0.0,
+        engine_count=0,
+    )
+    return generate_shape(seed, p)
+
+
+def test_cockpit_styles_produce_distinguishable_grids():
+    """Each CockpitStyle should produce a different ship for the same seed."""
+    seed = 123
+    bubble = _shape_without_randoms(seed, CockpitStyle.BUBBLE)
+    pointed = _shape_without_randoms(seed, CockpitStyle.POINTED)
+    integrated = _shape_without_randoms(seed, CockpitStyle.INTEGRATED)
+
+    # Pairwise grid inequality.
+    assert not np.array_equal(bubble, pointed)
+    assert not np.array_equal(bubble, integrated)
+    assert not np.array_equal(pointed, integrated)
+
+    # Their COCKPIT_GLASS voxel sets must also differ pairwise.
+    def glass_set(g: np.ndarray) -> set[tuple[int, int, int]]:
+        return {tuple(pos) for pos in np.argwhere(g == Role.COCKPIT_GLASS)}
+
+    gb, gp, gi = glass_set(bubble), glass_set(pointed), glass_set(integrated)
+    assert gb and gp and gi, "Each style must place at least one cockpit voxel"
+    assert gb != gp
+    assert gb != gi
+    assert gp != gi
+
+
+@pytest.mark.parametrize("style", list(CockpitStyle))
+def test_cockpit_style_preserves_x_symmetry(style):
+    """Every cockpit style must leave the final grid bilaterally symmetric."""
+    grid = _shape_without_randoms(7, style)
+    assert np.array_equal(grid, grid[::-1, :, :])
+
+
+@pytest.mark.parametrize("style", list(CockpitStyle))
+def test_cockpit_style_places_glass_near_nose(style):
+    """All three styles should place COCKPIT_GLASS in the forward half of the ship."""
+    grid = _shape_without_randoms(2, style)
+    cockpit_positions = np.argwhere(grid == Role.COCKPIT_GLASS)
+    assert len(cockpit_positions) > 0
+    L = grid.shape[2]
+    # At least one glass voxel should be in the forward 60% of the ship.
+    assert cockpit_positions[:, 2].max() >= int(L * 0.6)
+
+
+def test_cockpit_integrated_stays_within_hull_envelope():
+    """INTEGRATED cockpit must not introduce voxels outside the bubble hull envelope."""
+    # Build a ship with a bubble cockpit (has a bulge) and one with integrated
+    # cockpit (no bulge). The integrated ship's non-empty voxels should be a
+    # subset of the bubble ship's non-empty voxels plus the original hull —
+    # specifically, integrated should have no voxels where BOTH the bubble ship
+    # has EMPTY AND the integrated ship has non-EMPTY outside the hull volume.
+    seed = 99
+    bubble = _shape_without_randoms(seed, CockpitStyle.BUBBLE)
+    integrated = _shape_without_randoms(seed, CockpitStyle.INTEGRATED)
+
+    # Every non-empty voxel in the integrated ship must either be hull in the
+    # pre-cockpit grid (approximated by: it is non-empty in the bubble ship too,
+    # since bubble only adds voxels on top of hull).
+    integrated_filled = integrated != Role.EMPTY
+    bubble_filled = bubble != Role.EMPTY
+    # Integrated cockpit must not add voxels where bubble was EMPTY.
+    added_by_integrated = integrated_filled & ~bubble_filled
+    assert added_by_integrated.sum() == 0
+
+
+def test_cockpit_pointed_reaches_nose_and_tapers():
+    """POINTED cockpit should extend further forward and be narrower than BUBBLE."""
+    seed = 11
+    bubble = _shape_without_randoms(seed, CockpitStyle.BUBBLE)
+    pointed = _shape_without_randoms(seed, CockpitStyle.POINTED)
+
+    b_glass = np.argwhere(bubble == Role.COCKPIT_GLASS)
+    p_glass = np.argwhere(pointed == Role.COCKPIT_GLASS)
+    assert len(b_glass) > 0 and len(p_glass) > 0
+
+    # Pointed should span at least as many Z layers as bubble (longer canopy).
+    b_z_span = b_glass[:, 2].max() - b_glass[:, 2].min() + 1
+    p_z_span = p_glass[:, 2].max() - p_glass[:, 2].min() + 1
+    assert p_z_span >= b_z_span
+
+    # And reach at least as far forward (nose = max z).
+    assert p_glass[:, 2].max() >= b_glass[:, 2].max()
+
+
+def test_wing_length_guard_on_short_ship():
+    """Very short ships should still produce a valid (non-truncated) wing when wings are forced on."""
+    # length=8 is the minimum allowed. With wing_prob=1.0 we guarantee wings run.
+    p = ShapeParams(
+        length=8,
+        width_max=8,
+        height_max=6,
+        wing_prob=1.0,
+        engine_count=1,
+        greeble_density=0.0,
+    )
+    grid = generate_shape(4, p)
+    # Wings must exist, span >= 2 in z, and the grid must still be symmetric.
+    wing_positions = np.argwhere(grid == Role.WING)
+    assert len(wing_positions) > 0
+    z_span = wing_positions[:, 2].max() - wing_positions[:, 2].min() + 1
+    assert z_span >= 2
+    assert np.array_equal(grid, grid[::-1, :, :])

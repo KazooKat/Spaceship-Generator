@@ -31,6 +31,12 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+.swarm/
+ruvector.db
+
+# Ad-hoc smoke-test scratch files
+*.tmp
+
 # Project artifacts
 out/
 tmp/

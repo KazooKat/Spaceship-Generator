@@ -9,8 +9,13 @@
     <fieldset>
         <legend>Seed &amp; palette</legend>
         <label>Seed
-            <input type="number" name="seed" value="{{ defaults.seed }}" required>
+            <input type="number" id="seed" name="seed" value="{{ defaults.seed }}" required>
         </label>
+        <button type="button" id="randomize-seed" class="btn secondary seed-random"
+                data-role="randomize-seed"
+                onclick="document.getElementById('seed').value = Math.floor(Math.random() * 2147483648);">
+            Random seed
+        </button>
         <label>Palette
             <select name="palette">
                 {% for p in palettes %}
@@ -53,6 +58,29 @@
         <legend>Texture</legend>
         <label>Window spacing (blocks)
             <input type="number" name="window_period" min="2" max="16" value="{{ defaults.window_period }}">
+        </label>
+        <label>Accent stripe period
+            <input type="number" name="accent_stripe_period" min="2" max="32" value="{{ defaults.accent_stripe_period }}">
+        </label>
+        <label>Engine glow depth
+            <input type="number" name="engine_glow_depth" min="1" max="8" value="{{ defaults.engine_glow_depth }}">
+        </label>
+        <label>Hull noise ratio (60-30-10)
+            <input type="number" name="hull_noise_ratio" step="0.05" min="0" max="1"
+                   value="{{ defaults.hull_noise_ratio }}">
+        </label>
+        <label>Panel line bands
+            <input type="number" name="panel_line_bands" min="1" max="3"
+                   value="{{ defaults.panel_line_bands }}">
+        </label>
+        <label>Rivet period (0 off)
+            <input type="number" name="rivet_period" min="0" max="32"
+                   value="{{ defaults.rivet_period }}">
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="engine_glow_ring" value="true"
+                   {% if defaults.engine_glow_ring %}checked{% endif %}>
+            Engine glow ring
         </label>
     </fieldset>
 

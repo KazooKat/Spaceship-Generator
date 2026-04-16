@@ -5,12 +5,79 @@ from __future__ import annotations
 import argparse
 import random
 import sys
+import time
 from pathlib import Path
 
-from .generator import generate
+from .generator import GenerationResult, generate
 from .palette import list_palettes
 from .shape import CockpitStyle, ShapeParams
 from .texture import TextureParams
+
+
+def _parse_preview_size(value: str) -> tuple[int, int]:
+    """Parse a ``WxH`` string into ``(W, H)``.
+
+    Raises :class:`argparse.ArgumentTypeError` on malformed input.
+    """
+    try:
+        parts = value.lower().split("x")
+        if len(parts) != 2:
+            raise ValueError
+        w, h = int(parts[0]), int(parts[1])
+        if w <= 0 or h <= 0:
+            raise ValueError
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"--preview-size must be WxH with positive integers, got {value!r}"
+        ) from exc
+    return (w, h)
+
+
+def _parse_seeds(value: str) -> list[int]:
+    """Parse a comma-separated list or inclusive ``A-B`` range into seed ints.
+
+    Examples
+    --------
+    ``"1,2,3"`` -> ``[1, 2, 3]``
+    ``"0-3"``   -> ``[0, 1, 2, 3]``
+    """
+    value = value.strip()
+    if not value:
+        raise argparse.ArgumentTypeError("--seeds must not be empty")
+
+    # Range form: A-B (support negative via leading '-' only on the right side
+    # of the separator — keep it simple; seeds are typically non-negative).
+    if "-" in value and "," not in value:
+        parts = value.split("-")
+        if len(parts) == 2 and parts[0].strip() and parts[1].strip():
+            try:
+                start = int(parts[0])
+                end = int(parts[1])
+            except ValueError as exc:
+                raise argparse.ArgumentTypeError(
+                    f"--seeds range must be integers, got {value!r}"
+                ) from exc
+            if end < start:
+                raise argparse.ArgumentTypeError(
+                    f"--seeds range end must be >= start, got {value!r}"
+                )
+            return list(range(start, end + 1))
+
+    # Comma-separated list.
+    seeds: list[int] = []
+    for token in value.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            seeds.append(int(token))
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                f"--seeds token must be an integer, got {token!r}"
+            ) from exc
+    if not seeds:
+        raise argparse.ArgumentTypeError(f"--seeds produced no values from {value!r}")
+    return seeds
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -20,6 +87,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--seed", type=int, default=None,
                    help="Integer seed (default: random).")
+    p.add_argument("--seeds", type=_parse_seeds, default=None,
+                   help="Bulk mode: comma-separated seeds ('1,2,3') or inclusive range ('0-9'). "
+                        "Mutually exclusive with --seed.")
     p.add_argument("--palette", type=str, default="sci_fi_industrial",
                    help="Palette name to use (default: sci_fi_industrial).")
     p.add_argument("--list-palettes", action="store_true",
@@ -44,23 +114,114 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Accent stripe every N cells along Z.")
     p.add_argument("--engine-glow-depth", type=int, default=1,
                    help="Engine-glow core thickness in cells.")
+    p.add_argument("--hull-noise-ratio", type=float, default=0.0,
+                   help="Fraction of HULL surface cells to darken for a 60-30-10 palette effect "
+                        "(0.0 off, 0.3 recommended).")
+    p.add_argument("--panel-bands", type=int, default=1,
+                   help="Number of HULL_DARK panel-line bands (1..3).")
+    p.add_argument("--rivet-period", type=int, default=0,
+                   help="HULL_DARK rivet dots every N cells on upper hull (0 disables).")
+    p.add_argument("--engine-glow-ring", action="store_true",
+                   help="Wrap ENGINE_GLOW cells with a HULL_DARK ring for a layered look.")
 
     # Output
     p.add_argument("--out", type=Path, default=Path("out"),
                    help="Output directory (default: ./out).")
     p.add_argument("--filename", type=str, default=None,
-                   help="Output filename (default: ship_<seed>.litematic).")
+                   help="Output filename (default: ship_<seed>.litematic). "
+                        "Ignored in --seeds bulk mode.")
     p.add_argument("--author", type=str, default="spaceship-generator",
                    help="Schematic author metadata.")
     p.add_argument("--name", type=str, default=None,
                    help="Schematic name metadata (default: 'Ship <seed>').")
 
+    # Preview
+    p.add_argument("--preview", action="store_true",
+                   help="Also save a PNG preview alongside the .litematic (same stem).")
+    p.add_argument("--preview-size", type=_parse_preview_size, default=(800, 800),
+                   help="Preview size as WxH (default: 800x800).")
+
+    # Verbosity
+    p.add_argument("--verbose", action="store_true",
+                   help="Print per-seed timings. Mutually exclusive with --quiet.")
+    p.add_argument("--quiet", action="store_true",
+                   help="Suppress success lines (errors still go to stderr). "
+                        "Mutually exclusive with --verbose.")
+
     return p
+
+
+def _run_one(
+    seed: int,
+    *,
+    args: argparse.Namespace,
+    filename: str | None,
+) -> GenerationResult:
+    """Run a single generate() call using ``args`` for the shared parameters."""
+    shape_params = ShapeParams(
+        length=args.length,
+        width_max=args.width,
+        height_max=args.height,
+        engine_count=args.engines,
+        wing_prob=args.wing_prob,
+        greeble_density=args.greeble_density,
+        cockpit_style=CockpitStyle(args.cockpit),
+    )
+    texture_params = TextureParams(
+        window_period_cells=args.window_period,
+        accent_stripe_period=args.stripe_period,
+        engine_glow_depth=args.engine_glow_depth,
+        hull_noise_ratio=args.hull_noise_ratio,
+        panel_line_bands=args.panel_bands,
+        rivet_period=args.rivet_period,
+        engine_glow_ring=args.engine_glow_ring,
+    )
+
+    result = generate(
+        seed,
+        palette=args.palette,
+        shape_params=shape_params,
+        texture_params=texture_params,
+        out_dir=args.out,
+        filename=filename,
+        author=args.author,
+        name=args.name,
+        with_preview=bool(args.preview),
+        preview_size=args.preview_size,
+    )
+
+    if args.preview:
+        preview_path = result.litematic_path.with_suffix(".png")
+        result.save_preview(preview_path)
+
+    return result
+
+
+def _print_success(result: GenerationResult, *, elapsed: float | None, args: argparse.Namespace) -> None:
+    """Emit the success lines for a single generation, respecting --quiet/--verbose."""
+    if args.quiet:
+        return
+    print(f"Seed: {result.seed}")
+    print(f"Palette: {result.palette_name}")
+    print(f"Grid shape (W x H x L): {result.shape[0]} x {result.shape[1]} x {result.shape[2]}")
+    print(f"Blocks: {result.block_count}")
+    print(f"Wrote: {result.litematic_path}")
+    if args.preview:
+        print(f"Preview: {result.litematic_path.with_suffix('.png')}")
+    if args.verbose and elapsed is not None:
+        print(f"Elapsed: {elapsed:.3f}s")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.verbose and args.quiet:
+        print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
+        return 2
+    if args.seed is not None and args.seeds is not None:
+        print("Error: --seed and --seeds are mutually exclusive.", file=sys.stderr)
+        return 2
 
     if args.list_palettes:
         names = list_palettes()
@@ -71,47 +232,46 @@ def main(argv: list[str] | None = None) -> int:
             print(n)
         return 0
 
-    seed = args.seed if args.seed is not None else random.randint(0, 2**31 - 1)
+    # Determine the seed list.
+    if args.seeds is not None:
+        seeds = list(args.seeds)
+        bulk_mode = True
+    else:
+        seed = args.seed if args.seed is not None else random.randint(0, 2**31 - 1)
+        seeds = [seed]
+        bulk_mode = False
 
-    try:
-        shape_params = ShapeParams(
-            length=args.length,
-            width_max=args.width,
-            height_max=args.height,
-            engine_count=args.engines,
-            wing_prob=args.wing_prob,
-            greeble_density=args.greeble_density,
-            cockpit_style=CockpitStyle(args.cockpit),
-        )
-        texture_params = TextureParams(
-            window_period_cells=args.window_period,
-            accent_stripe_period=args.stripe_period,
-            engine_glow_depth=args.engine_glow_depth,
-        )
+    successes = 0
+    failures = 0
 
-        result = generate(
-            seed,
-            palette=args.palette,
-            shape_params=shape_params,
-            texture_params=texture_params,
-            out_dir=args.out,
-            filename=args.filename,
-            author=args.author,
-            name=args.name,
-        )
-    except FileNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        print("Available palettes:", ", ".join(list_palettes()), file=sys.stderr)
+    for i, seed in enumerate(seeds):
+        # In bulk mode, force per-seed default filenames to avoid collisions.
+        filename = None if bulk_mode else args.filename
+
+        started = time.perf_counter() if args.verbose else None
+        try:
+            result = _run_one(seed, args=args, filename=filename)
+        except FileNotFoundError as exc:
+            print(f"Error (seed={seed}): {exc}", file=sys.stderr)
+            if not bulk_mode:
+                print("Available palettes:", ", ".join(list_palettes()), file=sys.stderr)
+            failures += 1
+            continue
+        except ValueError as exc:
+            print(f"Error (seed={seed}): {exc}", file=sys.stderr)
+            failures += 1
+            continue
+
+        elapsed = (time.perf_counter() - started) if started is not None else None
+
+        # Separate outputs with a blank line in bulk + non-quiet mode.
+        if bulk_mode and i > 0 and not args.quiet:
+            print()
+        _print_success(result, elapsed=elapsed, args=args)
+        successes += 1
+
+    if successes == 0:
         return 2
-    except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        return 2
-
-    print(f"Seed: {result.seed}")
-    print(f"Palette: {result.palette_name}")
-    print(f"Grid shape (W x H x L): {result.shape[0]} x {result.shape[1]} x {result.shape[2]}")
-    print(f"Blocks: {result.block_count}")
-    print(f"Wrote: {result.litematic_path}")
     return 0
 
 

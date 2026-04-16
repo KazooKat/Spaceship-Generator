@@ -7,8 +7,14 @@ The input grid from :mod:`shape` only uses the coarse roles
 * Interior ``HULL`` voxels become ``INTERIOR``.
 * Side-facing upper-band ``HULL`` surface cells become ``WINDOW`` at regular spacing.
 * ``HULL`` surface cells at the mid-height line become a ``HULL_DARK`` accent stripe.
+* Additional ``HULL_DARK`` bands at ``cy ± H//4`` when ``panel_line_bands > 1``.
+* Optional deterministic ``HULL_DARK`` coordinate-hashed noise speckle over hull.
+* Optional ``HULL_DARK`` "rivet" dots on upper-hull surface at a fixed XZ period.
 * The rear-most faces of engine cylinders become ``ENGINE_GLOW``.
+* Optional ``HULL_DARK`` ring of dimmer pixels around every ``ENGINE_GLOW``.
 * Wing-tip leading-edge cells become ``LIGHT``.
+* Optional: regularly-spaced belly lights on downward-facing hull surface.
+* Optional: a single nose-tip light at the forward-most centerline voxel.
 
 All rules are deterministic in the cell's coordinates so bilateral symmetry
 of the input is preserved.
@@ -24,6 +30,30 @@ from .palette import Role
 from .shape import _surface_mask
 
 
+# Roles protected from overwrite by later lighting passes.
+_PROTECTED_ROLES: tuple[Role, ...] = (
+    Role.COCKPIT_GLASS,
+    Role.WINDOW,
+    Role.ENGINE,
+    Role.ENGINE_GLOW,
+)
+
+# Roles new "hull noise / rivet / engine ring" passes must never overwrite.
+# (Stripes are fine to be further decorated; WING/GREEBLE/LIGHT/INTERIOR are
+# off-limits, as are all cockpit/window/engine roles.)
+_HULL_NOISE_FORBIDDEN: tuple[Role, ...] = (
+    Role.EMPTY,
+    Role.COCKPIT_GLASS,
+    Role.WINDOW,
+    Role.ENGINE,
+    Role.ENGINE_GLOW,
+    Role.WING,
+    Role.GREEBLE,
+    Role.LIGHT,
+    Role.INTERIOR,
+)
+
+
 @dataclass
 class TextureParams:
     """User-tunable parameters for role refinement."""
@@ -31,6 +61,13 @@ class TextureParams:
     window_period_cells: int = 4   # window every N cells along Z on upper hull
     accent_stripe_period: int = 8  # HULL_DARK stripe every N cells along Z
     engine_glow_depth: int = 1     # thickness (in Z) of engine-glow core at the rear
+    belly_light_period: int = 0    # LIGHT every N cells along Z on belly (0 disables)
+    nose_tip_light: bool = True    # single LIGHT at forward-most centerline voxel
+    # Minecraft-builder 60-30-10 / greeble extensions (all default to no-op).
+    hull_noise_ratio: float = 0.0        # 0..1 fraction of side-hull cells → HULL_DARK
+    panel_line_bands: int = 1            # 1=just mid stripe, 2=+upper, 3=+upper+lower
+    rivet_period: int = 0                # XZ rivet dot period on upper hull (0 disables)
+    engine_glow_ring: bool = False       # dim HULL_DARK ring around each ENGINE_GLOW
 
 
 def assign_roles(
@@ -47,9 +84,16 @@ def assign_roles(
 
     _fill_interior(out, surface)
     _paint_accent_stripe(out, surface, params)
+    _paint_panel_bands(out, surface, params)
+    # Paint windows before hull noise / rivets so noise never displaces windows.
     _paint_windows(out, surface, params)
+    _paint_hull_noise(out, surface, params)
+    _paint_rivets(out, surface, params)
     _paint_engine_glow(out, params)
+    _paint_engine_glow_ring(out, params)
     _paint_wing_lights(out)
+    _paint_belly_lights(out, surface, params)
+    _paint_nose_tip_light(out, params)
 
     return out
 
@@ -75,7 +119,6 @@ def _paint_windows(
     # Cells that are HULL and on the surface.
     hull_surf = (grid == Role.HULL) & surface
     # Only upper band (above mid-height).
-    upper_band = np.zeros_like(hull_surf)
     y_indices = np.arange(H).reshape(1, H, 1)
     upper_band = np.broadcast_to(y_indices > cy, grid.shape)
 
@@ -114,13 +157,178 @@ def _paint_accent_stripe(
     grid[hull_surf & y_band & z_phase] = Role.HULL_DARK
 
 
+def _paint_panel_bands(
+    grid: np.ndarray, surface: np.ndarray, params: TextureParams
+) -> None:
+    """Extra HULL_DARK panel-line bands at cy+H//4 and cy-H//4.
+
+    ``panel_line_bands`` = 1 → no extra bands (just the mid-height stripe above).
+    2 → add a band at ``cy + H//4``.
+    3 → add another band at ``cy - H//4``. Clamped to 3 upper bound.
+    """
+    bands = max(1, min(3, int(params.panel_line_bands)))
+    if bands == 1:
+        return
+
+    W, H, L = grid.shape
+    cy = (H - 1) // 2
+    period = max(2, params.accent_stripe_period)
+    offset = max(1, H // 4)
+
+    hull_surf = (grid == Role.HULL) & surface
+    z_indices = np.arange(L).reshape(1, 1, L)
+    z_phase = np.broadcast_to((z_indices % period) == 0, grid.shape)
+
+    extra_ys: list[int] = []
+    if bands >= 2:
+        y_up = min(H - 1, cy + offset)
+        if y_up != cy:
+            extra_ys.append(y_up)
+    if bands >= 3:
+        y_dn = max(0, cy - offset)
+        if y_dn != cy and y_dn not in extra_ys:
+            extra_ys.append(y_dn)
+
+    for y in extra_ys:
+        y_band = np.zeros_like(hull_surf)
+        y_band[:, y:y + 1, :] = True
+        grid[hull_surf & y_band & z_phase] = Role.HULL_DARK
+
+
+def _coord_hash_mod1000(W: int, H: int, L: int) -> np.ndarray:
+    """Deterministic coordinate hash per (x,y,z), mirror-symmetric in X.
+
+    Uses ``min(x, W-1-x)`` as the X term so mirrored cells share a hash.
+    Returns an int array of shape ``(W, H, L)`` with values in [0, 1000).
+    """
+    xs = np.arange(W, dtype=np.int64).reshape(W, 1, 1)
+    ys = np.arange(H, dtype=np.int64).reshape(1, H, 1)
+    zs = np.arange(L, dtype=np.int64).reshape(1, 1, L)
+    mx = np.minimum(xs, (W - 1) - xs)  # mirror-symmetric in X
+    h = (mx * 73856093) ^ (ys * 19349663) ^ (zs * 83492791)
+    return (h % 1000).astype(np.int64)
+
+
+def _paint_hull_noise(
+    grid: np.ndarray, surface: np.ndarray, params: TextureParams
+) -> None:
+    """Convert a fraction of side-facing HULL surface cells to HULL_DARK.
+
+    Uses a coordinate hash so output is deterministic and X-symmetric, and
+    never overwrites protected or non-hull roles. Stripes painted earlier
+    stay HULL_DARK (no-op). HULL_DARK cells aren't re-hashed because they're
+    already dark.
+    """
+    ratio = float(params.hull_noise_ratio)
+    if ratio <= 0.0:
+        return
+    ratio = min(ratio, 1.0)
+
+    W, H, L = grid.shape
+    # Only HULL (not HULL_DARK) cells on the surface are eligible.
+    hull_surf = (grid == Role.HULL) & surface
+
+    # Side-facing only (mirrors window rule → doesn't darken roofs/bellies).
+    left_empty = np.ones_like(hull_surf)
+    right_empty = np.ones_like(hull_surf)
+    left_empty[1:, :, :] = grid[:-1, :, :] == Role.EMPTY
+    right_empty[:-1, :, :] = grid[1:, :, :] == Role.EMPTY
+    side_facing = left_empty | right_empty
+
+    thr = int(ratio * 1000)
+    hashes = _coord_hash_mod1000(W, H, L)
+    hash_mask = hashes < thr
+
+    mask = hull_surf & side_facing & hash_mask
+    grid[mask] = Role.HULL_DARK
+
+
+def _paint_rivets(
+    grid: np.ndarray, surface: np.ndarray, params: TextureParams
+) -> None:
+    """HULL_DARK "rivet" dots on upper-hull side-facing surface at an XZ period.
+
+    Symmetric because the X-period test uses ``min(x, W-1-x)``. Rivets are
+    never placed over protected/forbidden roles; stripes/noise already
+    HULL_DARK are left alone.
+    """
+    period = int(params.rivet_period)
+    if period <= 0:
+        return
+
+    W, H, L = grid.shape
+    cy = (H - 1) / 2.0
+
+    # Eligible surface: HULL only (we don't re-dot HULL_DARK bands).
+    hull_surf = (grid == Role.HULL) & surface
+
+    # Upper band (above mid-height) to avoid cluttering the belly.
+    y_indices = np.arange(H).reshape(1, H, 1)
+    upper_band = np.broadcast_to(y_indices > cy, grid.shape)
+
+    # Side-facing (any ±X neighbor empty).
+    left_empty = np.ones_like(hull_surf)
+    right_empty = np.ones_like(hull_surf)
+    left_empty[1:, :, :] = grid[:-1, :, :] == Role.EMPTY
+    right_empty[:-1, :, :] = grid[1:, :, :] == Role.EMPTY
+    side_facing = left_empty | right_empty
+
+    # Symmetric X-period: the mirror index has the same period test.
+    xs = np.arange(W).reshape(W, 1, 1)
+    mx = np.minimum(xs, (W - 1) - xs)
+    zs = np.arange(L).reshape(1, 1, L)
+    x_phase = np.broadcast_to((mx % period) == 0, grid.shape)
+    z_phase = np.broadcast_to((zs % period) == 0, grid.shape)
+
+    mask = hull_surf & upper_band & side_facing & x_phase & z_phase
+    grid[mask] = Role.HULL_DARK
+
+
 def _paint_engine_glow(grid: np.ndarray, params: TextureParams) -> None:
-    """Mark the rear-most layers of engine cylinders as ENGINE_GLOW."""
-    depth = max(1, params.engine_glow_depth)
+    """Mark the rear-most layers of engine cylinders as ENGINE_GLOW.
+
+    ``engine_glow_depth <= 0`` disables the pass (useful for handcrafted
+    tests that preset ENGINE_GLOW directly and want to isolate the ring pass).
+    """
+    depth = int(params.engine_glow_depth)
+    if depth <= 0:
+        return
     L = grid.shape[2]
     rear_depth = min(depth, L)
     rear_slice = grid[:, :, :rear_depth]
     rear_slice[rear_slice == Role.ENGINE] = Role.ENGINE_GLOW
+
+
+def _paint_engine_glow_ring(grid: np.ndarray, params: TextureParams) -> None:
+    """Wrap ENGINE cells orthogonally adjacent to an ENGINE_GLOW with HULL_DARK.
+
+    Only ``Role.ENGINE`` neighbors (±X, ±Y) at the same Z are converted —
+    EMPTY and non-engine cells are left untouched. Mirror-symmetric because
+    ``ENGINE_GLOW`` placement is symmetric and the ±X shifts preserve symmetry.
+    """
+    if not params.engine_glow_ring:
+        return
+
+    W, H, L = grid.shape
+    glow = grid == Role.ENGINE_GLOW
+    if not glow.any():
+        return
+
+    engine = grid == Role.ENGINE
+
+    # Neighbor-of-glow mask via in-plane shifts at the same z.
+    neigh = np.zeros_like(glow)
+    # +X neighbor of glow → cells at x+1 where (x,y,z) is glow.
+    neigh[1:, :, :] |= glow[:-1, :, :]
+    # −X neighbor of glow.
+    neigh[:-1, :, :] |= glow[1:, :, :]
+    # +Y neighbor of glow.
+    neigh[:, 1:, :] |= glow[:, :-1, :]
+    # −Y neighbor of glow.
+    neigh[:, :-1, :] |= glow[:, 1:, :]
+
+    mask = neigh & engine
+    grid[mask] = Role.HULL_DARK
 
 
 def _paint_wing_lights(grid: np.ndarray) -> None:
@@ -157,3 +365,69 @@ def _paint_wing_lights(grid: np.ndarray) -> None:
                 _, y, z = row
                 if grid[mx, y, z] == Role.WING:
                     grid[mx, y, z] = Role.LIGHT
+
+
+def _paint_belly_lights(
+    grid: np.ndarray, surface: np.ndarray, params: TextureParams
+) -> None:
+    """LIGHT dots on the underside (−Y neighbor empty) of hull surface cells.
+
+    Only HULL / HULL_DARK surface cells are eligible; protected roles
+    (COCKPIT_GLASS, WINDOW, ENGINE, ENGINE_GLOW) are never overwritten.
+    Lights are placed on a fully deterministic ``z % period == 0`` phase.
+    """
+    period = params.belly_light_period
+    if period <= 0:
+        return
+
+    W, H, L = grid.shape
+
+    # Eligible: hull-like surface cell (HULL or HULL_DARK) on surface.
+    eligible = surface & ((grid == Role.HULL) | (grid == Role.HULL_DARK))
+
+    # Bottom-facing: the −Y neighbor is EMPTY or out of bounds.
+    below_empty = np.ones_like(eligible)  # y == 0 → out of bounds → empty
+    below_empty[:, 1:, :] = grid[:, :-1, :] == Role.EMPTY
+    bottom_facing = below_empty
+
+    z_indices = np.arange(L).reshape(1, 1, L)
+    z_phase = np.broadcast_to((z_indices % period) == 0, grid.shape)
+
+    mask = eligible & bottom_facing & z_phase
+    grid[mask] = Role.LIGHT
+
+
+def _paint_nose_tip_light(grid: np.ndarray, params: TextureParams) -> None:
+    """Place a LIGHT at the forward-most filled voxel on the nose centerline.
+
+    If the width ``W`` is even there are two center columns (``W/2 - 1`` and
+    ``W/2``); paint both to preserve bilateral symmetry. Protected roles
+    (COCKPIT_GLASS, WINDOW, ENGINE, ENGINE_GLOW) are never overwritten.
+    """
+    if not params.nose_tip_light:
+        return
+
+    W, H, L = grid.shape
+    if W == 0 or H == 0 or L == 0:
+        return
+
+    if W % 2 == 1:
+        center_xs = (W // 2,)
+    else:
+        center_xs = (W // 2 - 1, W // 2)
+
+    for x in center_xs:
+        col = grid[x, :, :]  # shape (H, L)
+        filled = col != Role.EMPTY
+        if not filled.any():
+            continue
+        # Forward-most z with any filled voxel in this column.
+        z_tip = int(np.argwhere(filled.any(axis=0))[:, 0].max())
+        # Pick the topmost filled voxel at that z (arbitrary but deterministic).
+        ys = np.argwhere(filled[:, z_tip])[:, 0]
+        if ys.size == 0:
+            continue
+        y_tip = int(ys.max())
+        if grid[x, y_tip, z_tip] in _PROTECTED_ROLES:
+            continue
+        grid[x, y_tip, z_tip] = Role.LIGHT

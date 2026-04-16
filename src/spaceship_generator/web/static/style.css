@@ -86,10 +86,18 @@ button, .btn {
 
 button:hover, .btn:hover { filter: brightness(1.1); }
 
-.btn.secondary {
+.btn.secondary,
+button.secondary {
     background: transparent;
     color: var(--accent);
     border: 1px solid var(--accent);
+}
+
+button.seed-random {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+    margin-left: 0.25rem;
+    vertical-align: middle;
 }
 
 .error {
