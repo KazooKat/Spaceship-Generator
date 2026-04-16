@@ -1,0 +1,26 @@
+name: nordic_scout
+description: Nordic scout. Birch & quartz hull, diorite trim, clean and bright. (blockpalettes.com-inspired)
+
+blocks:
+  HULL:          minecraft:stripped_birch_log
+  HULL_DARK:     minecraft:smooth_quartz
+  WINDOW:        minecraft:glass
+  ENGINE:        minecraft:polished_diorite
+  ENGINE_GLOW:   minecraft:glowstone
+  COCKPIT_GLASS: minecraft:glass
+  WING:          minecraft:birch_planks
+  GREEBLE:       minecraft:chiseled_quartz_block
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:birch_planks
+
+preview_colors:
+  HULL:          "#e0d7b6"
+  HULL_DARK:     "#ece6df"
+  WINDOW:        "#d4eaff"
+  ENGINE:        "#dadada"
+  ENGINE_GLOW:   "#ffe680"
+  COCKPIT_GLASS: "#d4eaff"
+  WING:          "#d7c589"
+  GREEBLE:       "#e8e2d7"
+  LIGHT:         "#acc8be"
+  INTERIOR:      "#d7c589"

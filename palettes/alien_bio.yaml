@@ -1,0 +1,26 @@
+name: alien_bio
+description: Organic alien bioship. Warped nether growths, slime viewports, mossy greebles.
+
+blocks:
+  HULL:          minecraft:warped_planks
+  HULL_DARK:     minecraft:warped_hyphae
+  WINDOW:        minecraft:slime_block
+  ENGINE:        minecraft:purpur_block
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:green_stained_glass
+  WING:          minecraft:warped_wart_block
+  GREEBLE:       minecraft:warped_nylium
+  LIGHT:         minecraft:glowstone
+  INTERIOR:      minecraft:moss_block
+
+preview_colors:
+  HULL:          "#2b6863"
+  HULL_DARK:     "#1e3b44"
+  WINDOW:        "#a4d74f"
+  ENGINE:        "#a882a8"
+  ENGINE_GLOW:   "#ff8b3a"
+  COCKPIT_GLASS: "#4ca04c"
+  WING:          "#168a82"
+  GREEBLE:       "#337463"
+  LIGHT:         "#ffe680"
+  INTERIOR:      "#6b8a3a"

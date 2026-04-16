@@ -1,0 +1,26 @@
+name: deepslate_drone
+description: Stealth drone. Cobbled/polished deepslate plating, moss wing pads, froglight thrusters. (blockpalettes.com-inspired)
+
+blocks:
+  HULL:          minecraft:cobbled_deepslate
+  HULL_DARK:     minecraft:deepslate_tiles
+  WINDOW:        minecraft:green_stained_glass
+  ENGINE:        minecraft:polished_deepslate
+  ENGINE_GLOW:   minecraft:verdant_froglight
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:moss_block
+  GREEBLE:       minecraft:stripped_spruce_log
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:spruce_planks
+
+preview_colors:
+  HULL:          "#4a4a4f"
+  HULL_DARK:     "#34343a"
+  WINDOW:        "#5a8a4a"
+  ENGINE:        "#3a3a3f"
+  ENGINE_GLOW:   "#c8e68c"
+  COCKPIT_GLASS: "#2c262e"
+  WING:          "#6b8a3a"
+  GREEBLE:       "#a88657"
+  LIGHT:         "#acc8be"
+  INTERIOR:      "#9b7548"

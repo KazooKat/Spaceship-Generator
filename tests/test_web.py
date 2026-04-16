@@ -152,8 +152,47 @@ def test_api_palettes_returns_builtins(client):
     assert "palettes" in data
     palettes = data["palettes"]
     assert isinstance(palettes, list)
-    for expected in ("sci_fi_industrial", "sleek_modern", "rustic_salvage"):
-        assert expected in palettes
+    # Original + new themes.
+    for expected in (
+        "sci_fi_industrial",
+        "sleek_modern",
+        "rustic_salvage",
+        "alien_bio",
+        "gold_imperial",
+        "diamond_tech",
+        "end_void",
+        "coral_reef",
+        "candy_pop",
+        "neon_arcade",
+        "wooden_frigate",
+        "desert_sandstone",
+        "deepslate_drone",
+        "amethyst_crystal",
+        "nordic_scout",
+    ):
+        assert expected in palettes, f"missing palette {expected!r}"
+
+
+def test_random_palette_picks_deterministically(client):
+    """'palette=random' resolves to a real palette based on seed."""
+    body = _minimal_json()
+    body["palette"] = "random"
+    resp = client.post("/api/generate", json=body)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    # Resolved to a real palette (not the literal "random").
+    assert data["palette"] != "random"
+    assert data["palette"] in client.get("/api/palettes").get_json()["palettes"]
+
+    # Same seed + random → same resolved palette (deterministic).
+    resp2 = client.post("/api/generate", json=body)
+    assert resp2.get_json()["palette"] == data["palette"]
+
+
+def test_index_has_random_palette_option(client):
+    resp = client.get("/")
+    body = resp.get_data(as_text=True)
+    assert 'value="random"' in body
 
 
 def test_api_generate_valid_body(client):
@@ -179,6 +218,116 @@ def test_api_generate_invalid_palette(client):
     assert resp.status_code == 400
     data = resp.get_json()
     assert "error" in data
+
+
+def test_index_has_tooltips(client):
+    """Each input should have a ? tooltip with explanation."""
+    resp = client.get("/")
+    body = resp.get_data(as_text=True)
+    # Sample a few known help keys.
+    assert 'class="tip"' in body
+    assert "Same seed + same parameters" in body
+    assert "Probability (0-1)" in body
+    assert "greeble" in body.lower()
+
+
+def test_index_has_htmx_form(client):
+    """Form must use hx-post so generation happens inline on the page."""
+    resp = client.get("/")
+    body = resp.get_data(as_text=True)
+    assert 'hx-post="/generate"' in body
+    assert 'id="result-panel"' in body
+    assert 'hx-target="#result-panel"' in body
+
+
+def test_htmx_generate_returns_partial_not_redirect(client):
+    """When HX-Request is set, /generate returns HTML partial with 200."""
+    resp = client.post(
+        "/generate",
+        data=_minimal_form(),
+        headers={"HX-Request": "true"},
+    )
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    # Partial should contain the key and preview, but NOT a full <html> shell.
+    assert "<html" not in body.lower()
+    assert "Download .litematic" in body
+    assert "Block key" in body
+    assert 'class="preview"' in body
+
+
+def test_htmx_generate_error_returns_error_partial(client):
+    """Bad input from HTMX should return the error partial, not full page."""
+    data = _minimal_form()
+    data["palette"] = "does_not_exist"
+    resp = client.post(
+        "/generate",
+        data=data,
+        headers={"HX-Request": "true"},
+    )
+    assert resp.status_code == 400
+    body = resp.get_data(as_text=True)
+    assert "<html" not in body.lower()
+    assert "Error" in body
+
+
+def test_result_page_includes_block_key(client):
+    """/result/<id> shows legend: role labels, block icons/swatches, block ids."""
+    resp = client.post("/generate", data=_minimal_form())
+    gen_id = resp.headers["Location"].rsplit("/", 1)[-1]
+
+    result_resp = client.get(f"/result/{gen_id}")
+    body = result_resp.get_data(as_text=True)
+    assert "Block key" in body
+    # Each row renders either a cached block-texture icon (preferred) or a
+    # color swatch fallback — at least one must be present.
+    assert 'class="block-icon"' in body or 'class="swatch"' in body
+    # Must list at least one known role label + one minecraft: block id.
+    assert "Windows" in body
+    assert "minecraft:" in body
+
+
+def test_block_texture_route_serves_png(client):
+    """/block-texture/<block_id>.png returns cached PNG bytes for known blocks."""
+    resp = client.get("/block-texture/minecraft:iron_block.png")
+    assert resp.status_code == 200
+    assert resp.mimetype == "image/png"
+    assert resp.data.startswith(b"\x89PNG")
+
+
+def test_block_texture_route_404_for_unknown(client):
+    resp = client.get("/block-texture/minecraft:definitely_not_a_block.png")
+    assert resp.status_code == 404
+
+
+def test_block_texture_route_400_for_malformed(client):
+    # Spaces and other unsafe chars must be rejected.
+    resp = client.get("/block-texture/not a block.png")
+    assert resp.status_code == 400
+
+
+def test_result_page_renders_block_icon_when_cached(client):
+    """Block key rows should use <img class=block-icon> when a texture is cached."""
+    resp = client.post("/generate", data=_minimal_form())
+    gen_id = resp.headers["Location"].rsplit("/", 1)[-1]
+    body = client.get(f"/result/{gen_id}").get_data(as_text=True)
+    assert 'class="block-icon"' in body
+    assert "/block-texture/" in body
+
+
+def test_preview_accepts_view_params(client):
+    """Preview endpoint should re-render on elev/azim query params."""
+    resp = client.post("/generate", data=_minimal_form())
+    gen_id = resp.headers["Location"].rsplit("/", 1)[-1]
+
+    rotated = client.get(f"/preview/{gen_id}.png?elev=10&azim=45")
+    assert rotated.status_code == 200
+    assert rotated.mimetype == "image/png"
+    assert rotated.data.startswith(b"\x89PNG")
+
+    # Bad floats → 400 (not a 500).
+    bad = client.get(f"/preview/{gen_id}.png?elev=not_a_number")
+    assert bad.status_code == 400
 
 
 def test_memory_eviction_cleans_up_litematic(small_client):

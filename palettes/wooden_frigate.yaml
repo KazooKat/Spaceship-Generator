@@ -1,0 +1,26 @@
+name: wooden_frigate
+description: Rustic wooden frigate. Oak + dark-oak hull, iron hardpoints, lantern lights.
+
+blocks:
+  HULL:          minecraft:oak_planks
+  HULL_DARK:     minecraft:dark_oak_planks
+  WINDOW:        minecraft:glass
+  ENGINE:        minecraft:iron_block
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:glass
+  WING:          minecraft:spruce_planks
+  GREEBLE:       minecraft:oak_log
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:spruce_planks
+
+preview_colors:
+  HULL:          "#b5935d"
+  HULL_DARK:     "#422b14"
+  WINDOW:        "#d4eaff"
+  ENGINE:        "#dcdcdc"
+  ENGINE_GLOW:   "#acc8be"
+  COCKPIT_GLASS: "#d4eaff"
+  WING:          "#7a5a3b"
+  GREEBLE:       "#5a401f"
+  LIGHT:         "#acc8be"
+  INTERIOR:      "#7a5a3b"

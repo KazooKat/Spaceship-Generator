@@ -1,0 +1,26 @@
+name: desert_sandstone
+description: Desert-world dhow. Sandstone hull, amber glass, torches along the spine.
+
+blocks:
+  HULL:          minecraft:sandstone
+  HULL_DARK:     minecraft:smooth_sandstone
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:polished_granite
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:chiseled_sandstone
+  GREEBLE:       minecraft:cut_sandstone
+  LIGHT:         minecraft:ochre_froglight
+  INTERIOR:      minecraft:smooth_sandstone
+
+preview_colors:
+  HULL:          "#d7c99c"
+  HULL_DARK:     "#c7ba8c"
+  WINDOW:        "#d87f33"
+  ENGINE:        "#9a5c4a"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#ffd84a"
+  WING:          "#d8cba0"
+  GREEBLE:       "#d1c59a"
+  LIGHT:         "#e2b34e"
+  INTERIOR:      "#c7ba8c"

@@ -1,0 +1,26 @@
+name: coral_reef
+description: Aquatic coral cruiser. Prismarine plating, coral-glow engines.
+
+blocks:
+  HULL:          minecraft:prismarine
+  HULL_DARK:     minecraft:dark_prismarine
+  WINDOW:        minecraft:blue_stained_glass
+  ENGINE:        minecraft:horn_coral_block
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:light_blue_stained_glass
+  WING:          minecraft:brain_coral_block
+  GREEBLE:       minecraft:tube_coral_block
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:prismarine_bricks
+
+preview_colors:
+  HULL:          "#5a9b8a"
+  HULL_DARK:     "#335b4b"
+  WINDOW:        "#3f50a6"
+  ENGINE:        "#e6c84a"
+  ENGINE_GLOW:   "#acc8be"
+  COCKPIT_GLASS: "#6699d8"
+  WING:          "#d26a9c"
+  GREEBLE:       "#2e60b8"
+  LIGHT:         "#acc8be"
+  INTERIOR:      "#63ab9e"

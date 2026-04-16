@@ -1,89 +1,111 @@
 {% extends "base.html" %}
 
+{% macro tip(key) -%}
+    {%- if param_help and key in param_help -%}
+    <span class="tip" tabindex="0" role="button"
+          aria-label="{{ param_help[key] }}"
+          data-tip="{{ param_help[key] }}">?</span>
+    {%- endif -%}
+{%- endmacro %}
+
 {% block content %}
-{% if error %}
-<div class="error">Error: {{ error }}</div>
-{% endif %}
+<div class="layout">
+    <form action="{{ url_for('do_generate') }}" method="POST" class="gen-form"
+          hx-post="{{ url_for('do_generate') }}"
+          hx-target="#result-panel"
+          hx-swap="innerHTML"
+          hx-indicator="#gen-indicator">
+        {% if error %}
+        <div class="error">Error: {{ error }}</div>
+        {% endif %}
 
-<form action="{{ url_for('do_generate') }}" method="POST" class="gen-form">
-    <fieldset>
-        <legend>Seed &amp; palette</legend>
-        <label>Seed
-            <input type="number" id="seed" name="seed" value="{{ defaults.seed }}" required>
-        </label>
-        <button type="button" id="randomize-seed" class="btn secondary seed-random"
-                data-role="randomize-seed"
-                onclick="document.getElementById('seed').value = Math.floor(Math.random() * 2147483648);">
-            Random seed
-        </button>
-        <label>Palette
-            <select name="palette">
-                {% for p in palettes %}
-                <option value="{{ p }}" {% if p == defaults.palette %}selected{% endif %}>{{ p }}</option>
-                {% endfor %}
-            </select>
-        </label>
-    </fieldset>
+        <fieldset>
+            <legend>Seed &amp; palette</legend>
+            <label>Seed {{ tip("seed") }}
+                <input type="number" id="seed" name="seed" value="{{ defaults.seed }}" required>
+            </label>
+            <button type="button" id="randomize-seed" class="btn secondary seed-random"
+                    data-role="randomize-seed"
+                    onclick="document.getElementById('seed').value = Math.floor(Math.random() * 2147483648);">
+                Random seed
+            </button>
+            <label>Palette {{ tip("palette") }}
+                <select name="palette">
+                    <option value="random" {% if defaults.palette == "random" %}selected{% endif %}>
+                        &#127922; random (seeded)
+                    </option>
+                    {% for p in palettes %}
+                    <option value="{{ p }}" {% if p == defaults.palette %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </fieldset>
 
-    <fieldset>
-        <legend>Shape</legend>
-        <label>Length (Z)
-            <input type="number" name="length" min="8" max="128" value="{{ defaults.length }}" required>
-        </label>
-        <label>Max width (X)
-            <input type="number" name="width" min="4" max="64" value="{{ defaults.width }}" required>
-        </label>
-        <label>Max height (Y)
-            <input type="number" name="height" min="4" max="64" value="{{ defaults.height }}" required>
-        </label>
-        <label>Engines
-            <input type="number" name="engines" min="0" max="6" value="{{ defaults.engines }}" required>
-        </label>
-        <label>Wing probability
-            <input type="number" name="wing_prob" step="0.05" min="0" max="1" value="{{ defaults.wing_prob }}">
-        </label>
-        <label>Greeble density
-            <input type="number" name="greeble_density" step="0.01" min="0" max="0.5" value="{{ defaults.greeble_density }}">
-        </label>
-        <label>Cockpit style
-            <select name="cockpit">
-                {% for c in cockpit_styles %}
-                <option value="{{ c }}" {% if c == defaults.cockpit %}selected{% endif %}>{{ c }}</option>
-                {% endfor %}
-            </select>
-        </label>
-    </fieldset>
+        <fieldset>
+            <legend>Shape</legend>
+            <label>Length (Z) {{ tip("length") }}
+                <input type="number" name="length" min="8" max="128" value="{{ defaults.length }}" required>
+            </label>
+            <label>Max width (X) {{ tip("width") }}
+                <input type="number" name="width" min="4" max="64" value="{{ defaults.width }}" required>
+            </label>
+            <label>Max height (Y) {{ tip("height") }}
+                <input type="number" name="height" min="4" max="64" value="{{ defaults.height }}" required>
+            </label>
+            <label>Engines {{ tip("engines") }}
+                <input type="number" name="engines" min="0" max="6" value="{{ defaults.engines }}" required>
+            </label>
+            <label>Wing probability {{ tip("wing_prob") }}
+                <input type="number" name="wing_prob" step="0.05" min="0" max="1" value="{{ defaults.wing_prob }}">
+            </label>
+            <label>Greeble density {{ tip("greeble_density") }}
+                <input type="number" name="greeble_density" step="0.01" min="0" max="0.5" value="{{ defaults.greeble_density }}">
+            </label>
+            <label>Cockpit style {{ tip("cockpit") }}
+                <select name="cockpit">
+                    {% for c in cockpit_styles %}
+                    <option value="{{ c }}" {% if c == defaults.cockpit %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </fieldset>
 
-    <fieldset>
-        <legend>Texture</legend>
-        <label>Window spacing (blocks)
-            <input type="number" name="window_period" min="2" max="16" value="{{ defaults.window_period }}">
-        </label>
-        <label>Accent stripe period
-            <input type="number" name="accent_stripe_period" min="2" max="32" value="{{ defaults.accent_stripe_period }}">
-        </label>
-        <label>Engine glow depth
-            <input type="number" name="engine_glow_depth" min="1" max="8" value="{{ defaults.engine_glow_depth }}">
-        </label>
-        <label>Hull noise ratio (60-30-10)
-            <input type="number" name="hull_noise_ratio" step="0.05" min="0" max="1"
-                   value="{{ defaults.hull_noise_ratio }}">
-        </label>
-        <label>Panel line bands
-            <input type="number" name="panel_line_bands" min="1" max="3"
-                   value="{{ defaults.panel_line_bands }}">
-        </label>
-        <label>Rivet period (0 off)
-            <input type="number" name="rivet_period" min="0" max="32"
-                   value="{{ defaults.rivet_period }}">
-        </label>
-        <label class="checkbox">
-            <input type="checkbox" name="engine_glow_ring" value="true"
-                   {% if defaults.engine_glow_ring %}checked{% endif %}>
-            Engine glow ring
-        </label>
-    </fieldset>
+        <fieldset>
+            <legend>Texture</legend>
+            <label>Window spacing (blocks) {{ tip("window_period") }}
+                <input type="number" name="window_period" min="2" max="16" value="{{ defaults.window_period }}">
+            </label>
+            <label>Accent stripe period {{ tip("accent_stripe_period") }}
+                <input type="number" name="accent_stripe_period" min="2" max="32" value="{{ defaults.accent_stripe_period }}">
+            </label>
+            <label>Engine glow depth {{ tip("engine_glow_depth") }}
+                <input type="number" name="engine_glow_depth" min="1" max="8" value="{{ defaults.engine_glow_depth }}">
+            </label>
+            <label>Hull noise ratio (60-30-10) {{ tip("hull_noise_ratio") }}
+                <input type="number" name="hull_noise_ratio" step="0.05" min="0" max="1"
+                       value="{{ defaults.hull_noise_ratio }}">
+            </label>
+            <label>Panel line bands {{ tip("panel_line_bands") }}
+                <input type="number" name="panel_line_bands" min="1" max="3"
+                       value="{{ defaults.panel_line_bands }}">
+            </label>
+            <label>Rivet period (0 off) {{ tip("rivet_period") }}
+                <input type="number" name="rivet_period" min="0" max="32"
+                       value="{{ defaults.rivet_period }}">
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" name="engine_glow_ring" value="true"
+                       {% if defaults.engine_glow_ring %}checked{% endif %}>
+                Engine glow ring {{ tip("engine_glow_ring") }}
+            </label>
+        </fieldset>
 
-    <button type="submit">Generate</button>
-</form>
+        <button type="submit">Generate</button>
+        <span id="gen-indicator" class="indicator" aria-hidden="true">generating&hellip;</span>
+    </form>
+
+    <aside id="result-panel" class="result-panel" aria-live="polite">
+        <p class="placeholder">Generate a ship to see the preview &amp; block key here.</p>
+    </aside>
+</div>
 {% endblock %}

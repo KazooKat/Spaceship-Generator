@@ -1,0 +1,26 @@
+name: end_void
+description: End-dimension voidrunner. Purpur hull, obsidian spine, end-rod thrusters.
+
+blocks:
+  HULL:          minecraft:purpur_block
+  HULL_DARK:     minecraft:obsidian
+  WINDOW:        minecraft:purple_stained_glass
+  ENGINE:        minecraft:crying_obsidian
+  ENGINE_GLOW:   minecraft:end_rod
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:end_stone_bricks
+  GREEBLE:       minecraft:purpur_pillar
+  LIGHT:         minecraft:end_rod
+  INTERIOR:      minecraft:end_stone
+
+preview_colors:
+  HULL:          "#a97eb0"
+  HULL_DARK:     "#12102a"
+  WINDOW:        "#7f3fb2"
+  ENGINE:        "#1c2048"
+  ENGINE_GLOW:   "#f4e8d0"
+  COCKPIT_GLASS: "#2c262e"
+  WING:          "#ded7a2"
+  GREEBLE:       "#9f759c"
+  LIGHT:         "#f4e8d0"
+  INTERIOR:      "#e2dea1"

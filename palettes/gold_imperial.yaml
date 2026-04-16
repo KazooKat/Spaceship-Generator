@@ -1,0 +1,26 @@
+name: gold_imperial
+description: Imperial flagship. Gold plating, blackstone accents, froglight running lights.
+
+blocks:
+  HULL:          minecraft:gold_block
+  HULL_DARK:     minecraft:polished_basalt
+  WINDOW:        minecraft:yellow_stained_glass
+  ENGINE:        minecraft:netherite_block
+  ENGINE_GLOW:   minecraft:glowstone
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:gilded_blackstone
+  GREEBLE:       minecraft:raw_gold_block
+  LIGHT:         minecraft:ochre_froglight
+  INTERIOR:      minecraft:smooth_basalt
+
+preview_colors:
+  HULL:          "#f2d04a"
+  HULL_DARK:     "#3c3a3e"
+  WINDOW:        "#ffd84a"
+  ENGINE:        "#242122"
+  ENGINE_GLOW:   "#ffe680"
+  COCKPIT_GLASS: "#2c262e"
+  WING:          "#3a3235"
+  GREEBLE:       "#d89b42"
+  LIGHT:         "#e2b34e"
+  INTERIOR:      "#4a484c"

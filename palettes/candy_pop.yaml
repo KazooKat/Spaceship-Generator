@@ -1,0 +1,26 @@
+name: candy_pop
+description: Candy-colored pleasure craft. Pink hull, magenta glaze, froglight glow.
+
+blocks:
+  HULL:          minecraft:pink_concrete
+  HULL_DARK:     minecraft:magenta_concrete
+  WINDOW:        minecraft:magenta_stained_glass
+  ENGINE:        minecraft:purple_concrete
+  ENGINE_GLOW:   minecraft:pink_glazed_terracotta
+  COCKPIT_GLASS: minecraft:pink_stained_glass
+  WING:          minecraft:white_concrete
+  GREEBLE:       minecraft:magenta_glazed_terracotta
+  LIGHT:         minecraft:pearlescent_froglight
+  INTERIOR:      minecraft:white_wool
+
+preview_colors:
+  HULL:          "#d56ea4"
+  HULL_DARK:     "#a5389b"
+  WINDOW:        "#b24cd8"
+  ENGINE:        "#7b2fbe"
+  ENGINE_GLOW:   "#ed9ab6"
+  COCKPIT_GLASS: "#ffafcc"
+  WING:          "#cfd5d6"
+  GREEBLE:       "#d0589a"
+  LIGHT:         "#e9bee7"
+  INTERIOR:      "#e9ecec"

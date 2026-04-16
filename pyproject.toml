@@ -44,7 +44,7 @@ spaceship-generator = "spaceship_generator.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-spaceship_generator = ["py.typed"]
+spaceship_generator = ["py.typed", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -20,11 +20,17 @@ def render_preview(
     *,
     size: tuple[int, int] = (800, 800),
     view: tuple[float, float] = (22.0, -62.0),
+    color_override: dict | None = None,
 ) -> bytes:
     """Return PNG bytes of an isometric voxel render of ``role_grid``.
 
     ``role_grid`` is indexed ``grid[x, y, z]`` (Y-up). Matplotlib's 3-D axes
     use Z-up, so axes are swapped for display.
+
+    ``color_override`` optionally maps ``Role -> (r, g, b, a)`` tuples (values
+    in 0-1). When provided, it takes precedence over ``palette.preview_color``
+    for the given roles. Used by the web UI to render with approximated
+    Minecraft block colors instead of the stylized palette colors.
     """
     if role_grid.ndim != 3:
         raise ValueError(f"role_grid must be 3D, got shape {role_grid.shape}")
@@ -41,7 +47,10 @@ def render_preview(
         mask = display == role
         if not mask.any():
             continue
-        colors[mask] = palette.preview_color(role)
+        if color_override and role in color_override:
+            colors[mask] = color_override[role]
+        else:
+            colors[mask] = palette.preview_color(role)
 
     dpi = 100
     fig = plt.figure(figsize=(size[0] / dpi, size[1] / dpi), dpi=dpi)

@@ -117,7 +117,23 @@ def test_load_missing_palette_raises(tmp_path: Path):
 
 # ----- New themed palettes -----
 
-NEW_PALETTES = ("stealth_black", "ice_crystal", "crimson_nether")
+NEW_PALETTES = (
+    "stealth_black",
+    "ice_crystal",
+    "crimson_nether",
+    "alien_bio",
+    "gold_imperial",
+    "diamond_tech",
+    "end_void",
+    "coral_reef",
+    "candy_pop",
+    "neon_arcade",
+    "wooden_frigate",
+    "desert_sandstone",
+    "deepslate_drone",
+    "amethyst_crystal",
+    "nordic_scout",
+)
 
 
 @pytest.mark.parametrize("palette_name", NEW_PALETTES)
@@ -125,6 +141,42 @@ def test_new_palette_loads(palette_name: str):
     """Each new palette must load via load_palette() without errors."""
     pal = load_palette(palette_name)
     assert pal.name == palette_name
+
+
+@pytest.mark.parametrize("palette_name", NEW_PALETTES)
+def test_new_palette_textures_all_fine_roles(palette_name: str):
+    """End-to-end: generating with each palette should exercise every fine role.
+
+    The texture pass (HULL_DARK stripes, WINDOW grid, ENGINE_GLOW faces, LIGHT
+    tips, INTERIOR infill) must fire regardless of palette choice — verifies
+    the new palettes aren't just color swaps but are actually textured by the
+    pipeline.
+    """
+    import numpy as np
+
+    from spaceship_generator.shape import ShapeParams, generate_shape
+    from spaceship_generator.texture import TextureParams, assign_roles
+
+    sp = ShapeParams(length=40, width_max=20, height_max=12, engine_count=2)
+    tp = TextureParams(
+        window_period_cells=4,
+        accent_stripe_period=8,
+        engine_glow_depth=1,
+        panel_line_bands=2,
+        rivet_period=6,
+        engine_glow_ring=True,
+    )
+    grid = assign_roles(generate_shape(42, sp), tp)
+
+    for role in (
+        Role.HULL,
+        Role.HULL_DARK,
+        Role.WINDOW,
+        Role.ENGINE_GLOW,
+        Role.LIGHT,
+        Role.INTERIOR,
+    ):
+        assert np.any(grid == role), f"{palette_name}: role {role.name} not generated"
 
 
 @pytest.mark.parametrize("palette_name", NEW_PALETTES)

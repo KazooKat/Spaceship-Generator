@@ -1,0 +1,26 @@
+name: neon_arcade
+description: Neon arcade racer. Black body, cyan/magenta glazed panels, glowstone trim.
+
+blocks:
+  HULL:          minecraft:black_concrete
+  HULL_DARK:     minecraft:purple_concrete
+  WINDOW:        minecraft:magenta_stained_glass
+  ENGINE:        minecraft:gray_concrete
+  ENGINE_GLOW:   minecraft:glowstone
+  COCKPIT_GLASS: minecraft:purple_stained_glass
+  WING:          minecraft:cyan_glazed_terracotta
+  GREEBLE:       minecraft:magenta_glazed_terracotta
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:black_wool
+
+preview_colors:
+  HULL:          "#080a0f"
+  HULL_DARK:     "#7b2fbe"
+  WINDOW:        "#b24cd8"
+  ENGINE:        "#36393d"
+  ENGINE_GLOW:   "#ffe680"
+  COCKPIT_GLASS: "#8932b8"
+  WING:          "#1e8a9a"
+  GREEBLE:       "#d0589a"
+  LIGHT:         "#acc8be"
+  INTERIOR:      "#151515"

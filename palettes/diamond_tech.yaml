@@ -1,0 +1,26 @@
+name: diamond_tech
+description: Advanced tech cruiser. Diamond plating, cyan accents, froglight drives.
+
+blocks:
+  HULL:          minecraft:diamond_block
+  HULL_DARK:     minecraft:cyan_concrete
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:polished_deepslate
+  ENGINE_GLOW:   minecraft:pearlescent_froglight
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:diamond_block
+  GREEBLE:       minecraft:cyan_terracotta
+  LIGHT:         minecraft:verdant_froglight
+  INTERIOR:      minecraft:smooth_stone
+
+preview_colors:
+  HULL:          "#5cd9d4"
+  HULL_DARK:     "#1a5560"
+  WINDOW:        "#6699d8"
+  ENGINE:        "#3a3a3f"
+  ENGINE_GLOW:   "#e9bee7"
+  COCKPIT_GLASS: "#2c262e"
+  WING:          "#6ae0db"
+  GREEBLE:       "#2f6972"
+  LIGHT:         "#c8e68c"
+  INTERIOR:      "#9e9e9e"

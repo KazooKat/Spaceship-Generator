@@ -1,0 +1,26 @@
+name: amethyst_crystal
+description: Crystal cruiser. Calcite hull, amethyst viewports, tuff/basalt detailing. (blockpalettes.com-inspired)
+
+blocks:
+  HULL:          minecraft:calcite
+  HULL_DARK:     minecraft:smooth_basalt
+  WINDOW:        minecraft:amethyst_block
+  ENGINE:        minecraft:tuff
+  ENGINE_GLOW:   minecraft:amethyst_block
+  COCKPIT_GLASS: minecraft:purple_stained_glass
+  WING:          minecraft:calcite
+  GREEBLE:       minecraft:polished_basalt
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:tuff
+
+preview_colors:
+  HULL:          "#e0e0dd"
+  HULL_DARK:     "#4a484c"
+  WINDOW:        "#8b6dcb"
+  ENGINE:        "#6b6660"
+  ENGINE_GLOW:   "#a582d8"
+  COCKPIT_GLASS: "#7f3fb2"
+  WING:          "#e0e0dd"
+  GREEBLE:       "#3c3a3e"
+  LIGHT:         "#acc8be"
+  INTERIOR:      "#6b6660"

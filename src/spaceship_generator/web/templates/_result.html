@@ -1,0 +1,58 @@
+<section class="result" data-gen-id="{{ gen_id }}">
+    <div class="preview"
+         data-preview-url="{{ url_for('preview', gen_id=gen_id) }}"
+         data-elev="22"
+         data-azim="-62">
+        <img class="preview-img"
+             src="{{ url_for('preview', gen_id=gen_id) }}"
+             alt="Spaceship preview"
+             draggable="false">
+        <div class="preview-hint">
+            Drag = orbit &bull; shift/right-drag = pan &bull; wheel = zoom &bull; dbl-click = reset
+        </div>
+    </div>
+
+    <div class="meta">
+        <h2>Ship {{ seed }}</h2>
+        <dl>
+            <dt>Seed</dt><dd>{{ seed }}</dd>
+            <dt>Palette</dt><dd>{{ palette }}</dd>
+            <dt>Grid (W &times; H &times; L)</dt>
+            <dd>{{ shape[0] }} &times; {{ shape[1] }} &times; {{ shape[2] }}</dd>
+            <dt>Blocks</dt><dd>{{ blocks }}</dd>
+            <dt>Filename</dt><dd><code>{{ filename }}</code></dd>
+        </dl>
+        <p>
+            <a class="btn" href="{{ url_for('download', gen_id=gen_id) }}">Download .litematic</a>
+            <a class="btn secondary" href="{{ url_for('index') }}">Open standalone</a>
+        </p>
+
+        {% if key_entries %}
+        <div class="block-key">
+            <h3>Block key &mdash; <code>{{ palette }}</code></h3>
+            <ul class="key-list">
+                {% for entry in key_entries %}
+                <li class="key-row">
+                    {% if entry.texture_url %}
+                    <img class="block-icon"
+                         src="{{ entry.texture_url }}"
+                         alt="{{ entry.block }}"
+                         title="{{ entry.block }}"
+                         loading="lazy"
+                         width="24" height="24">
+                    {% else %}
+                    <span class="swatch" style="background: {{ entry.color }};"
+                          aria-hidden="true"
+                          title="{{ entry.hex }} (approx. Minecraft texture avg)"></span>
+                    {% endif %}
+                    <span class="key-label">{{ entry.label }}</span>
+                    <code class="key-block">{{ entry.block }}
+                        <span class="key-hex">{{ entry.hex }}</span>
+                    </code>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</section>
