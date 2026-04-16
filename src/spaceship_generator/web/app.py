@@ -115,6 +115,17 @@ class _RateLimiter:
             self._windows.pop(k, None)
 
 
+# IPs that should never be rate-limited. Loopback covers local dev
+# against the Flask dev server or a local gunicorn — hammering
+# Generate while iterating shouldn't lock the developer out for a
+# whole window. Production deployments behind a proxy see the real
+# client IP via X-Forwarded-For, so loopback here really does mean
+# "same machine as the server" and is safe to exempt.
+_RATE_LIMIT_EXEMPT_IPS = frozenset({
+    "127.0.0.1", "::1", "localhost",
+})
+
+
 def _client_ip_key() -> str:
     """Best-effort client key for rate limiting. Honors X-Forwarded-For's
     first hop (common behind a reverse proxy); falls back to
@@ -126,6 +137,14 @@ def _client_ip_key() -> str:
         if head:
             return head
     return request.remote_addr or "anon"
+
+
+def _is_rate_limit_exempt(key: str) -> bool:
+    """True when the resolved client key is a loopback address and
+    should bypass the limiter. Kept as a separate hook so tests can
+    still exercise the 429 path by passing non-loopback
+    X-Forwarded-For headers."""
+    return key in _RATE_LIMIT_EXEMPT_IPS
 
 # Accept namespaced block ids, with optional state spec (e.g. ``[lit=true]``).
 # Matches what ``block_colors._BLOCKID_RE`` accepts so the route can safely
@@ -248,10 +267,14 @@ def create_app() -> Flask:
     app.config.setdefault("MAX_RESULTS", _DEFAULT_MAX_RESULTS)
 
     # Rate limiter — per-app instance so tests get fresh state.
+    # Default raised from 10 → 30/min after dev-loop hit the cap during
+    # normal iteration. 30 covers burst-use of the Random button and
+    # leaves enough headroom that a developer holding the UI rarely
+    # notices the limiter while still stopping true abuse.
     try:
-        _rate_max = int(os.environ.get("SHIPFORGE_RATE_LIMIT", "10"))
+        _rate_max = int(os.environ.get("SHIPFORGE_RATE_LIMIT", "30"))
     except ValueError:
-        _rate_max = 10
+        _rate_max = 30
     try:
         _rate_window = float(os.environ.get("SHIPFORGE_RATE_WINDOW", "60"))
     except ValueError:
@@ -292,7 +315,10 @@ def create_app() -> Flask:
     def _check_rate_limit(*, as_json: bool):
         """Return a 429 response if the request is over the limit, else
         None to let the view proceed."""
-        allowed, retry = rate_limiter.check(_client_ip_key())
+        key = _client_ip_key()
+        if _is_rate_limit_exempt(key):
+            return None
+        allowed, retry = rate_limiter.check(key)
         if allowed:
             return None
         return _rate_limited_response(retry, as_json=as_json)

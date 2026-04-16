@@ -699,9 +699,29 @@ def test_index_has_randomize_all_button(client):
 # is generous enough that all other tests stay under it.
 
 
+#
+# Loopback (127.0.0.1 / ::1 / "localhost") is exempt from the limiter so
+# local dev doesn't lock the developer out. The Flask test client always
+# reports ``127.0.0.1`` as ``remote_addr`` — if the rate-limit tests didn't
+# send a non-loopback ``X-Forwarded-For`` they'd now ride the exemption
+# and never hit the 429 path. TEST-NET-3 (203.0.113.0/24) is reserved
+# for documentation per RFC 5737 so it's safe to use as a synthetic
+# client address.
+_SYNTHETIC_CLIENT_IP = "203.0.113.7"
+
+
+def _rl_headers(extra: dict | None = None) -> dict:
+    h = {"X-Forwarded-For": _SYNTHETIC_CLIENT_IP}
+    if extra:
+        h.update(extra)
+    return h
+
+
 @pytest.fixture
 def rate_limited_client(tmp_path, monkeypatch):
-    """Client with rate limit = 2 per 60s for deterministic 429 behavior."""
+    """Client with rate limit = 2 per 60s for deterministic 429 behavior.
+    Tests must still send a non-loopback X-Forwarded-For to hit the
+    limiter — loopback is intentionally exempt."""
     monkeypatch.setenv("SHIPFORGE_RATE_LIMIT", "2")
     monkeypatch.setenv("SHIPFORGE_RATE_WINDOW", "60")
     app = create_app()
@@ -714,11 +734,17 @@ def rate_limited_client(tmp_path, monkeypatch):
 def test_rate_limit_html_generate(rate_limited_client):
     """Third /generate POST inside the window returns 429 with Retry-After."""
     form = _minimal_form()
-    r1 = rate_limited_client.post("/generate", data=form, follow_redirects=False)
-    r2 = rate_limited_client.post("/generate", data=form, follow_redirects=False)
+    r1 = rate_limited_client.post(
+        "/generate", data=form, headers=_rl_headers(), follow_redirects=False,
+    )
+    r2 = rate_limited_client.post(
+        "/generate", data=form, headers=_rl_headers(), follow_redirects=False,
+    )
     assert r1.status_code in (200, 302)
     assert r2.status_code in (200, 302)
-    r3 = rate_limited_client.post("/generate", data=form, follow_redirects=False)
+    r3 = rate_limited_client.post(
+        "/generate", data=form, headers=_rl_headers(), follow_redirects=False,
+    )
     assert r3.status_code == 429
     assert "Retry-After" in r3.headers
     retry = int(r3.headers["Retry-After"])
@@ -728,11 +754,11 @@ def test_rate_limit_html_generate(rate_limited_client):
 def test_rate_limit_json_api(rate_limited_client):
     """Third /api/generate hit returns JSON 429 with ``retry_after``."""
     body = _minimal_json()
-    r1 = rate_limited_client.post("/api/generate", json=body)
-    r2 = rate_limited_client.post("/api/generate", json=body)
+    r1 = rate_limited_client.post("/api/generate", json=body, headers=_rl_headers())
+    r2 = rate_limited_client.post("/api/generate", json=body, headers=_rl_headers())
     assert r1.status_code == 200
     assert r2.status_code == 200
-    r3 = rate_limited_client.post("/api/generate", json=body)
+    r3 = rate_limited_client.post("/api/generate", json=body, headers=_rl_headers())
     assert r3.status_code == 429
     payload = r3.get_json()
     assert payload["error"] == "rate_limited"
@@ -747,14 +773,31 @@ def test_rate_limit_htmx_variant_returns_error_partial(rate_limited_client):
     """When the limited request is an HTMX form POST, the 429 body is the
     ``_error.html`` partial so HTMX can swap it into the error slot."""
     form = _minimal_form()
-    rate_limited_client.post("/generate", data=form)
-    rate_limited_client.post("/generate", data=form)
+    rate_limited_client.post("/generate", data=form, headers=_rl_headers())
+    rate_limited_client.post("/generate", data=form, headers=_rl_headers())
     r3 = rate_limited_client.post(
-        "/generate", data=form, headers={"HX-Request": "true"}
+        "/generate", data=form, headers=_rl_headers({"HX-Request": "true"}),
     )
     assert r3.status_code == 429
     body = r3.get_data(as_text=True)
     assert "slow down" in body.lower() or "too many" in body.lower()
+
+
+def test_rate_limit_exempts_loopback(rate_limited_client):
+    """Requests coming from loopback (no XFF, remote_addr=127.0.0.1) must
+    NOT be rate-limited even with a low limit set. This protects local
+    dev + the Flask dev server from accidental lockout while iterating."""
+    form = _minimal_form()
+    # Fire WAY past the configured cap of 2/min. Loopback should ride
+    # through every one.
+    for i in range(6):
+        resp = rate_limited_client.post(
+            "/generate", data=form, follow_redirects=False,
+        )
+        assert resp.status_code in (200, 302), (
+            f"loopback request #{i + 1} got {resp.status_code} "
+            f"— loopback exemption is broken"
+        )
 
 
 def test_rate_limit_disabled_with_env_zero(tmp_path, monkeypatch):
@@ -774,20 +817,21 @@ def test_rate_limit_disabled_with_env_zero(tmp_path, monkeypatch):
 def test_rate_limit_isolates_by_ip(rate_limited_client):
     """Different X-Forwarded-For heads get their own counters."""
     form = _minimal_form()
+    # 203.0.113.0/24 is TEST-NET-3 (RFC 5737) — safe synthetic addrs.
     rate_limited_client.post(
-        "/generate", data=form, headers={"X-Forwarded-For": "10.0.0.1"}
+        "/generate", data=form, headers={"X-Forwarded-For": "203.0.113.1"}
     )
     rate_limited_client.post(
-        "/generate", data=form, headers={"X-Forwarded-For": "10.0.0.1"}
+        "/generate", data=form, headers={"X-Forwarded-For": "203.0.113.1"}
     )
-    # 10.0.0.1 now exhausted.
+    # 203.0.113.1 now exhausted.
     exhausted = rate_limited_client.post(
-        "/generate", data=form, headers={"X-Forwarded-For": "10.0.0.1"}
+        "/generate", data=form, headers={"X-Forwarded-For": "203.0.113.1"}
     )
     assert exhausted.status_code == 429
     # Different IP is still fresh.
     ok = rate_limited_client.post(
-        "/generate", data=form, headers={"X-Forwarded-For": "10.0.0.2"}
+        "/generate", data=form, headers={"X-Forwarded-For": "203.0.113.2"}
     )
     assert ok.status_code in (200, 302)
 
