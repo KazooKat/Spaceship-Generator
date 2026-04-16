@@ -1,0 +1,26 @@
+name: rustic_salvage
+description: Weathered copper, deepslate, dark oak. Scrapper / salvage freighter aesthetic.
+
+blocks:
+  HULL:          minecraft:weathered_copper
+  HULL_DARK:     minecraft:deepslate
+  WINDOW:        minecraft:brown_stained_glass
+  ENGINE:        minecraft:blackstone
+  ENGINE_GLOW:   minecraft:fire_coral_block
+  COCKPIT_GLASS: minecraft:orange_stained_glass
+  WING:          minecraft:oxidized_copper
+  GREEBLE:       minecraft:copper_block
+  LIGHT:         minecraft:jack_o_lantern
+  INTERIOR:      minecraft:dark_oak_planks
+
+preview_colors:
+  HULL:          "#5b9e90"
+  HULL_DARK:     "#2d2d33"
+  WINDOW:        "#4c3320"
+  ENGINE:        "#1a1a1a"
+  ENGINE_GLOW:   "#c84a2a"
+  COCKPIT_GLASS: "#b56930"
+  WING:          "#2a8a78"
+  GREEBLE:       "#c87b45"
+  LIGHT:         "#f0a040"
+  INTERIOR:      "#3f2a18"

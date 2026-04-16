@@ -1,0 +1,26 @@
+name: sci_fi_industrial
+description: Default clean industrial sci-fi palette. Grey hull, cyan windows, lit engines.
+
+blocks:
+  HULL:          minecraft:light_gray_concrete
+  HULL_DARK:     minecraft:gray_concrete
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:polished_blackstone
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:iron_block
+  GREEBLE:       minecraft:polished_andesite
+  LIGHT:         minecraft:redstone_lamp[lit=true]
+  INTERIOR:      minecraft:smooth_stone
+
+preview_colors:
+  HULL:          "#c0c0c0"
+  HULL_DARK:     "#6a6a6a"
+  WINDOW:        "#70b0ff"
+  ENGINE:        "#2a2a2a"
+  ENGINE_GLOW:   "#f0e060"
+  COCKPIT_GLASS: "#3a2a5a"
+  WING:          "#d8d8d8"
+  GREEBLE:       "#9a9a9a"
+  LIGHT:         "#ffd060"
+  INTERIOR:      "#b0b0b0"

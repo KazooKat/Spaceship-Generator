@@ -1,0 +1,26 @@
+name: sleek_modern
+description: Monochrome white/black with quartz accents. Clean, modern civilian-ship look.
+
+blocks:
+  HULL:          minecraft:white_concrete
+  HULL_DARK:     minecraft:black_concrete
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:black_concrete
+  ENGINE_GLOW:   minecraft:end_rod
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:quartz_block
+  GREEBLE:       minecraft:smooth_quartz
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:white_terracotta
+
+preview_colors:
+  HULL:          "#f2f2f2"
+  HULL_DARK:     "#101010"
+  WINDOW:        "#70b0ff"
+  ENGINE:        "#101010"
+  ENGINE_GLOW:   "#ffffff"
+  COCKPIT_GLASS: "#3a2a5a"
+  WING:          "#e8e4d8"
+  GREEBLE:       "#eae6d8"
+  LIGHT:         "#d8e8ff"
+  INTERIOR:      "#d8d0c4"
