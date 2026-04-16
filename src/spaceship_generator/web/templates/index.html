@@ -101,8 +101,90 @@
         </fieldset>
 
         <button type="submit">Generate</button>
-        <span id="gen-indicator" class="indicator" aria-hidden="true">generating&hellip;</span>
+        <button type="button" id="randomize-all" class="btn secondary"
+                data-role="randomize-all">
+            Generate random ship
+        </button>
+        <div id="gen-indicator" class="progress-bar" role="progressbar"
+             aria-label="Generating spaceship" aria-valuetext="Generating"
+             aria-busy="true">
+            <div class="progress-bar__track"></div>
+        </div>
     </form>
+
+    <script>
+        // "Generate random ship": randomize every parameter within its
+        // declared min/max (or option set), then submit the form. Submission
+        // goes through HTMX because the form has hx-post, so the result
+        // panel swaps in without a full page reload.
+        (function () {
+            "use strict";
+            function randomizeAndSubmit() {
+                var form = document.querySelector(".gen-form");
+                if (!form) return;
+
+                // Seed: full int32 range.
+                if (form.seed) {
+                    form.seed.value = Math.floor(Math.random() * 2147483648);
+                }
+
+                // Every <input type="number"> with min+max: sample uniformly
+                // and round to the input's step precision.
+                form.querySelectorAll('input[type="number"]').forEach(function (inp) {
+                    if (inp.name === "seed") return;
+                    var lo = parseFloat(inp.min);
+                    var hi = parseFloat(inp.max);
+                    if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo) return;
+                    var step = parseFloat(inp.step);
+                    if (!Number.isFinite(step) || step <= 0) step = 1;
+                    var v = lo + Math.random() * (hi - lo);
+                    if (step >= 1) {
+                        v = Math.round(v);
+                    } else {
+                        // Snap to step grid.
+                        v = Math.round((v - lo) / step) * step + lo;
+                        v = parseFloat(v.toFixed(4));
+                    }
+                    inp.value = String(v);
+                });
+
+                // Palette: pick any concrete palette (skip the 'random' meta-option
+                // so the user actually sees a chosen palette name in the form).
+                var pal = form.querySelector('select[name="palette"]');
+                if (pal) {
+                    var palOpts = Array.from(pal.options).filter(function (o) {
+                        return o.value && o.value !== "random";
+                    });
+                    if (palOpts.length) {
+                        pal.value = palOpts[Math.floor(Math.random() * palOpts.length)].value;
+                    }
+                }
+
+                // Cockpit: uniform over available styles.
+                var cockpit = form.querySelector('select[name="cockpit"]');
+                if (cockpit && cockpit.options.length) {
+                    var ci = Math.floor(Math.random() * cockpit.options.length);
+                    cockpit.value = cockpit.options[ci].value;
+                }
+
+                // Engine glow ring: 50/50.
+                var ring = form.querySelector('input[name="engine_glow_ring"]');
+                if (ring) ring.checked = Math.random() < 0.5;
+
+                // Submit. requestSubmit triggers both native and HTMX handlers.
+                if (typeof form.requestSubmit === "function") {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                var btn = document.getElementById("randomize-all");
+                if (btn) btn.addEventListener("click", randomizeAndSubmit);
+            });
+        })();
+    </script>
 
     <aside id="result-panel" class="result-panel" aria-live="polite">
         <p class="placeholder">Generate a ship to see the preview &amp; block key here.</p>

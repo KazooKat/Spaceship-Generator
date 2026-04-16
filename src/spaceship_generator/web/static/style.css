@@ -345,6 +345,50 @@ button.seed-random {
 .htmx-request .indicator,
 .htmx-request.indicator { display: inline; }
 
+/* Indeterminate progress bar for /generate (HTMX in-flight indicator) */
+.progress-bar {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 0.75rem;
+    width: 180px;
+    height: 6px;
+    border-radius: 3px;
+    background: #0f131a;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+}
+.htmx-request.progress-bar,
+.htmx-request .progress-bar {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.18s ease, visibility 0s linear 0s;
+}
+.progress-bar__track {
+    height: 100%;
+    width: 40%;
+    border-radius: 3px;
+    background: linear-gradient(
+        90deg,
+        rgba(90, 168, 255, 0) 0%,
+        var(--accent) 50%,
+        rgba(90, 168, 255, 0) 100%
+    );
+    transform: translateX(-100%);
+    animation: progress-slide 1.15s ease-in-out infinite;
+}
+@keyframes progress-slide {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .progress-bar__track {
+        animation-duration: 2.5s;
+    }
+}
+
 dl { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 1rem; }
 dt { color: var(--muted); font-size: 0.9rem; }
 dd { margin: 0; }
@@ -359,3 +403,25 @@ code {
 @media (max-width: 640px) {
     .result { grid-template-columns: 1fr; }
 }
+
+/* --- WebGL preview overhaul --- */
+.result .preview-canvas {
+    display: block;
+    width: 100%;
+    height: 420px;
+    max-width: 100%;
+    touch-action: none;
+    user-select: none;
+    cursor: grab;
+    background: #0a0c11;
+    outline: none;
+}
+.result .preview-canvas.dragging { cursor: grabbing; }
+.result .preview-canvas.panning { cursor: move; }
+
+.result .preview-img-fallback {
+    display: block;
+    width: 100%;
+    pointer-events: none;
+}
+

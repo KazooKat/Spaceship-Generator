@@ -1,12 +1,15 @@
 <section class="result" data-gen-id="{{ gen_id }}">
     <div class="preview"
-         data-preview-url="{{ url_for('preview', gen_id=gen_id) }}"
-         data-elev="22"
-         data-azim="-62">
-        <img class="preview-img"
+         data-preview-url="{{ url_for('preview', gen_id=gen_id) }}">
+        <canvas class="preview-canvas"
+                data-voxels-url="{{ url_for('voxels', gen_id=gen_id) }}"
+                data-preview-url="{{ url_for('preview', gen_id=gen_id) }}"
+                aria-label="Spaceship preview"></canvas>
+        <img class="preview-img-fallback"
              src="{{ url_for('preview', gen_id=gen_id) }}"
              alt="Spaceship preview"
-             draggable="false">
+             draggable="false"
+             style="display: none;">
         <div class="preview-hint">
             Drag = orbit &bull; shift/right-drag = pan &bull; wheel = zoom &bull; dbl-click = reset
         </div>

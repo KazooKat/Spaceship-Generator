@@ -7,11 +7,14 @@ Run with::
 
 from __future__ import annotations
 
+import base64
 import io
 import random
 import uuid
 from collections import OrderedDict
 from pathlib import Path
+
+import numpy as np
 
 from flask import (
     Flask,
@@ -249,20 +252,21 @@ def create_app() -> Flask:
             },
         )
 
-    def _apply_approx_preview(result: GenerationResult) -> None:
-        """Replace ``result.preview_png`` with an approximated-color render.
+    def _render_default_preview(result: GenerationResult) -> bytes | None:
+        """Render (and return) the default-view approximated-color preview.
 
-        The bundled palette YAML colors are stylized; this swap makes the
-        preview match the actual Minecraft block textures (via cached mcmeta
-        samples) so the on-page preview and block key agree.
+        Used by ``/preview/<gen_id>.png`` on demand. The WebGL renderer on
+        the page no longer needs this PNG — it is kept only as a fallback
+        for browsers without WebGL and for scripting consumers that still
+        fetch ``preview_url`` from ``/api/generate``.
         """
         try:
             pal = load_palette(result.palette_name)
         except (FileNotFoundError, ValueError):
-            return
+            return None
         from ..preview import render_preview
 
-        result.preview_png = render_preview(
+        return render_preview(
             result.role_grid,
             pal,
             size=(700, 700),
@@ -289,14 +293,16 @@ def create_app() -> Flask:
                 _build_params_from_source(request.form)
             )
 
+            # Skip eager matplotlib render: the client uses the WebGL canvas
+            # which pulls voxel data from ``/voxels/<gen_id>.json``. The
+            # ``/preview/<gen_id>.png`` route still works, but renders lazily.
             result = generate(
                 seed,
                 palette=palette_name,
                 shape_params=shape_params,
                 texture_params=texture_params,
                 out_dir=_out_dir(),
-                with_preview=True,
-                preview_size=(700, 700),
+                with_preview=False,
             )
         except (ValueError, FileNotFoundError) as exc:
             if is_htmx:
@@ -316,7 +322,6 @@ def create_app() -> Flask:
                 400,
             )
 
-        _apply_approx_preview(result)
         gen_id = _store(result)
         if is_htmx:
             return _render_result_partial(gen_id, result)
@@ -350,10 +355,15 @@ def create_app() -> Flask:
         raw_elev = request.args.get("elev")
         raw_azim = request.args.get("azim")
 
-        # No view override: serve the cached approximated-color PNG.
+        # No view override: lazily render and cache the approximated-color
+        # default-view PNG. The WebGL canvas makes this route unnecessary for
+        # the normal UI flow — it remains for no-WebGL fallback and scripting.
         if raw_elev is None and raw_azim is None:
             if result.preview_png is None:
-                abort(404)
+                png = _render_default_preview(result)
+                if png is None:
+                    abort(404)
+                result.preview_png = png
             return send_file(io.BytesIO(result.preview_png), mimetype="image/png")
 
         try:
@@ -378,6 +388,82 @@ def create_app() -> Flask:
             color_override=_approximate_role_colors(pal),
         )
         return send_file(io.BytesIO(png), mimetype="image/png")
+
+    @app.route("/voxels/<gen_id>.json")
+    def voxels(gen_id: str):
+        """Return surface voxels + per-role colors as JSON for client WebGL.
+
+        Response shape::
+
+            {
+              "dims": [W, H, L],           # role_grid is indexed [x, y, z]
+              "count": N,                  # number of surface voxels
+              "voxels": "<base64 Int16Array>",
+                                           # length = 4 * N; (x, y, z, role)
+                                           # tuples, Int16 little-endian
+              "colors": {"1": [r,g,b,a], ...}   # role enum int -> 0-1 RGBA
+            }
+
+        Only surface voxels (filled cells with at least one empty 6-neighbor)
+        are emitted — the interior cubes are invisible, and including them
+        would bloat the payload by 5-10x for typical ships.
+        """
+        result = results.get(gen_id)
+        if result is None:
+            abort(404)
+
+        grid = result.role_grid
+        if grid.ndim != 3:
+            abort(500)
+
+        # Surface mask: filled cell with at least one empty 6-neighbor.
+        filled = grid != int(Role.EMPTY)
+        # Shift by one on each axis to compute neighbor-emptiness per voxel.
+        # Cells on the grid boundary are surface by definition (neighbor outside
+        # the grid is implicitly empty).
+        pad = np.pad(filled, 1, mode="constant", constant_values=False)
+        neighbors_filled = (
+            pad[:-2, 1:-1, 1:-1]
+            & pad[2:, 1:-1, 1:-1]
+            & pad[1:-1, :-2, 1:-1]
+            & pad[1:-1, 2:, 1:-1]
+            & pad[1:-1, 1:-1, :-2]
+            & pad[1:-1, 1:-1, 2:]
+        )
+        surface = filled & ~neighbors_filled
+
+        xs, ys, zs = np.nonzero(surface)
+        roles = grid[xs, ys, zs].astype(np.int16)
+        # Pack as interleaved Int16 (x, y, z, role). Using Int16 bounds
+        # each coordinate to [-32768, 32767] which is fine for ship grids.
+        packed = np.empty((xs.size, 4), dtype=np.int16)
+        packed[:, 0] = xs.astype(np.int16)
+        packed[:, 1] = ys.astype(np.int16)
+        packed[:, 2] = zs.astype(np.int16)
+        packed[:, 3] = roles
+        # Ensure little-endian encoding for predictable client decoding.
+        raw = packed.astype("<i2", copy=False).tobytes()
+        b64 = base64.b64encode(raw).decode("ascii")
+
+        try:
+            pal = load_palette(result.palette_name)
+        except (FileNotFoundError, ValueError):
+            abort(404)
+        approx = _approximate_role_colors(pal)
+        # JSON keys must be strings.
+        colors_json: dict[str, list[float]] = {}
+        for role, rgba in approx.items():
+            colors_json[str(int(role))] = [float(v) for v in rgba]
+
+        W, H, L = grid.shape
+        return jsonify(
+            {
+                "dims": [int(W), int(H), int(L)],
+                "count": int(xs.size),
+                "voxels": b64,
+                "colors": colors_json,
+            }
+        )
 
     @app.route("/block-texture/<path:block_id>.png")
     def block_texture(block_id: str):
@@ -423,19 +509,20 @@ def create_app() -> Flask:
                 _build_params_from_source(payload)
             )
 
+            # Preview PNG is rendered lazily by the /preview/<id>.png route
+            # when a consumer actually fetches it. The default web flow now
+            # uses the WebGL canvas and /voxels/<id>.json instead.
             result = generate(
                 seed,
                 palette=palette_name,
                 shape_params=shape_params,
                 texture_params=texture_params,
                 out_dir=_out_dir(),
-                with_preview=True,
-                preview_size=(700, 700),
+                with_preview=False,
             )
         except (ValueError, FileNotFoundError, TypeError) as exc:
             return jsonify({"error": str(exc)}), 400
 
-        _apply_approx_preview(result)
         gen_id = _store(result)
         return jsonify(
             {
