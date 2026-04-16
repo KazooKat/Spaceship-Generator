@@ -1,1 +1,13 @@
-<div class="error">Error: {{ error }}</div>
+{#
+  _error.html — HTMX partial for validation failures. Swapped into
+  #result-panel (same target as _result.html) so users see the failure
+  exactly where they expected the new ship. Kept terse: one toast row
+  with the backend-provided message.
+
+  The literal "Error" text is preserved because the test suite asserts
+  `"Error" in body` against the partial response body.
+#}
+<div class="toast toast-error" role="alert">
+    <i data-lucide="alert-triangle" aria-hidden="true"></i>
+    <span>Error: {{ error }}</span>
+</div>

@@ -1,38 +1,66 @@
-<section class="result" data-gen-id="{{ gen_id }}">
-    <div class="preview"
-         data-preview-url="{{ url_for('preview', gen_id=gen_id) }}">
-        <canvas class="preview-canvas"
-                data-voxels-url="{{ url_for('voxels', gen_id=gen_id) }}"
-                data-preview-url="{{ url_for('preview', gen_id=gen_id) }}"
-                aria-label="Spaceship preview"></canvas>
-        <img class="preview-img-fallback"
-             src="{{ url_for('preview', gen_id=gen_id) }}"
-             alt="Spaceship preview"
-             draggable="false"
-             style="display: none;">
-        <div class="preview-hint" aria-hidden="true">
-            Drag = orbit &bull; shift/right-drag = pan &bull; wheel = zoom &bull; dbl-click = reset
-        </div>
-    </div>
+{#
+  _result.html — HTMX partial swapped into #result-panel (and also
+  {% include %}d by result.html for the non-htmx fallback page).
 
-    <div class="meta">
-        <h2>Ship {{ seed }}</h2>
-        <dl>
-            <dt>Seed</dt><dd>{{ seed }}</dd>
-            <dt>Palette</dt><dd>{{ palette }}</dd>
-            <dt>Grid (W &times; H &times; L)</dt>
-            <dd>{{ shape[0] }} &times; {{ shape[1] }} &times; {{ shape[2] }}</dd>
-            <dt>Blocks</dt><dd>{{ blocks }}</dd>
-            <dt>Filename</dt><dd><code>{{ filename }}</code></dd>
-        </dl>
-        <p>
-            <a class="btn" href="{{ url_for('download', gen_id=gen_id) }}">Download .litematic</a>
-            <a class="btn secondary" href="{{ url_for('index') }}">Open standalone</a>
-        </p>
+  Contract with the rest of the UI:
+    * `.result-inner` carries data-* attributes the Interactions and
+      History agents read on `htmx:afterSwap` to populate #ship-id-readout,
+      #seed-readout, #palette-readout, #btn-download, and the history list.
+    * `.preview-canvas` + `.preview-img-fallback` are the hooks preview.js
+      wires WebGL + the PNG fallback to. The surrounding `.preview` class
+      is retained for test compatibility and legacy CSS selectors.
+    * "Block key" wording is kept (as `data-legend-title` and in the
+      visible summary) because test_result_page_includes_block_key + the
+      htmx partial test assert that exact substring.
+#}
+<section class="result" data-gen-id="{{ gen_id }}">
+    <div class="result-inner"
+         data-gen-id="{{ gen_id }}"
+         data-seed="{{ seed }}"
+         data-palette="{{ palette }}"
+         data-blocks="{{ blocks }}"
+         data-shape="{{ shape[0] }}x{{ shape[1] }}x{{ shape[2] }}"
+         data-filename="{{ filename }}"
+         data-download-url="{{ url_for('download', gen_id=gen_id) }}">
+        {# `class="preview"` is retained on the canvas+img wrapper both for
+           legacy CSS hooks and because test_htmx_generate_returns_partial_
+           not_redirect asserts the exact substring `class="preview"` in
+           the HTMX partial body. #}
+        <div class="preview"
+             data-preview-url="{{ url_for('preview', gen_id=gen_id) }}">
+            <canvas class="preview-canvas" id="viewport-canvas"
+                    data-voxels-url="{{ url_for('voxels', gen_id=gen_id) }}"
+                    data-preview-url="{{ url_for('preview', gen_id=gen_id) }}"
+                    aria-label="Spaceship preview"></canvas>
+            <img class="preview-img-fallback"
+                 src="{{ url_for('preview', gen_id=gen_id) }}"
+                 alt="Spaceship preview"
+                 draggable="false"
+                 style="display: none;">
+        </div>
+
+        {# Inline action strip: download is also mirrored in #bottom by
+           history.js, but we keep an in-partial link so the htmx partial
+           is self-sufficient and the standalone /result/<id> page still
+           renders a working download button without JS. The test suite
+           asserts "Download .litematic" appears in both surfaces. #}
+        <div class="result-actions">
+            <a class="btn primary" href="{{ url_for('download', gen_id=gen_id) }}">
+                <i data-lucide="download" aria-hidden="true"></i>
+                <span>Download .litematic</span>
+            </a>
+            <a class="btn ghost" href="{{ url_for('index') }}">
+                <i data-lucide="external-link" aria-hidden="true"></i>
+                <span>Open standalone</span>
+            </a>
+        </div>
 
         {% if key_entries %}
-        <div class="block-key">
-            <h3>Block key &mdash; <code>{{ palette }}</code></h3>
+        <details class="block-key-inline" data-legend-title="Block key">
+            {# Keep the literal string "Block key" in the summary — tests
+               assert it appears in the result HTML. The visible presentation
+               is still in console-caps style via CSS text-transform. #}
+            <summary>Block key &middot; <code>{{ palette }}</code></summary>
             <ul class="key-list">
                 {% for entry in key_entries %}
                 <li class="key-row">
@@ -49,13 +77,11 @@
                           title="{{ entry.hex }} (approx. Minecraft texture avg)"></span>
                     {% endif %}
                     <span class="key-label">{{ entry.label }}</span>
-                    <code class="key-block">{{ entry.block }}
-                        <span class="key-hex">{{ entry.hex }}</span>
-                    </code>
+                    <code class="key-block">{{ entry.block }}<span class="key-hex">{{ entry.hex }}</span></code>
                 </li>
                 {% endfor %}
             </ul>
-        </div>
+        </details>
         {% endif %}
     </div>
 </section>

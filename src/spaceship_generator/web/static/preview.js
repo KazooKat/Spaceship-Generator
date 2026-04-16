@@ -424,6 +424,15 @@
         let frameCount = 0;
         let frameCountWindowStart = performance.now();
         let fpsEstimate = 0;
+
+        // UI subscribers. onFrame fires ~10Hz with current stats; onLoaded
+        // fires once when buffers have been uploaded and the first draw is
+        // scheduled. Both are drained in destroy() to avoid leaking closures
+        // across HTMX canvas swaps.
+        let frameSubs = [];
+        let loadedSubs = [];
+        let lastFrameDispatch = 0;
+        const FRAME_DISPATCH_MS = 100;  // ~10Hz throttle
         // Expose for devtools: window.__shipPreview.fps()
         canvas.__preview = {
             getFps: function () { return fpsEstimate; },
@@ -559,6 +568,28 @@
                 frameCount = 0;
                 frameCountWindowStart = now;
             }
+
+            // Broadcast stats to any attached HUD at ~10Hz. Dispatch a
+            // DOM CustomEvent on the canvas and also call subscriber
+            // callbacks registered via window.shipPreview.onFrame.
+            if (now - lastFrameDispatch >= FRAME_DISPATCH_MS) {
+                lastFrameDispatch = now;
+                const detail = {
+                    fps: fpsEstimate,
+                    voxelCount: count,
+                    opaqueCount: opaqueCount,
+                    transCount: transCount,
+                };
+                try {
+                    canvas.dispatchEvent(new CustomEvent("ship-preview-stats", { detail: detail }));
+                } catch (e) { /* no CustomEvent in very old browsers */ }
+                for (let i = 0; i < frameSubs.length; i++) {
+                    const cb = frameSubs[i];
+                    if (typeof cb === "function") {
+                        try { cb(detail); } catch (e) { /* swallow subscriber errors */ }
+                    }
+                }
+            }
         }
 
         function requestDraw() {
@@ -598,7 +629,10 @@
             lastX = ev.clientX;
             lastY = ev.clientY;
             if (mode === "orbit") {
-                cam.theta -= dx * ORBIT_SENSITIVITY;
+                // Orbit: drag-right rotates the camera to the right
+                // (theta increases). Inverse of the original convention
+                // per user preference.
+                cam.theta += dx * ORBIT_SENSITIVITY;
                 cam.phi += dy * ORBIT_SENSITIVITY;
                 const lim = Math.PI / 2 - 0.01;
                 if (cam.phi > lim) cam.phi = lim;
@@ -632,14 +666,14 @@
                 const tanHalfFov = Math.tan(cam.fov / 2);
                 const pxScaleY = (2 * targetDist * tanHalfFov) / Math.max(1, canvas.clientHeight);
                 const pxScaleX = (2 * targetDist * tanHalfFov) / Math.max(1, canvas.clientWidth);
-                // Drag-to-scroll convention: dragging the mouse right by dx
-                // pixels should move the pan target LEFT along the camera's
-                // right axis so the feature under the cursor appears to
-                // travel with the cursor. Vertical (dy) keeps its sign.
-                // NOTE: sign on dx is user-confirmed correct — do not flip.
-                cam.target[0] += rx * dx * pxScaleX + ux * dy * pxScaleY;
-                cam.target[1] += ry * dx * pxScaleX + uy * dy * pxScaleY;
-                cam.target[2] += rz * dx * pxScaleX + uz * dy * pxScaleY;
+                // Pan convention (user-preferred): horizontal drag moves
+                // the target along the camera's right axis in the
+                // opposite direction of dx so the camera "walks" with the
+                // cursor. Per-axis pxScale kept for square-correct
+                // sensitivity on non-square canvases.
+                cam.target[0] += -rx * dx * pxScaleX + ux * dy * pxScaleY;
+                cam.target[1] += -ry * dx * pxScaleX + uy * dy * pxScaleY;
+                cam.target[2] += -rz * dx * pxScaleX + uz * dy * pxScaleY;
             }
             requestDraw();
         };
@@ -668,6 +702,41 @@
             cam.target = [0, 0, 0];
             requestDraw();
         };
+
+        // --- view presets (additive, sign-agnostic) --------------------------
+        //
+        // Presets set cam.theta / cam.phi absolutely rather than via deltas so
+        // the user's preferred orbit / pan sign conventions above remain the
+        // sole authority over drag-direction semantics.
+        function setViewPreset(preset) {
+            const poleLim = Math.PI / 2 - 0.01;
+            switch (preset) {
+                case "persp":
+                    cam.theta = -Math.PI / 3;
+                    cam.phi = 0.5;
+                    cam.radius = modelSize * 1.1;
+                    break;
+                case "top":
+                    cam.theta = 0;
+                    cam.phi = poleLim;
+                    cam.radius = modelSize * 1.2;
+                    break;
+                case "front":
+                    cam.theta = -Math.PI / 2;
+                    cam.phi = 0;
+                    cam.radius = modelSize * 1.2;
+                    break;
+                case "side":
+                    cam.theta = 0;
+                    cam.phi = 0;
+                    cam.radius = modelSize * 1.2;
+                    break;
+                default:
+                    return;
+            }
+            cam.target = [0, 0, 0];
+            requestDraw();
+        }
 
         // Context-loss handling. On loss, suppress further draws (GL calls
         // against a lost context throw INVALID_OPERATION) and surface the
@@ -729,9 +798,142 @@
                 window.removeEventListener("resize", onWindowResize);
                 onWindowResize = null;
             }
+            // Drop any HUD subscribers bound to this renderer. The HUD
+            // re-subscribes when a new canvas init binds new window.shipPreview
+            // closures after an HTMX swap.
+            frameSubs = [];
+            loadedSubs = [];
             // Mark lost so any late raf callbacks short-circuit.
             contextLost = true;
             rafPending = true;
+        }
+
+        // --- HUD-facing helpers ---------------------------------------------
+
+        function getCamera() {
+            return {
+                theta: cam.theta,
+                phi: cam.phi,
+                radius: cam.radius,
+                target: [cam.target[0], cam.target[1], cam.target[2]],
+                fov: cam.fov,
+            };
+        }
+
+        function getStats() {
+            return {
+                fps: fpsEstimate,
+                voxelCount: count,
+                opaqueCount: opaqueCount,
+                transCount: transCount,
+            };
+        }
+
+        function onFrame(cb) {
+            if (typeof cb !== "function") return function () {};
+            frameSubs.push(cb);
+            return function unsubscribe() {
+                const idx = frameSubs.indexOf(cb);
+                if (idx !== -1) frameSubs.splice(idx, 1);
+            };
+        }
+
+        function onLoaded(cb) {
+            if (typeof cb !== "function") return function () {};
+            loadedSubs.push(cb);
+            return function unsubscribe() {
+                const idx = loadedSubs.indexOf(cb);
+                if (idx !== -1) loadedSubs.splice(idx, 1);
+            };
+        }
+
+        // Called by initCanvas() after buffer upload completes so the HUD
+        // can refresh its voxel-count readout and thumbnails.
+        function fireLoaded() {
+            let genId = null;
+            try {
+                const scope = canvas.closest(".result-inner, .result");
+                if (scope) genId = scope.getAttribute("data-gen-id");
+            } catch (e) { /* no closest() in very old browsers */ }
+            const detail = { voxelCount: count, genId: genId };
+            try {
+                canvas.dispatchEvent(new CustomEvent("ship-preview-loaded", { detail: detail }));
+            } catch (e) { /* best-effort */ }
+            for (let i = 0; i < loadedSubs.length; i++) {
+                const cb = loadedSubs[i];
+                if (typeof cb === "function") {
+                    try { cb(detail); } catch (e) { /* swallow */ }
+                }
+            }
+        }
+
+        // Produce a PNG data URL at (approximately) the requested size.
+        // Strategy: read the live GL canvas via toDataURL; if a target size
+        // differs from the current canvas, downscale via a 2D offscreen.
+        // If the context was lost, fall back to the static PNG fallback URL
+        // stored on the canvas dataset by app.js.
+        //
+        // Caveat: the GL context is created without preserveDrawingBuffer,
+        // so the browser may have cleared the backbuffer before toDataURL
+        // runs. Calling draw() immediately before toDataURL reliably works
+        // on Chromium / Firefox / Safari in practice because the clear
+        // happens at the next composite boundary, not synchronously after
+        // draw. The empty-image case falls back to the server-rendered PNG
+        // URL stored on canvas.dataset.previewUrl.
+        function snapshotPNG(size) {
+            if (contextLost) return canvas.dataset.previewUrl || "";
+            try {
+                draw();
+                const src = canvas.toDataURL("image/png");
+                if (!src || src === "data:,") return canvas.dataset.previewUrl || "";
+                if (!size || size <= 0) return src;
+                const target = Math.max(1, Math.floor(size));
+                const cw = canvas.width, ch = canvas.height;
+                if (target >= cw && target >= ch) return src;
+                const scale = Math.min(target / cw, target / ch);
+                const outW = Math.max(1, Math.floor(cw * scale));
+                const outH = Math.max(1, Math.floor(ch * scale));
+                const off = document.createElement("canvas");
+                off.width = outW;
+                off.height = outH;
+                const ctx = off.getContext("2d");
+                if (!ctx) return src;
+                // Paint the original dataURL into the offscreen via an <img>
+                // synchronously-ish: the data URL is already in memory so the
+                // image decodes near-immediately, but we still have to wait
+                // for onload. Return a promise? Simpler: draw the GL canvas
+                // directly — drawImage can take a canvas source.
+                try {
+                    ctx.drawImage(canvas, 0, 0, outW, outH);
+                } catch (e) {
+                    return src;
+                }
+                return off.toDataURL("image/png");
+            } catch (e) {
+                return canvas.dataset.previewUrl || "";
+            }
+        }
+
+        function fullscreen() {
+            const viewport = document.getElementById("viewport");
+            const target = viewport || canvas;
+            const req = target.requestFullscreen
+                || target.webkitRequestFullscreen
+                || target.mozRequestFullScreen
+                || target.msRequestFullscreen;
+            if (typeof req !== "function") return false;
+            try {
+                const ret = req.call(target);
+                // Some vendors return a Promise, others undefined. Suppress
+                // any rejection so we don't log noisy errors when the user
+                // cancels the fullscreen request.
+                if (ret && typeof ret.then === "function") {
+                    ret.catch(function () { /* ignore */ });
+                }
+                return true;
+            } catch (e) {
+                return false;
+            }
         }
 
         return {
@@ -740,6 +942,16 @@
             destroy: destroy,
             getFps: function () { return fpsEstimate; },
             getCount: function () { return count; },
+            // HUD / Interactions API ------------------------------------------
+            setView: setViewPreset,
+            resetCamera: onDblClick,
+            getCamera: getCamera,
+            getStats: getStats,
+            snapshotPNG: snapshotPNG,
+            fullscreen: fullscreen,
+            onFrame: onFrame,
+            onLoaded: onLoaded,
+            fireLoaded: fireLoaded,
         };
     }
 
@@ -795,6 +1007,15 @@
                 canvas.__previewMs = t1 - t0;
                 // Mark ready so test/automation code can detect first-paint.
                 canvas.dataset.previewReady = "1";
+                // Point window.shipPreview at the newest renderer so the HUD
+                // and Interactions agent see live camera / stats / events.
+                bindGlobalShipPreview(r);
+                // Fire the loaded event after the global is bound so any
+                // synchronous onLoaded subscriber added via the global sees
+                // the same renderer it will later query for stats.
+                if (typeof r.fireLoaded === "function") {
+                    try { r.fireLoaded(); } catch (e) { /* best-effort */ }
+                }
             })
             .catch(function (err) {
                 console.warn("preview load failed:", err);
@@ -812,6 +1033,99 @@
     window.SpaceshipPreview = {
         initAll: initAll,
         initCanvas: initCanvas,
+    };
+
+    // --- window.shipPreview (HUD / Interactions API) ------------------------
+    //
+    // A stable global facade that delegates to the currently-active renderer.
+    // HTMX swaps replace the canvas on every generate; bindGlobalShipPreview
+    // (called from the fetch `.then` handler) re-points these closures at the
+    // new renderer. Subscribers added to the facade before any renderer
+    // exists are buffered and re-attached on first bind.
+    let activeRenderer = null;
+    const pendingFrameSubs = [];
+    const pendingLoadedSubs = [];
+
+    function bindGlobalShipPreview(renderer) {
+        activeRenderer = renderer;
+        // Re-attach any subscribers that were registered before a renderer
+        // existed (or while between renderers). We leave the pending arrays
+        // in place so a subsequent swap re-binds them to the next renderer
+        // too — HUD wants its subscription to survive generation cycles.
+        for (let i = 0; i < pendingFrameSubs.length; i++) {
+            try { renderer.onFrame(pendingFrameSubs[i]); } catch (e) { /* ignore */ }
+        }
+        for (let i = 0; i < pendingLoadedSubs.length; i++) {
+            try { renderer.onLoaded(pendingLoadedSubs[i]); } catch (e) { /* ignore */ }
+        }
+    }
+
+    window.shipPreview = {
+        setView: function (preset) {
+            if (activeRenderer && typeof activeRenderer.setView === "function") {
+                activeRenderer.setView(preset);
+            }
+        },
+        resetCamera: function () {
+            if (activeRenderer && typeof activeRenderer.resetCamera === "function") {
+                activeRenderer.resetCamera();
+            }
+        },
+        getCamera: function () {
+            return (activeRenderer && typeof activeRenderer.getCamera === "function")
+                ? activeRenderer.getCamera()
+                : null;
+        },
+        getStats: function () {
+            return (activeRenderer && typeof activeRenderer.getStats === "function")
+                ? activeRenderer.getStats()
+                : null;
+        },
+        snapshotPNG: function (size) {
+            if (activeRenderer && typeof activeRenderer.snapshotPNG === "function") {
+                return activeRenderer.snapshotPNG(size);
+            }
+            return "";
+        },
+        fullscreen: function () {
+            if (activeRenderer && typeof activeRenderer.fullscreen === "function") {
+                return activeRenderer.fullscreen();
+            }
+            // Fall back to requesting fullscreen on the viewport directly so
+            // the HUD button still does something useful before first load.
+            const viewport = document.getElementById("viewport");
+            if (viewport && typeof viewport.requestFullscreen === "function") {
+                try { viewport.requestFullscreen(); } catch (e) { /* ignore */ }
+                return true;
+            }
+            return false;
+        },
+        onFrame: function (cb) {
+            if (typeof cb !== "function") return function () {};
+            pendingFrameSubs.push(cb);
+            if (activeRenderer && typeof activeRenderer.onFrame === "function") {
+                activeRenderer.onFrame(cb);
+            }
+            return function unsubscribe() {
+                const idx = pendingFrameSubs.indexOf(cb);
+                if (idx !== -1) pendingFrameSubs.splice(idx, 1);
+                // No way to detach from a destroyed renderer; its frameSubs
+                // are already cleared. The current renderer's frameSubs
+                // retain this cb until it's destroyed, which is acceptable
+                // because the user closure is idempotent per-frame.
+            };
+        },
+        onLoaded: function (cb) {
+            if (typeof cb !== "function") return function () {};
+            pendingLoadedSubs.push(cb);
+            if (activeRenderer && typeof activeRenderer.onLoaded === "function") {
+                activeRenderer.onLoaded(cb);
+            }
+            return function unsubscribe() {
+                const idx = pendingLoadedSubs.indexOf(cb);
+                if (idx !== -1) pendingLoadedSubs.splice(idx, 1);
+            };
+        },
     };
 
     document.addEventListener("DOMContentLoaded", function () { initAll(document); });

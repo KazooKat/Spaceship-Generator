@@ -1,5 +1,41 @@
 {% extends "base.html" %}
 
+{#
+  result.html — standalone, non-HTMX fallback page served by GET /result/<id>.
+  When JS is fully working the main app at / swaps _result.html into the
+  console chrome via HTMX. This page is the graceful degradation for:
+    * direct links to a generated ship
+    * users with JS disabled
+    * scripts / scraper clients that need a minimal HTML surface
+
+  We wrap _result.html in a lightweight viewport so the preview + block
+  key + download link all render without depending on the full console
+  layout. No Alpine, no topbar chrome — just the result.
+#}
+
 {% block content %}
-{% include "_result.html" %}
+<div class="standalone-result">
+    <header class="standalone-header">
+        <div class="brand">
+            <i data-lucide="rocket" class="brand-icon"></i>
+            <a href="{{ url_for('index') }}" class="brand-link">
+                <span class="brand-title">SHIP FORGE</span>
+            </a>
+        </div>
+        <p class="tag">
+            Procedural Minecraft ships &rarr; <code>.litematic</code>
+        </p>
+    </header>
+
+    <main class="standalone-viewport">
+        {% include "_result.html" %}
+    </main>
+
+    <footer class="standalone-footer">
+        <p>
+            Drop the output file into <code>.minecraft/schematics/</code> and load it with
+            <a href="https://www.curseforge.com/minecraft/mc-mods/litematica">Litematica</a>.
+        </p>
+    </footer>
+</div>
 {% endblock %}

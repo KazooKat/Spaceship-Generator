@@ -3,26 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
     <title>{% block title %}Spaceship Generator{% endblock %}</title>
+
+    {# Fonts — Inter body, JetBrains Mono for readouts. #}
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+          rel="stylesheet">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    {# HTMX for inline form submissions. #}
     <script src="https://unpkg.com/htmx.org@1.9.12"
             integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"
             crossorigin="anonymous"
             defer></script>
+
+    {# Alpine.js for declarative UI state (sidebars, overlays, collapsibles). #}
+    <script defer src="https://unpkg.com/alpinejs@3.13.10/dist/cdn.min.js"></script>
+
+    {# Core app scripts. #}
     <script src="{{ url_for('static', filename='app.js') }}" defer></script>
     <script src="{{ url_for('static', filename='preview.js') }}" defer></script>
+
+    {# New UI modules (created by Interactions + Viewport agents). #}
+    <script src="{{ url_for('static', filename='shortcuts.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='presets.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='history.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='hud.js') }}" defer></script>
+
+    {# Lucide icon ESM init — placed AFTER other scripts so callers can
+       re-invoke createIcons after HTMX swaps via window.__lucide. #}
+    <script type="module">
+      import {createIcons, icons} from "https://unpkg.com/lucide@latest/dist/esm/lucide.js";
+      window.__lucide = {createIcons, icons};
+      createIcons({icons});
+    </script>
 </head>
 <body>
-    <header>
-        <h1><a href="{{ url_for('index') }}">Spaceship Generator</a></h1>
-        <p class="tag">Procedural Minecraft ships &rarr; <code>.litematic</code></p>
-    </header>
+    {# Screen-reader/test fallback: the visible brand is in #topbar, but
+       tests and SR users expect a canonical H1 with the product name. #}
+    <h1 class="visually-hidden">Spaceship Generator</h1>
+
     <main>
         {% block content %}{% endblock %}
     </main>
-    <footer>
-        <p>Drop the output file into <code>.minecraft/schematics/</code> and load it with
-           <a href="https://www.curseforge.com/minecraft/mc-mods/litematica">Litematica</a>.</p>
-    </footer>
+
+    {# Live region for toast messages (Interactions agent owns the JS). #}
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>

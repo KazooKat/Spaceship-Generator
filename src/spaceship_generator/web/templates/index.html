@@ -15,11 +15,11 @@
 {%- endmacro %}
 
 {#
-  num_range(name, lo, hi, step, value): paired slider + number input.
-  The slider gives quick visual tuning; the number box accepts typed values
-  including ones outside the slider's [lo, hi] range so users can manually
-  define bounds. Only the number input carries the form `name`, so exactly
-  one value is submitted. JS below keeps the two in sync.
+  num_range(name, lo, hi, step, value): paired slider + number input +
+  mono readout. Slider for coarse tuning, number box for precise/out-of-
+  range values, readout mirrors current value so users always see the
+  canonical number without having to focus an input. Only the number
+  input carries the form `name`, so exactly one value is submitted.
 #}
 {% macro num_range(name, lo, hi, step, value) -%}
 <div class="num-ctl" data-num-ctl>
@@ -32,238 +32,614 @@
            name="{{ name }}" step="{{ step }}"
            value="{{ value }}"
            data-slider-lo="{{ lo }}" data-slider-hi="{{ hi }}">
+    <span class="readout" data-readout-for="{{ name }}">{{ value }}</span>
 </div>
 {%- endmacro %}
 
 {% block content %}
-<div class="layout">
-    <form action="{{ url_for('do_generate') }}" method="POST" class="gen-form"
-          hx-post="{{ url_for('do_generate') }}"
-          hx-target="#result-panel"
-          hx-swap="innerHTML"
-          hx-indicator="#gen-indicator">
-        {% if error %}
-        <div class="error">Error: {{ error }}</div>
-        {% endif %}
+<div id="app"
+     x-data="{
+       sidebarOpen: (typeof window !== 'undefined' && window.innerWidth >= 960),
+       historyOpen: false,
+       helpOpen: false,
+       presetsOpen: false
+     }">
 
-        <fieldset>
-            <legend>Seed &amp; palette</legend>
-            <label>Seed {{ tip("seed") }}
-                <input type="number" id="seed" name="seed" value="{{ defaults.seed }}" required>
-            </label>
-            <button type="button" id="randomize-seed" class="btn secondary seed-random"
-                    data-role="randomize-seed"
-                    onclick="document.getElementById('seed').value = Math.floor(Math.random() * 2147483648);">
-                Randomize seed
-            </button>
-            <label>Palette {{ tip("palette") }}
-                <select name="palette">
-                    <option value="random" {% if defaults.palette == "random" %}selected{% endif %}>
-                        &#127922; random (seeded)
-                    </option>
-                    {% for p in palettes %}
-                    <option value="{{ p }}" {% if p == defaults.palette %}selected{% endif %}>{{ p }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-        </fieldset>
-
-        <fieldset>
-            <legend>Shape</legend>
-            <label>Length (Z) {{ tip("length") }}
-                {{ num_range("length", 8, 128, 1, defaults.length) }}
-            </label>
-            <label>Max width (X) {{ tip("width") }}
-                {{ num_range("width", 4, 64, 1, defaults.width) }}
-            </label>
-            <label>Max height (Y) {{ tip("height") }}
-                {{ num_range("height", 4, 64, 1, defaults.height) }}
-            </label>
-            <label>Engines {{ tip("engines") }}
-                {{ num_range("engines", 0, 6, 1, defaults.engines) }}
-            </label>
-            <label>Wing probability {{ tip("wing_prob") }}
-                {{ num_range("wing_prob", 0, 1, 0.05, defaults.wing_prob) }}
-            </label>
-            <label>Greeble density {{ tip("greeble_density") }}
-                {{ num_range("greeble_density", 0, 0.5, 0.01, defaults.greeble_density) }}
-            </label>
-            <label>Cockpit style {{ tip("cockpit") }}
-                <select name="cockpit">
-                    {% for c in cockpit_styles %}
-                    <option value="{{ c }}" {% if c == defaults.cockpit %}selected{% endif %}>{{ c }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            <label>Structure style {{ tip("structure_style") }}
-                <select name="structure_style">
-                    {% for s in structure_styles %}
-                    <option value="{{ s }}" {% if s == defaults.structure_style %}selected{% endif %}>{{ s }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-        </fieldset>
-
-        <fieldset>
-            <legend>Texture</legend>
-            <label>Window spacing (blocks) {{ tip("window_period") }}
-                {{ num_range("window_period", 2, 16, 1, defaults.window_period) }}
-            </label>
-            <label>Accent stripe period {{ tip("accent_stripe_period") }}
-                {{ num_range("accent_stripe_period", 2, 32, 1, defaults.accent_stripe_period) }}
-            </label>
-            <label>Engine glow depth {{ tip("engine_glow_depth") }}
-                {{ num_range("engine_glow_depth", 1, 8, 1, defaults.engine_glow_depth) }}
-            </label>
-            <label>Hull noise ratio (60-30-10) {{ tip("hull_noise_ratio") }}
-                {{ num_range("hull_noise_ratio", 0, 1, 0.05, defaults.hull_noise_ratio) }}
-            </label>
-            <label>Panel line bands {{ tip("panel_line_bands") }}
-                {{ num_range("panel_line_bands", 1, 3, 1, defaults.panel_line_bands) }}
-            </label>
-            <label>Rivet period (0 off) {{ tip("rivet_period") }}
-                {{ num_range("rivet_period", 0, 32, 1, defaults.rivet_period) }}
-            </label>
-            {# Explicit for/id pair alongside the implicit wrapping label —
-               redundant but more robust for screen readers that prefer an
-               explicit association. #}
-            <label class="checkbox" for="engine_glow_ring">
-                <input type="checkbox" id="engine_glow_ring"
-                       name="engine_glow_ring" value="true"
-                       {% if defaults.engine_glow_ring %}checked{% endif %}>
-                Engine glow ring {{ tip("engine_glow_ring") }}
-            </label>
-        </fieldset>
-
-        <button type="submit">Generate</button>
-        <button type="button" id="randomize-all" class="btn secondary"
-                data-role="randomize-all">
-            Generate random ship
-        </button>
-        <div id="gen-indicator" class="progress-bar" role="progressbar"
-             aria-label="Generating spaceship" aria-valuetext="Generating">
-            <div class="progress-bar__track"></div>
+    {# ──────────────────────────────────────────────────────────────
+       TOPBAR — brand, primary actions, global status readout.
+       ────────────────────────────────────────────────────────────── #}
+    <header id="topbar">
+        <div class="brand">
+            <i data-lucide="rocket" class="brand-icon"></i>
+            <span class="brand-title">SHIP FORGE</span>
+            <span class="brand-sub">voxel ship synth</span>
         </div>
-    </form>
+        <nav class="topbar-actions">
+            <button id="btn-generate" type="button"
+                    class="btn primary"
+                    data-shortcut="g"
+                    aria-label="Generate (g)">
+                <i data-lucide="play"></i><span>Generate</span>
+            </button>
+            {# Topbar randomize button. Exposed under the historical
+               id `randomize-all` (which test_web and the existing inline
+               randomizer script both look up by) so we don't need a
+               separate legacy alias. Other modules that want a stable
+               hook independent of test history should prefer the
+               `data-shortcut="r"` or `data-role="randomize-all"` attrs. #}
+            <button id="randomize-all" type="button"
+                    class="btn secondary"
+                    data-shortcut="r"
+                    data-role="randomize-all"
+                    aria-label="Randomize all (r)">
+                <i data-lucide="shuffle"></i><span>Random</span>
+            </button>
+            <button id="btn-save-preset" type="button"
+                    class="btn ghost icon"
+                    data-shortcut="s"
+                    aria-label="Save preset (s)">
+                <i data-lucide="save"></i>
+            </button>
+            <button id="btn-presets" type="button"
+                    class="btn ghost icon"
+                    data-shortcut="p"
+                    @click="presetsOpen = true"
+                    aria-label="Presets (p)">
+                <i data-lucide="star"></i>
+            </button>
+            <button id="btn-toggle-history" type="button"
+                    class="btn ghost icon"
+                    data-shortcut="h"
+                    @click="historyOpen = !historyOpen"
+                    :aria-pressed="historyOpen"
+                    aria-label="Toggle history (h)">
+                <i data-lucide="history"></i>
+            </button>
+            <button id="btn-help" type="button"
+                    class="btn ghost icon"
+                    data-shortcut="?"
+                    @click="helpOpen = true"
+                    aria-label="Keyboard help (?)">
+                <i data-lucide="keyboard"></i>
+            </button>
+            <span class="status-group">
+                <span class="status-dot ready" aria-hidden="true"></span>
+                <span id="status-text" class="readout">READY</span>
+            </span>
+        </nav>
+    </header>
 
-    <script>
-        // "Generate random ship": randomize every parameter within its
-        // declared min/max (or option set), then submit the form. Submission
-        // goes through HTMX because the form has hx-post, so the result
-        // panel swaps in without a full page reload.
-        (function () {
-            "use strict";
-            function randomizeAndSubmit() {
-                var form = document.querySelector(".gen-form");
-                if (!form) return;
+    {# ──────────────────────────────────────────────────────────────
+       PARAMETERS SIDEBAR — the generator form.
+       Form name attributes + hx-* wiring are PRESERVED to keep the
+       backend contract stable. We just rewrap the controls.
+       ────────────────────────────────────────────────────────────── #}
+    <aside id="panel-params"
+           class="sidebar"
+           :class="{ open: sidebarOpen }"
+           aria-label="Parameters">
+        <form action="{{ url_for('do_generate') }}" method="POST" class="gen-form"
+              hx-post="{{ url_for('do_generate') }}"
+              hx-target="#result-panel"
+              hx-swap="innerHTML"
+              hx-indicator="#gen-indicator">
 
-                // Seed: full int32 range.
-                if (form.seed) {
-                    form.seed.value = Math.floor(Math.random() * 2147483648);
-                }
+            {% if error %}
+            <div class="toast toast-error" role="alert">
+                <i data-lucide="alert-triangle"></i><span>Error: {{ error }}</span>
+            </div>
+            {% endif %}
 
-                // Every <input type="number"> with min+max: sample uniformly
-                // and round to the input's step precision.
-                form.querySelectorAll('input[type="number"]').forEach(function (inp) {
-                    if (inp.name === "seed") return;
-                    // Prefer the paired slider's bounds (data-slider-lo/hi)
-                    // since the number input itself intentionally has no
-                    // min/max (users can type out-of-range values manually).
-                    var lo = parseFloat(inp.dataset.sliderLo);
-                    var hi = parseFloat(inp.dataset.sliderHi);
-                    if (!Number.isFinite(lo)) lo = parseFloat(inp.min);
-                    if (!Number.isFinite(hi)) hi = parseFloat(inp.max);
-                    if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo) return;
-                    var step = parseFloat(inp.step);
-                    if (!Number.isFinite(step) || step <= 0) step = 1;
-                    var v = lo + Math.random() * (hi - lo);
-                    if (step >= 1) {
-                        v = Math.round(v);
+            {# ── Seed & palette group ────────────────────────────── #}
+            <section class="panel-group" data-group="seed" x-data="{open: true}">
+                <header class="panel-group-header"
+                        @click="open = !open"
+                        :aria-expanded="open"
+                        tabindex="0"
+                        role="button"
+                        @keydown.enter.prevent="open = !open"
+                        @keydown.space.prevent="open = !open">
+                    <h3>SEED &amp; PALETTE</h3>
+                    <i data-lucide="chevron-down"
+                       :style="open ? '' : 'transform: rotate(-90deg)'"></i>
+                </header>
+                <div class="panel-group-body" x-show="open" x-transition>
+                    <div class="control" data-param="seed">
+                        <label>Seed {{ tip("seed") }}
+                            <input type="number" id="seed" name="seed"
+                                   value="{{ defaults.seed }}" required>
+                        </label>
+                        <button type="button" id="randomize-seed"
+                                class="btn ghost inline"
+                                data-role="randomize-seed"
+                                onclick="document.getElementById('seed').value = Math.floor(Math.random() * 2147483648);">
+                            <i data-lucide="dices"></i><span>Randomize seed</span>
+                        </button>
+                    </div>
+                    <div class="control" data-param="palette">
+                        <label>Palette {{ tip("palette") }}
+                            <select name="palette">
+                                <option value="random" {% if defaults.palette == "random" %}selected{% endif %}>
+                                    &#127922; random (seeded)
+                                </option>
+                                {% for p in palettes %}
+                                <option value="{{ p }}" {% if p == defaults.palette %}selected{% endif %}>{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            {# ── Shape group ──────────────────────────────────────── #}
+            <section class="panel-group" data-group="shape" x-data="{open: true}">
+                <header class="panel-group-header"
+                        @click="open = !open"
+                        :aria-expanded="open"
+                        tabindex="0"
+                        role="button"
+                        @keydown.enter.prevent="open = !open"
+                        @keydown.space.prevent="open = !open">
+                    <h3>SHAPE</h3>
+                    <i data-lucide="chevron-down"
+                       :style="open ? '' : 'transform: rotate(-90deg)'"></i>
+                </header>
+                <div class="panel-group-body" x-show="open" x-transition>
+                    <div class="control" data-param="length">
+                        <label>Length (Z) {{ tip("length") }}
+                            {{ num_range("length", 8, 128, 1, defaults.length) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="width">
+                        <label>Max width (X) {{ tip("width") }}
+                            {{ num_range("width", 4, 64, 1, defaults.width) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="height">
+                        <label>Max height (Y) {{ tip("height") }}
+                            {{ num_range("height", 4, 64, 1, defaults.height) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="engines">
+                        <label>Engines {{ tip("engines") }}
+                            {{ num_range("engines", 0, 6, 1, defaults.engines) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="wing_prob">
+                        <label>Wing probability {{ tip("wing_prob") }}
+                            {{ num_range("wing_prob", 0, 1, 0.05, defaults.wing_prob) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="greeble_density">
+                        <label>Greeble density {{ tip("greeble_density") }}
+                            {{ num_range("greeble_density", 0, 0.5, 0.01, defaults.greeble_density) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="cockpit">
+                        <label>Cockpit style {{ tip("cockpit") }}
+                            <select name="cockpit">
+                                {% for c in cockpit_styles %}
+                                <option value="{{ c }}" {% if c == defaults.cockpit %}selected{% endif %}>{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                    <div class="control" data-param="structure_style">
+                        <label>Structure style {{ tip("structure_style") }}
+                            <select name="structure_style">
+                                {% for s in structure_styles %}
+                                <option value="{{ s }}" {% if s == defaults.structure_style %}selected{% endif %}>{{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            {# ── Texture group ────────────────────────────────────── #}
+            <section class="panel-group" data-group="texture" x-data="{open: true}">
+                <header class="panel-group-header"
+                        @click="open = !open"
+                        :aria-expanded="open"
+                        tabindex="0"
+                        role="button"
+                        @keydown.enter.prevent="open = !open"
+                        @keydown.space.prevent="open = !open">
+                    <h3>TEXTURE</h3>
+                    <i data-lucide="chevron-down"
+                       :style="open ? '' : 'transform: rotate(-90deg)'"></i>
+                </header>
+                <div class="panel-group-body" x-show="open" x-transition>
+                    <div class="control" data-param="window_period">
+                        <label>Window spacing (blocks) {{ tip("window_period") }}
+                            {{ num_range("window_period", 2, 16, 1, defaults.window_period) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="accent_stripe_period">
+                        <label>Accent stripe period {{ tip("accent_stripe_period") }}
+                            {{ num_range("accent_stripe_period", 2, 32, 1, defaults.accent_stripe_period) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="engine_glow_depth">
+                        <label>Engine glow depth {{ tip("engine_glow_depth") }}
+                            {{ num_range("engine_glow_depth", 1, 8, 1, defaults.engine_glow_depth) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="hull_noise_ratio">
+                        <label>Hull noise ratio (60-30-10) {{ tip("hull_noise_ratio") }}
+                            {{ num_range("hull_noise_ratio", 0, 1, 0.05, defaults.hull_noise_ratio) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="panel_line_bands">
+                        <label>Panel line bands {{ tip("panel_line_bands") }}
+                            {{ num_range("panel_line_bands", 1, 3, 1, defaults.panel_line_bands) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="rivet_period">
+                        <label>Rivet period (0 off) {{ tip("rivet_period") }}
+                            {{ num_range("rivet_period", 0, 32, 1, defaults.rivet_period) }}
+                        </label>
+                    </div>
+                    <div class="control" data-param="engine_glow_ring">
+                        {# Explicit for/id pair alongside the implicit wrapping label —
+                           redundant but more robust for screen readers that prefer an
+                           explicit association. #}
+                        <label class="checkbox" for="engine_glow_ring">
+                            <input type="checkbox" id="engine_glow_ring"
+                                   name="engine_glow_ring" value="true"
+                                   {% if defaults.engine_glow_ring %}checked{% endif %}>
+                            Engine glow ring {{ tip("engine_glow_ring") }}
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            {# Hidden submit: topbar #btn-generate is wired to click this
+               (Interactions agent). We keep a real <button type=submit>
+               inside the form so the form can still be submitted by
+               pressing Enter in any text field and so browsers without JS
+               still have a working submit path. #}
+            <button type="submit" id="form-hidden-submit"
+                    style="display: none" aria-hidden="true" tabindex="-1">
+                Generate
+            </button>
+        </form>
+
+        <script>
+            // "Generate random ship": randomize every parameter within its
+            // declared min/max (or option set), then submit the form. Submission
+            // goes through HTMX because the form has hx-post, so the result
+            // panel swaps in without a full page reload.
+            //
+            // The topbar shuffle button keeps the historical `randomize-all`
+            // id so this hook + existing tests + downstream scripts all
+            // continue to resolve the same element.
+            (function () {
+                "use strict";
+                function randomizeAndSubmit() {
+                    var form = document.querySelector(".gen-form");
+                    if (!form) return;
+
+                    // Seed: full int32 range.
+                    if (form.seed) {
+                        form.seed.value = Math.floor(Math.random() * 2147483648);
+                    }
+
+                    // Every <input type="number"> with min+max: sample uniformly
+                    // and round to the input's step precision.
+                    form.querySelectorAll('input[type="number"]').forEach(function (inp) {
+                        if (inp.name === "seed") return;
+                        // Prefer the paired slider's bounds (data-slider-lo/hi)
+                        // since the number input itself intentionally has no
+                        // min/max (users can type out-of-range values manually).
+                        var lo = parseFloat(inp.dataset.sliderLo);
+                        var hi = parseFloat(inp.dataset.sliderHi);
+                        if (!Number.isFinite(lo)) lo = parseFloat(inp.min);
+                        if (!Number.isFinite(hi)) hi = parseFloat(inp.max);
+                        if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo) return;
+                        var step = parseFloat(inp.step);
+                        if (!Number.isFinite(step) || step <= 0) step = 1;
+                        var v = lo + Math.random() * (hi - lo);
+                        if (step >= 1) {
+                            v = Math.round(v);
+                        } else {
+                            // Snap to step grid.
+                            v = Math.round((v - lo) / step) * step + lo;
+                            v = parseFloat(v.toFixed(4));
+                        }
+                        inp.value = String(v);
+                        // Cascade to the paired slider.
+                        inp.dispatchEvent(new Event("input", { bubbles: true }));
+                    });
+
+                    // Palette: pick any concrete palette (skip the 'random' meta-option
+                    // so the user actually sees a chosen palette name in the form).
+                    var pal = form.querySelector('select[name="palette"]');
+                    if (pal) {
+                        var palOpts = Array.from(pal.options).filter(function (o) {
+                            return o.value && o.value !== "random";
+                        });
+                        if (palOpts.length) {
+                            pal.value = palOpts[Math.floor(Math.random() * palOpts.length)].value;
+                        }
+                    }
+
+                    // Cockpit: uniform over available styles.
+                    var cockpit = form.querySelector('select[name="cockpit"]');
+                    if (cockpit && cockpit.options.length) {
+                        var ci = Math.floor(Math.random() * cockpit.options.length);
+                        cockpit.value = cockpit.options[ci].value;
+                    }
+
+                    // Structure style: uniform over available archetypes.
+                    var structureStyle = form.querySelector('select[name="structure_style"]');
+                    if (structureStyle && structureStyle.options.length) {
+                        var si = Math.floor(Math.random() * structureStyle.options.length);
+                        structureStyle.value = structureStyle.options[si].value;
+                    }
+
+                    // Engine glow ring: 50/50.
+                    var ring = form.querySelector('input[name="engine_glow_ring"]');
+                    if (ring) ring.checked = Math.random() < 0.5;
+
+                    // Submit. requestSubmit triggers both native and HTMX handlers.
+                    if (typeof form.requestSubmit === "function") {
+                        form.requestSubmit();
                     } else {
-                        // Snap to step grid.
-                        v = Math.round((v - lo) / step) * step + lo;
-                        v = parseFloat(v.toFixed(4));
-                    }
-                    inp.value = String(v);
-                    // Cascade to the paired slider.
-                    inp.dispatchEvent(new Event("input", { bubbles: true }));
-                });
-
-                // Palette: pick any concrete palette (skip the 'random' meta-option
-                // so the user actually sees a chosen palette name in the form).
-                var pal = form.querySelector('select[name="palette"]');
-                if (pal) {
-                    var palOpts = Array.from(pal.options).filter(function (o) {
-                        return o.value && o.value !== "random";
-                    });
-                    if (palOpts.length) {
-                        pal.value = palOpts[Math.floor(Math.random() * palOpts.length)].value;
+                        form.submit();
                     }
                 }
 
-                // Cockpit: uniform over available styles.
-                var cockpit = form.querySelector('select[name="cockpit"]');
-                if (cockpit && cockpit.options.length) {
-                    var ci = Math.floor(Math.random() * cockpit.options.length);
-                    cockpit.value = cockpit.options[ci].value;
-                }
+                document.addEventListener("DOMContentLoaded", function () {
+                    var btn = document.getElementById("randomize-all");
+                    if (btn) btn.addEventListener("click", randomizeAndSubmit);
 
-                // Structure style: uniform over available archetypes.
-                var structureStyle = form.querySelector('select[name="structure_style"]');
-                if (structureStyle && structureStyle.options.length) {
-                    var si = Math.floor(Math.random() * structureStyle.options.length);
-                    structureStyle.value = structureStyle.options[si].value;
-                }
+                    // #btn-generate in the topbar triggers the hidden submit
+                    // inside the form so HTMX + the form stay the single
+                    // source of truth. If the Interactions agent rewires this
+                    // later, their handler replaces ours — harmless overlap.
+                    var genBtn = document.getElementById("btn-generate");
+                    if (genBtn && !genBtn.dataset.bound) {
+                        genBtn.dataset.bound = "1";
+                        genBtn.addEventListener("click", function () {
+                            var form = document.querySelector(".gen-form");
+                            if (!form) return;
+                            if (typeof form.requestSubmit === "function") {
+                                form.requestSubmit();
+                            } else {
+                                form.submit();
+                            }
+                        });
+                    }
 
-                // Engine glow ring: 50/50.
-                var ring = form.querySelector('input[name="engine_glow_ring"]');
-                if (ring) ring.checked = Math.random() < 0.5;
-
-                // Submit. requestSubmit triggers both native and HTMX handlers.
-                if (typeof form.requestSubmit === "function") {
-                    form.requestSubmit();
-                } else {
-                    form.submit();
-                }
-            }
-
-            document.addEventListener("DOMContentLoaded", function () {
-                var btn = document.getElementById("randomize-all");
-                if (btn) btn.addEventListener("click", randomizeAndSubmit);
-                bindNumCtls(document);
-            });
-
-            // Keep each paired slider + number input in sync. The slider
-            // drives the number (1:1 within its own [lo, hi] range); the
-            // number drives the slider (clamped to the slider's range so
-            // typed out-of-range values still show a sensible slider
-            // position without destroying the typed value).
-            function bindNumCtls(root) {
-                var ctls = (root || document).querySelectorAll(".num-ctl");
-                ctls.forEach(function (ctl) {
-                    if (ctl.dataset.numCtlBound === "1") return;
-                    ctl.dataset.numCtlBound = "1";
-                    var slider = ctl.querySelector("input.num-slider");
-                    var num = ctl.querySelector("input.num-input");
-                    if (!slider || !num) return;
-                    slider.addEventListener("input", function () {
-                        num.value = slider.value;
-                    });
-                    num.addEventListener("input", function () {
-                        var v = parseFloat(num.value);
-                        if (!Number.isFinite(v)) return;
-                        var lo = parseFloat(slider.min);
-                        var hi = parseFloat(slider.max);
-                        var clamped = Math.max(lo, Math.min(hi, v));
-                        slider.value = String(clamped);
-                    });
+                    bindNumCtls(document);
                 });
-            }
-        })();
-    </script>
 
-    <aside id="result-panel" class="result-panel" aria-live="polite">
-        <p class="placeholder">Generate a ship to see the preview &amp; block key here.</p>
+                // Keep each paired slider + number input + readout in sync.
+                function bindNumCtls(root) {
+                    var ctls = (root || document).querySelectorAll(".num-ctl");
+                    ctls.forEach(function (ctl) {
+                        if (ctl.dataset.numCtlBound === "1") return;
+                        ctl.dataset.numCtlBound = "1";
+                        var slider = ctl.querySelector("input.num-slider");
+                        var num = ctl.querySelector("input.num-input");
+                        var readout = ctl.querySelector("[data-readout-for]");
+                        if (!slider || !num) return;
+                        function syncReadout(v) {
+                            if (readout) readout.textContent = String(v);
+                        }
+                        slider.addEventListener("input", function () {
+                            num.value = slider.value;
+                            syncReadout(slider.value);
+                        });
+                        num.addEventListener("input", function () {
+                            var v = parseFloat(num.value);
+                            if (!Number.isFinite(v)) return;
+                            var lo = parseFloat(slider.min);
+                            var hi = parseFloat(slider.max);
+                            var clamped = Math.max(lo, Math.min(hi, v));
+                            slider.value = String(clamped);
+                            syncReadout(num.value);
+                        });
+                    });
+                }
+            })();
+        </script>
     </aside>
+
+    {# ──────────────────────────────────────────────────────────────
+       MAIN VIEWPORT — preview canvas + HUD overlays.
+       The HTMX swap target (#result-panel) lives inside #viewport so
+       the result content replaces the placeholder without nuking the
+       HUD chrome that's stacked on top.
+       ────────────────────────────────────────────────────────────── #}
+    <main id="main">
+        <div id="viewport">
+            {# Progress bar anchored to the top edge of the viewport so the
+               user sees synthesis progress right on the preview surface. #}
+            <div id="gen-indicator" class="progress-bar viewport-progress"
+                 role="progressbar"
+                 aria-label="Generating spaceship" aria-valuetext="Generating">
+                <div class="progress-bar__track"></div>
+            </div>
+
+            <aside id="result-panel" class="result-panel"
+                   aria-live="polite"
+                   hx-preserve-canvas="true">
+                <div class="placeholder">
+                    <i data-lucide="rocket" aria-hidden="true"></i>
+                    <p>Generate a ship to begin.</p>
+                    <p class="sub">
+                        <span class="kbd">G</span> to generate,
+                        <span class="kbd">R</span> for random.
+                    </p>
+                </div>
+            </aside>
+        </div>
+
+        {# HUD overlays (positioned absolutely over the viewport). The
+           Viewport agent owns the JS that wires the buttons + axis gizmo. #}
+        <div id="viewport-hud" aria-hidden="true">
+            <div class="hud-tl">
+                <canvas id="axis-gizmo" width="96" height="96"
+                        aria-label="Axis orientation"></canvas>
+            </div>
+            <div class="hud-tr view-presets" role="toolbar" aria-label="View presets">
+                <button id="btn-view-persp" type="button" class="btn ghost icon"
+                        data-shortcut="4" aria-label="Perspective (4)">
+                    <i data-lucide="box"></i>
+                </button>
+                <button id="btn-view-top" type="button" class="btn ghost icon"
+                        data-shortcut="1" aria-label="Top view (1)">
+                    <i data-lucide="square"></i>
+                </button>
+                <button id="btn-view-front" type="button" class="btn ghost icon"
+                        data-shortcut="2" aria-label="Front view (2)">
+                    <i data-lucide="rectangle-horizontal"></i>
+                </button>
+                <button id="btn-view-side" type="button" class="btn ghost icon"
+                        data-shortcut="3" aria-label="Side view (3)">
+                    <i data-lucide="rectangle-vertical"></i>
+                </button>
+                <button id="btn-view-reset" type="button" class="btn ghost icon"
+                        data-shortcut="0" aria-label="Reset camera (0)">
+                    <i data-lucide="maximize"></i>
+                </button>
+                <button id="btn-fullscreen" type="button" class="btn ghost icon"
+                        data-shortcut="f" aria-label="Fullscreen (f)">
+                    <i data-lucide="expand"></i>
+                </button>
+            </div>
+            <div class="hud-bl" id="viewport-stats" aria-live="off">
+                <span class="readout"><span class="stat-label">VOX</span> <span id="stat-voxels">&mdash;</span></span>
+                <span class="readout"><span class="stat-label">FPS</span> <span id="stat-fps">&mdash;</span></span>
+            </div>
+            <div class="hud-br">
+                <span class="kbd">drag</span> orbit
+                &middot; <span class="kbd">shift+drag</span> pan
+                &middot; <span class="kbd">wheel</span> zoom
+            </div>
+        </div>
+    </main>
+
+    {# ──────────────────────────────────────────────────────────────
+       HISTORY DRAWER — populated by history.js after each generate.
+       ────────────────────────────────────────────────────────────── #}
+    <aside id="panel-history"
+           class="history-drawer"
+           :class="{ open: historyOpen }"
+           aria-label="Ship history">
+        <header class="drawer-header">
+            <h3>HISTORY</h3>
+            <button type="button" class="btn ghost icon"
+                    @click="historyOpen = false"
+                    aria-label="Close history">
+                <i data-lucide="x"></i>
+            </button>
+        </header>
+        <div id="history-list" class="history-list">
+            <p class="placeholder sub">No ships yet.</p>
+        </div>
+    </aside>
+
+    {# ──────────────────────────────────────────────────────────────
+       BOTTOM STATUS BAR — current-ship metadata + persistent actions.
+       The readouts are updated by the Interactions agent after each
+       htmx:afterSwap event using the data-* attributes on .result-inner.
+       ────────────────────────────────────────────────────────────── #}
+    <footer id="bottom">
+        <div class="status-line">
+            <span class="readout" id="ship-id-readout">&mdash;</span>
+            <span class="sep">&middot;</span>
+            <span class="readout" id="seed-readout">&mdash;</span>
+            <span class="sep">&middot;</span>
+            <span class="readout" id="palette-readout">&mdash;</span>
+        </div>
+        <div class="bottom-actions">
+            <a id="btn-download"
+               class="btn ghost icon disabled"
+               aria-label="Download litematic (d)"
+               data-shortcut="d"
+               aria-disabled="true"
+               href="#">
+                <i data-lucide="download"></i>
+            </a>
+        </div>
+    </footer>
+
+    {# ──────────────────────────────────────────────────────────────
+       HELP OVERLAY — keyboard shortcut cheat sheet.
+       ────────────────────────────────────────────────────────────── #}
+    <template x-if="helpOpen">
+        <div class="modal-backdrop" @click="helpOpen = false">
+            <div class="modal" role="dialog"
+                 aria-label="Keyboard shortcuts"
+                 @click.stop
+                 @keydown.escape.window="helpOpen = false">
+                <header>
+                    <h2>KEYBOARD</h2>
+                    <button type="button" class="btn ghost icon"
+                            @click="helpOpen = false"
+                            aria-label="Close">
+                        <i data-lucide="x"></i>
+                    </button>
+                </header>
+                <dl class="kbd-grid">
+                    <dt><span class="kbd">G</span></dt><dd>Generate</dd>
+                    <dt><span class="kbd">R</span></dt><dd>Randomize all</dd>
+                    <dt><span class="kbd">S</span></dt><dd>Save current as preset</dd>
+                    <dt><span class="kbd">P</span></dt><dd>Open presets</dd>
+                    <dt><span class="kbd">H</span></dt><dd>Toggle history drawer</dd>
+                    <dt><span class="kbd">D</span></dt><dd>Download .litematic</dd>
+                    <dt><span class="kbd">F</span></dt><dd>Toggle fullscreen viewport</dd>
+                    <dt><span class="kbd">?</span></dt><dd>Show this help</dd>
+                    <dt><span class="kbd">1</span></dt><dd>Top view</dd>
+                    <dt><span class="kbd">2</span></dt><dd>Front view</dd>
+                    <dt><span class="kbd">3</span></dt><dd>Side view</dd>
+                    <dt><span class="kbd">4</span></dt><dd>Perspective view</dd>
+                    <dt><span class="kbd">0</span></dt><dd>Reset camera</dd>
+                    <dt><span class="kbd">Esc</span></dt><dd>Close overlays</dd>
+                </dl>
+            </div>
+        </div>
+    </template>
+
+    {# ──────────────────────────────────────────────────────────────
+       PRESETS OVERLAY — populated by presets.js.
+       ────────────────────────────────────────────────────────────── #}
+    <template x-if="presetsOpen">
+        <div class="modal-backdrop" @click="presetsOpen = false">
+            <div class="modal" role="dialog"
+                 aria-label="Presets"
+                 @click.stop
+                 @keydown.escape.window="presetsOpen = false">
+                <header>
+                    <h2>PRESETS</h2>
+                    <button type="button" class="btn ghost icon"
+                            @click="presetsOpen = false"
+                            aria-label="Close">
+                        <i data-lucide="x"></i>
+                    </button>
+                </header>
+                <div id="presets-list">
+                    <p class="placeholder sub">No presets yet. Save the current config with <span class="kbd">S</span>.</p>
+                </div>
+            </div>
+        </div>
+    </template>
+
 </div>
+
+{# After HTMX swaps in new content, re-init Lucide icons inside the swapped
+   subtree so data-lucide placeholders in the partial get real SVGs. This is
+   a no-op when Lucide hasn't loaded yet (window.__lucide undefined). #}
+<script>
+    document.addEventListener("htmx:afterSwap", function (evt) {
+        if (window.__lucide && window.__lucide.createIcons) {
+            try {
+                window.__lucide.createIcons({ icons: window.__lucide.icons });
+            } catch (e) { /* non-fatal */ }
+        }
+    });
+</script>
 {% endblock %}

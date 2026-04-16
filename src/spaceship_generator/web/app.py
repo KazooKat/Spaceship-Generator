@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import io
 import math
+import os
 import random
 import threading
 import uuid
@@ -599,6 +600,127 @@ def create_app() -> Flask:
                 "gen_id": gen_id,
             }
         )
+
+    # --- /api/meta ----------------------------------------------------------
+    # Lightweight UI metadata endpoint. Used by the sci-fi console frontend
+    # (Alpine.js-driven presets / control panel) to render palette/cockpit/
+    # structure choices and defaults without re-scraping the index HTML.
+    # Reuses the same data sources as ``index()`` so drift between the Jinja
+    # template and this API is impossible.
+    @app.route("/api/meta", methods=["GET"])
+    def api_meta():
+        # ``param_help`` may in theory be None at import time (e.g. if a
+        # consumer monkey-patches it to clear tooltips); fall back to empty.
+        help_map = PARAM_HELP if isinstance(PARAM_HELP, dict) else {}
+
+        # Import version lazily with a defensive fallback. A broken or missing
+        # package metadata must not break this endpoint.
+        try:
+            from .. import __version__ as _pkg_version  # type: ignore
+            version = str(_pkg_version) or "dev"
+        except Exception:  # pragma: no cover - defensive
+            version = "dev"
+
+        return jsonify(
+            {
+                "palettes": list_palettes(),
+                "cockpit_styles": [c.value for c in CockpitStyle],
+                "structure_styles": [s.value for s in StructureStyle],
+                "param_help": dict(help_map),
+                "defaults": {
+                    "seed": 42,
+                    "palette": "sci_fi_industrial",
+                    "length": 40,
+                    "width": 20,
+                    "height": 12,
+                    "engines": 2,
+                    "wing_prob": 0.75,
+                    "greeble_density": 0.05,
+                    "window_period": 4,
+                    "accent_stripe_period": 8,
+                    "engine_glow_depth": 1,
+                    "hull_noise_ratio": 0.0,
+                    "panel_line_bands": 1,
+                    "rivet_period": 0,
+                    "engine_glow_ring": False,
+                    "cockpit": CockpitStyle.BUBBLE.value,
+                    "structure_style": StructureStyle.FRIGATE.value,
+                },
+                "version": version,
+            }
+        )
+
+    # --- 404 handler (JSON for API clients) --------------------------------
+    # When the caller prefers JSON (e.g. ``fetch('/api/meta')`` with default
+    # Accept or explicit ``application/json``), return a structured error
+    # body instead of the Jinja-rendered HTML 404 page. HTML clients still
+    # get Flask's default 404 page — this only specializes the JSON case.
+    @app.errorhandler(404)
+    def _not_found(_exc):
+        accept = request.accept_mimetypes
+        best = accept.best_match(["application/json", "text/html"])
+        if best == "application/json" and accept[best] >= accept["text/html"]:
+            return (
+                jsonify({"error": "not_found", "path": request.path}),
+                404,
+            )
+        # Fall through to Flask's default 404 rendering.
+        return ("Not Found", 404)
+
+    # --- CSP / security headers + cache-control ----------------------------
+    # Single after_request hook handles both concerns:
+    # 1. Adds a CSP that allows the CDN scripts the sci-fi console frontend
+    #    loads (htmx, Alpine.js, Lucide) and Google Fonts. Gated by the
+    #    ``SHIPFORGE_CSP`` env var (defaults to enabled; set to ``0`` to
+    #    disable during dev experimentation with inline/unsafe code).
+    # 2. Adds a short 5-minute Cache-Control to ``/static/`` responses when
+    #    none is already set (the /block-texture/ route sets its own long
+    #    immutable header and is left alone).
+    #
+    # KNOWN RELAXATION: ``'unsafe-inline'`` is required in script-src and
+    # style-src because the existing Jinja templates use htmx hx-* inline
+    # attributes, Alpine.js ``x-data`` / ``@click`` directives, and inline
+    # <style> blocks. Tightening with per-request nonces is a future
+    # improvement — it would require refactoring the templates to thread a
+    # nonce into every inline script/style tag.
+    _CSP_POLICY = (
+        "default-src 'self'; "
+        "script-src 'self' https://unpkg.com 'unsafe-inline'; "
+        "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "frame-ancestors 'none';"
+    )
+
+    def _csp_enabled() -> bool:
+        # Default to on. Only the explicit disable strings flip it off —
+        # this mirrors how other ship-forge env flags behave.
+        val = os.environ.get("SHIPFORGE_CSP", "1").strip().lower()
+        return val not in ("0", "false", "off", "no")
+
+    @app.after_request
+    def _apply_security_and_cache_headers(response):
+        # CSP: do not clobber an already-set policy (e.g. reverse-proxy may
+        # inject its own). Only add when absent and the env flag is on.
+        if _csp_enabled() and "Content-Security-Policy" not in response.headers:
+            response.headers["Content-Security-Policy"] = _CSP_POLICY
+
+        # Cache-Control for /static/ — short TTL so edits surface quickly
+        # during iteration. Skip if a handler (e.g. /block-texture) already
+        # set its own Cache-Control; skip non-/static/ paths entirely.
+        try:
+            path = request.path or ""
+        except RuntimeError:
+            # No request context (shouldn't happen in after_request, but be
+            # defensive so header logic can't break a response).
+            path = ""
+        if path.startswith("/static/") and "Cache-Control" not in response.headers:
+            response.headers["Cache-Control"] = "public, max-age=300"
+
+        return response
 
     # Expose the in-memory store for tests.
     app.config["_RESULTS"] = results
