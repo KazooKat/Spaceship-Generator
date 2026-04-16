@@ -31,11 +31,16 @@ from .shape import _surface_mask
 
 
 # Roles protected from overwrite by later lighting passes.
+# INTERIOR is included so belly/nose-tip light passes don't carve into the
+# hull's hidden interior; LIGHT so a previously-painted running light is not
+# clobbered by a later pass.
 _PROTECTED_ROLES: tuple[Role, ...] = (
     Role.COCKPIT_GLASS,
     Role.WINDOW,
     Role.ENGINE,
     Role.ENGINE_GLOW,
+    Role.LIGHT,
+    Role.INTERIOR,
 )
 
 # Roles new "hull noise / rivet / engine ring" passes must never overwrite.
@@ -114,6 +119,7 @@ def _paint_windows(
     W, H, L = grid.shape
     cy = (H - 1) / 2.0
     period = max(2, params.window_period_cells)
+    # Offset so windows don't land exactly on the nose tip (z == 0 phase).
     phase = period // 2
 
     # Cells that are HULL and on the surface.
@@ -239,7 +245,14 @@ def _paint_hull_noise(
     hashes = _coord_hash_mod1000(W, H, L)
     hash_mask = hashes < thr
 
-    mask = hull_surf & side_facing & hash_mask
+    # Never re-role INTERIOR / LIGHT / GREEBLE / WING / ENGINE(_GLOW) / WINDOW /
+    # COCKPIT_GLASS / EMPTY cells (belt-and-braces; hull_surf already excludes
+    # most of these but explicit makes the invariant testable).
+    forbidden = np.isin(
+        grid,
+        np.array([r.value for r in _HULL_NOISE_FORBIDDEN], dtype=grid.dtype),
+    )
+    mask = hull_surf & side_facing & hash_mask & ~forbidden
     grid[mask] = Role.HULL_DARK
 
 
@@ -255,6 +268,8 @@ def _paint_rivets(
     period = int(params.rivet_period)
     if period <= 0:
         return
+    # Note: period == 1 means "rivets everywhere" (dense speckle), not
+    # "disabled" — only period <= 0 disables. (Docstring says "0 disables".)
 
     W, H, L = grid.shape
     cy = (H - 1) / 2.0
@@ -280,7 +295,13 @@ def _paint_rivets(
     x_phase = np.broadcast_to((mx % period) == 0, grid.shape)
     z_phase = np.broadcast_to((zs % period) == 0, grid.shape)
 
-    mask = hull_surf & upper_band & side_facing & x_phase & z_phase
+    # Never re-role protected/greeble/wing/etc. cells even if the period and
+    # side-facing tests happen to land on one.
+    forbidden = np.isin(
+        grid,
+        np.array([r.value for r in _HULL_NOISE_FORBIDDEN], dtype=grid.dtype),
+    )
+    mask = hull_surf & upper_band & side_facing & x_phase & z_phase & ~forbidden
     grid[mask] = Role.HULL_DARK
 
 

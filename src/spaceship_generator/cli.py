@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .generator import GenerationResult, generate
 from .palette import list_palettes
-from .shape import CockpitStyle, ShapeParams
+from .shape import CockpitStyle, ShapeParams, StructureStyle
 from .texture import TextureParams
 
 
@@ -34,47 +34,53 @@ def _parse_preview_size(value: str) -> tuple[int, int]:
 
 
 def _parse_seeds(value: str) -> list[int]:
-    """Parse a comma-separated list or inclusive ``A-B`` range into seed ints.
+    """Parse a comma-separated list, inclusive ``A-B`` range, or mix of both.
 
     Examples
     --------
-    ``"1,2,3"`` -> ``[1, 2, 3]``
-    ``"0-3"``   -> ``[0, 1, 2, 3]``
+    ``"1,2,3"``     -> ``[1, 2, 3]``
+    ``"0-3"``       -> ``[0, 1, 2, 3]``
+    ``"1-3,5-7"``   -> ``[1, 2, 3, 5, 6, 7]``
+    ``"1,3-4,9"``   -> ``[1, 3, 4, 9]``
     """
     value = value.strip()
     if not value:
         raise argparse.ArgumentTypeError("--seeds must not be empty")
 
-    # Range form: A-B (support negative via leading '-' only on the right side
-    # of the separator — keep it simple; seeds are typically non-negative).
-    if "-" in value and "," not in value:
-        parts = value.split("-")
-        if len(parts) == 2 and parts[0].strip() and parts[1].strip():
-            try:
-                start = int(parts[0])
-                end = int(parts[1])
-            except ValueError as exc:
-                raise argparse.ArgumentTypeError(
-                    f"--seeds range must be integers, got {value!r}"
-                ) from exc
-            if end < start:
-                raise argparse.ArgumentTypeError(
-                    f"--seeds range end must be >= start, got {value!r}"
-                )
-            return list(range(start, end + 1))
-
-    # Comma-separated list.
     seeds: list[int] = []
     for token in value.split(","):
         token = token.strip()
         if not token:
             continue
+        # Range token: A-B (seeds are non-negative; simple split on '-').
+        if "-" in token:
+            parts = token.split("-")
+            if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
+                raise argparse.ArgumentTypeError(
+                    f"--seeds range must be 'A-B' with integers, got {token!r}"
+                )
+            try:
+                start = int(parts[0])
+                end = int(parts[1])
+            except ValueError as exc:
+                raise argparse.ArgumentTypeError(
+                    f"--seeds range must be integers, got {token!r}"
+                ) from exc
+            if end < start:
+                raise argparse.ArgumentTypeError(
+                    f"--seeds range end must be >= start, got {token!r}"
+                )
+            seeds.extend(range(start, end + 1))
+            continue
+
+        # Single integer token.
         try:
             seeds.append(int(token))
         except ValueError as exc:
             raise argparse.ArgumentTypeError(
-                f"--seeds token must be an integer, got {token!r}"
+                f"--seeds token must be an integer or 'A-B' range, got {token!r}"
             ) from exc
+
     if not seeds:
         raise argparse.ArgumentTypeError(f"--seeds produced no values from {value!r}")
     return seeds
@@ -106,6 +112,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Density of surface greebles (0..0.5).")
     p.add_argument("--cockpit", choices=[c.value for c in CockpitStyle],
                    default=CockpitStyle.BUBBLE.value, help="Cockpit style.")
+    p.add_argument(
+        "--structure-style",
+        choices=[s.value for s in StructureStyle],
+        default=StructureStyle.FRIGATE.value,
+        help="Ship archetype (frigate, fighter, dreadnought, shuttle, hammerhead, carrier).",
+    )
 
     # Texture params
     p.add_argument("--window-period", type=int, default=4,
@@ -166,6 +178,7 @@ def _run_one(
         wing_prob=args.wing_prob,
         greeble_density=args.greeble_density,
         cockpit_style=CockpitStyle(args.cockpit),
+        structure_style=StructureStyle(args.structure_style),
     )
     texture_params = TextureParams(
         window_period_cells=args.window_period,
@@ -270,8 +283,14 @@ def main(argv: list[str] | None = None) -> int:
         _print_success(result, elapsed=elapsed, args=args)
         successes += 1
 
+    # Exit-code semantics:
+    #   0 -> all seeds succeeded
+    #   1 -> partial failure (some succeeded, some failed)
+    #   2 -> no seed succeeded
     if successes == 0:
         return 2
+    if failures > 0:
+        return 1
     return 0
 
 

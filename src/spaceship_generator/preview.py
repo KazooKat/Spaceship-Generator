@@ -34,6 +34,8 @@ def render_preview(
     """
     if role_grid.ndim != 3:
         raise ValueError(f"role_grid must be 3D, got shape {role_grid.shape}")
+    if not np.isfinite(view[0]) or not np.isfinite(view[1]):
+        raise ValueError("view angles must be finite")
 
     # Matplotlib voxels expects (x, y, z) with z = vertical. Swap Y and Z.
     display = np.transpose(role_grid, (0, 2, 1))  # (W, L, H) → z-axis = our height
@@ -53,8 +55,9 @@ def render_preview(
             colors[mask] = palette.preview_color(role)
 
     dpi = 100
-    fig = plt.figure(figsize=(size[0] / dpi, size[1] / dpi), dpi=dpi)
+    fig = None
     try:
+        fig = plt.figure(figsize=(size[0] / dpi, size[1] / dpi), dpi=dpi)
         ax = fig.add_subplot(111, projection="3d")
         if filled.any():
             ax.voxels(
@@ -79,6 +82,7 @@ def render_preview(
             pad_inches=0.0,
         )
     finally:
-        plt.close(fig)
+        if fig is not None:
+            plt.close(fig)
 
     return buf.getvalue()

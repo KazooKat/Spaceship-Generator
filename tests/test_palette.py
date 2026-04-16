@@ -330,3 +330,54 @@ def test_from_dict_error_does_not_include_path():
     assert "missing block roles" in str(excinfo.value)
     # Ensure no path-injection leaked in.
     assert ".yaml" not in str(excinfo.value)
+
+
+# ----- M18: palette × structure_style cross-coverage -----
+
+def _cross_cases() -> list[tuple[str, str]]:
+    """Return ``[(style_value, palette_name), ...]`` for full cross-product.
+
+    Sorted palette names keep parametrize IDs stable. The meta ``"random"``
+    value is filtered out defensively in case it is ever added to the
+    shipped list.
+    """
+    from spaceship_generator.structure_styles import StructureStyle
+
+    palette_names = sorted(
+        n for n in list_palettes() if n != "random"
+    )
+    cases: list[tuple[str, str]] = []
+    for style in StructureStyle:
+        for pal_name in palette_names:
+            cases.append((style.value, pal_name))
+    return cases
+
+
+@pytest.mark.parametrize(
+    "style_value,palette_name",
+    _cross_cases(),
+    ids=lambda v: v,
+)
+def test_generate_palette_x_structure_style_cross(
+    style_value: str, palette_name: str, tmp_path: Path
+):
+    """Every StructureStyle × every palette must generate without exception."""
+    from spaceship_generator.generator import generate
+    from spaceship_generator.shape import ShapeParams
+    from spaceship_generator.structure_styles import StructureStyle
+
+    style = StructureStyle(style_value)
+    params = ShapeParams(structure_style=style)
+    result = generate(
+        seed=17,
+        palette=palette_name,
+        shape_params=params,
+        out_dir=tmp_path,
+        with_preview=False,
+    )
+    assert result.block_count > 0
+    assert result.role_grid.shape == (
+        params.width_max,
+        params.height_max,
+        params.length,
+    )

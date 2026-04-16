@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -12,6 +13,28 @@ from .export import export_litematic, filled_voxel_count
 from .palette import Palette, load_palette
 from .shape import ShapeParams, generate_shape
 from .texture import TextureParams, assign_roles
+
+
+def _sanitize_filename(name: str) -> str:
+    """Reject absolute paths, path separators, traversal, and illegal chars.
+
+    Returns ``name`` unchanged when valid. Raises :class:`ValueError` otherwise.
+    """
+    if not name:
+        raise ValueError("filename must be non-empty")
+    if os.path.isabs(name):
+        raise ValueError("filename must not be absolute")
+    if (
+        "/" in name
+        or "\\" in name
+        or name in ("..", ".")
+        or ".." in Path(name).parts
+    ):
+        raise ValueError("filename must not contain path separators or traversal")
+    illegal = set('<>:"|?*\x00')
+    if any(c in illegal for c in name):
+        raise ValueError("filename contains illegal characters")
+    return name
 
 
 @dataclass
@@ -95,6 +118,7 @@ def generate(
     role_grid = assign_roles(shape_grid, texture_params)
 
     filename = filename or f"ship_{seed}.litematic"
+    filename = _sanitize_filename(filename)
     out_path = out_dir / filename
     schem_name = name or f"Ship {seed}"
     export_litematic(

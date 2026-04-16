@@ -46,7 +46,18 @@ def export_litematic(
         role_value = int(role_grid[x, y, z])
         bs = block_cache.get(role_value)
         if bs is None:
-            bs = palette.block_state(Role(role_value))
+            try:
+                role_enum = Role(role_value)
+            except ValueError as exc:
+                raise ValueError(
+                    f"palette {palette.name!r} missing block for role {role_value!r}"
+                ) from exc
+            try:
+                bs = palette.block_state(role_enum)
+            except KeyError as exc:
+                raise ValueError(
+                    f"palette {palette.name!r} missing block for role {role_enum!r}"
+                ) from exc
             block_cache[role_value] = bs
         region[int(x), int(y), int(z)] = bs
 

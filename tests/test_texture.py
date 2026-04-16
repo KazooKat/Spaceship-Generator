@@ -401,6 +401,114 @@ def test_rivet_period_creates_dots():
     assert np.array_equal(riveted, riveted[::-1, :, :])
 
 
+def test_hull_noise_respects_forbidden_roles():
+    """Hull-noise must never convert LIGHT/WINDOW/etc. cells to HULL_DARK.
+
+    Builds a slab, pre-paints a few cells with LIGHT and WINDOW (that
+    hull-noise would otherwise target because they sit on side-facing
+    surface), then asserts their counts are preserved after
+    assign_roles(hull_noise_ratio=1.0).
+    """
+    grid = np.full((10, 10, 20), Role.EMPTY, dtype=np.int8)
+    grid[2:8, 2:8, 2:18] = Role.HULL
+
+    # Place a handful of pre-existing LIGHT and WINDOW cells on side-facing
+    # surface columns (x == 2 and its mirror x == 7) in positions that hull
+    # noise would otherwise definitely pick (any ratio >= 1 triggers them all).
+    pre_light_coords = [(2, 5, 6), (7, 5, 6), (2, 5, 10), (7, 5, 10)]
+    pre_window_coords = [(2, 6, 8), (7, 6, 8), (2, 6, 12), (7, 6, 12)]
+    for x, y, z in pre_light_coords:
+        grid[x, y, z] = Role.LIGHT
+    for x, y, z in pre_window_coords:
+        grid[x, y, z] = Role.WINDOW
+
+    light_before = int((grid == Role.LIGHT).sum())
+    window_before = int((grid == Role.WINDOW).sum())
+
+    out = assign_roles(
+        grid,
+        TextureParams(
+            hull_noise_ratio=1.0,
+            rivet_period=0,
+            nose_tip_light=False,
+        ),
+    )
+    # Counts of LIGHT / WINDOW must be at least preserved — they shouldn't
+    # have been overwritten by HULL_DARK.
+    assert int((out == Role.LIGHT).sum()) >= light_before
+    assert int((out == Role.WINDOW).sum()) >= window_before
+    # And every one of our pre-seeded coords must still be its original role.
+    for x, y, z in pre_light_coords:
+        assert out[x, y, z] == Role.LIGHT, (
+            f"LIGHT at {(x, y, z)} was overwritten by hull noise"
+        )
+    for x, y, z in pre_window_coords:
+        assert out[x, y, z] == Role.WINDOW, (
+            f"WINDOW at {(x, y, z)} was overwritten by hull noise"
+        )
+
+
+def test_rivets_respect_forbidden_roles():
+    """Rivet pass must not overwrite LIGHT/WINDOW/GREEBLE cells."""
+    grid = np.full((12, 10, 24), Role.EMPTY, dtype=np.int8)
+    grid[2:10, 2:8, 2:22] = Role.HULL
+
+    # Place LIGHT and WINDOW cells exactly on the upper-band, side-facing,
+    # x==2 column at z positions that are multiples of 2 — i.e. cells the
+    # rivet pass (period=2) would pick.
+    pre_light_coords = [(2, 7, 4), (9, 7, 4), (2, 7, 8), (9, 7, 8)]
+    pre_window_coords = [(2, 7, 12), (9, 7, 12)]
+    pre_greeble_coords = [(2, 7, 16), (9, 7, 16)]
+    for x, y, z in pre_light_coords:
+        grid[x, y, z] = Role.LIGHT
+    for x, y, z in pre_window_coords:
+        grid[x, y, z] = Role.WINDOW
+    for x, y, z in pre_greeble_coords:
+        grid[x, y, z] = Role.GREEBLE
+
+    out = assign_roles(
+        grid,
+        TextureParams(
+            rivet_period=2,
+            hull_noise_ratio=0.0,
+            nose_tip_light=False,
+        ),
+    )
+    for x, y, z in pre_light_coords:
+        assert out[x, y, z] == Role.LIGHT, (
+            f"LIGHT at {(x, y, z)} was overwritten by rivet pass"
+        )
+    for x, y, z in pre_window_coords:
+        assert out[x, y, z] == Role.WINDOW, (
+            f"WINDOW at {(x, y, z)} was overwritten by rivet pass"
+        )
+    for x, y, z in pre_greeble_coords:
+        assert out[x, y, z] == Role.GREEBLE, (
+            f"GREEBLE at {(x, y, z)} was overwritten by rivet pass"
+        )
+
+
+def test_panel_line_bands_one_is_baseline():
+    """panel_line_bands=1 is the single mid-stripe baseline (no extra bands).
+
+    (0 is clamped to 1 by `max(1, min(3, int(...)))`, so panel_line_bands=0
+    also yields the same output — no panel-line re-roling beyond the mid
+    stripe.)
+    """
+    grid = np.full((10, 12, 30), Role.EMPTY, dtype=np.int8)
+    grid[2:8, 2:10, 2:28] = Role.HULL
+    baseline = assign_roles(
+        grid,
+        TextureParams(panel_line_bands=1, nose_tip_light=False),
+    )
+    zeroed = assign_roles(
+        grid,
+        TextureParams(panel_line_bands=0, nose_tip_light=False),
+    )
+    # Zero is clamped to 1 → should produce identical output.
+    assert np.array_equal(baseline, zeroed)
+
+
 def test_engine_glow_ring_adds_hull_dark_around_glow():
     """engine_glow_ring=True flips at least one ENGINE neighbor into HULL_DARK.
 

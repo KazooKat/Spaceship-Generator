@@ -419,7 +419,7 @@
 
         // --- render loop ------------------------------------------------------
         let rafPending = false;
-        let dpr = Math.max(1, window.devicePixelRatio || 1);
+        let contextLost = false;
         // Frame-rate measurement for developer tooling.
         let frameCount = 0;
         let frameCountWindowStart = performance.now();
@@ -431,6 +431,9 @@
         };
 
         function resizeIfNeeded() {
+            // Re-read devicePixelRatio each frame so moving the window to a
+            // display with a different DPI updates crispness correctly.
+            const dpr = Math.max(1, window.devicePixelRatio || 1);
             const w = Math.max(1, Math.floor(canvas.clientWidth * dpr));
             const h = Math.max(1, Math.floor(canvas.clientHeight * dpr));
             if (canvas.width !== w || canvas.height !== h) {
@@ -439,8 +442,71 @@
             }
         }
 
+        // --- translucent back-to-front sort ---------------------------------
+        //
+        // For correct alpha blending, translucent voxels must be drawn
+        // back-to-front from the camera's viewpoint. Sorting every frame is
+        // wasteful when the camera is still, so we only re-sort when the
+        // view direction has rotated more than ~15° since the last sort
+        // (cosine threshold). Typical scenes have <2000 translucent voxels
+        // so even a full sort is cheap; we still throttle to avoid
+        // churning GPU buffers every frame during smooth orbits.
+        const transOffsetsSorted = new Float32Array(transCount * 3);
+        const transColorsSorted = new Float32Array(transCount * 4);
+        const transDistSq = new Float32Array(transCount);
+        let lastSortDirX = 0, lastSortDirY = 0, lastSortDirZ = 0;
+        let transSortValid = false;
+        const SORT_REBUILD_COS = Math.cos(15 * Math.PI / 180);
+
+        function maybeResortTranslucent() {
+            if (transCount <= 0) return false;
+            const eye = computeEye();
+            // Direction from camera toward target (normalized).
+            let vx = cam.target[0] - eye[0];
+            let vy = cam.target[1] - eye[1];
+            let vz = cam.target[2] - eye[2];
+            const vlen = Math.hypot(vx, vy, vz) || 1;
+            vx /= vlen; vy /= vlen; vz /= vlen;
+            if (transSortValid) {
+                const dot = vx * lastSortDirX + vy * lastSortDirY + vz * lastSortDirZ;
+                if (dot >= SORT_REBUILD_COS) return false;  // still fresh
+            }
+            // Compute squared distance from eye to each instance, then
+            // sort an index permutation so the farthest voxel draws first.
+            const orderArr = new Array(transCount);
+            for (let i = 0; i < transCount; i++) {
+                const ox = transOffsets[i * 3 + 0];
+                const oy = transOffsets[i * 3 + 1];
+                const oz = transOffsets[i * 3 + 2];
+                const dx = ox - eye[0];
+                const dy = oy - eye[1];
+                const dz = oz - eye[2];
+                transDistSq[i] = dx * dx + dy * dy + dz * dz;
+                orderArr[i] = i;
+            }
+            orderArr.sort(function (a, b) { return transDistSq[b] - transDistSq[a]; });
+            for (let i = 0; i < transCount; i++) {
+                const src = orderArr[i];
+                transOffsetsSorted[i * 3 + 0] = transOffsets[src * 3 + 0];
+                transOffsetsSorted[i * 3 + 1] = transOffsets[src * 3 + 1];
+                transOffsetsSorted[i * 3 + 2] = transOffsets[src * 3 + 2];
+                transColorsSorted[i * 4 + 0] = transColors[src * 4 + 0];
+                transColorsSorted[i * 4 + 1] = transColors[src * 4 + 1];
+                transColorsSorted[i * 4 + 2] = transColors[src * 4 + 2];
+                transColorsSorted[i * 4 + 3] = transColors[src * 4 + 3];
+            }
+            gl.bindBuffer(gl.ARRAY_BUFFER, offBufTrans);
+            gl.bufferData(gl.ARRAY_BUFFER, transOffsetsSorted, gl.DYNAMIC_DRAW);
+            gl.bindBuffer(gl.ARRAY_BUFFER, colBufTrans);
+            gl.bufferData(gl.ARRAY_BUFFER, transColorsSorted, gl.DYNAMIC_DRAW);
+            lastSortDirX = vx; lastSortDirY = vy; lastSortDirZ = vz;
+            transSortValid = true;
+            return true;
+        }
+
         function draw() {
             rafPending = false;
+            if (contextLost) return;
             resizeIfNeeded();
             const w = canvas.width, h = canvas.height;
             gl.viewport(0, 0, w, h);
@@ -471,8 +537,10 @@
             // Pass 2: translucent voxels with alpha blending. Depth test
             // stays on so we don't draw behind solid geometry, but depth
             // writes are disabled so translucent voxels don't occlude each
-            // other awkwardly when drawn in arbitrary order.
+            // other awkwardly. Re-sort back-to-front when the camera
+            // direction has changed more than ~15° since the last sort.
             if (transCount > 0) {
+                maybeResortTranslucent();
                 gl.enable(gl.BLEND);
                 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
                 gl.depthMask(false);
@@ -504,9 +572,15 @@
         let lastX = 0, lastY = 0;
         const ORBIT_SENSITIVITY = 0.008;  // radians per pixel
 
-        canvas.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+        // All listeners are captured as named consts so destroy() can
+        // removeEventListener them cleanly. HTMX swaps in a fresh canvas on
+        // every "Generate" click; without this cleanup the window-level
+        // mousemove/mouseup (and the fallback resize) handlers from old
+        // renderers keep firing forever with stale canvas references.
 
-        canvas.addEventListener("mousedown", function (ev) {
+        const onContextMenu = function (ev) { ev.preventDefault(); };
+
+        const onMouseDown = function (ev) {
             const isPan = ev.button === 1 || ev.button === 2 || (ev.button === 0 && ev.shiftKey);
             mode = isPan ? "pan" : (ev.button === 0 ? "orbit" : null);
             if (!mode) return;
@@ -515,9 +589,9 @@
             canvas.classList.add("dragging");
             if (mode === "pan") canvas.classList.add("panning");
             ev.preventDefault();
-        });
+        };
 
-        window.addEventListener("mousemove", function (ev) {
+        const onMouseMove = function (ev) {
             if (!mode) return;
             const dx = ev.clientX - lastX;
             const dy = ev.clientY - lastY;
@@ -549,26 +623,35 @@
                 const ux = ry * fnz - rz * fny;
                 const uy = rz * fnx - rx * fnz;
                 const uz = rx * fny - ry * fnx;
-                const pxScale = (2 * cam.radius * Math.tan(cam.fov / 2)) / Math.max(1, canvas.clientHeight);
+                // Use separate X/Y screen-to-world scales. The previous
+                // single pxScale used clientHeight for both axes, which
+                // distorted horizontal pan on wide viewports.
+                // tan(fov/2) is the vertical half-angle; scale X by width
+                // and Y by height independently.
+                const targetDist = cam.radius;
+                const tanHalfFov = Math.tan(cam.fov / 2);
+                const pxScaleY = (2 * targetDist * tanHalfFov) / Math.max(1, canvas.clientHeight);
+                const pxScaleX = (2 * targetDist * tanHalfFov) / Math.max(1, canvas.clientWidth);
                 // Drag-to-scroll convention: dragging the mouse right by dx
                 // pixels should move the pan target LEFT along the camera's
                 // right axis so the feature under the cursor appears to
                 // travel with the cursor. Vertical (dy) keeps its sign.
-                cam.target[0] += (rx * dx + ux * dy) * pxScale;
-                cam.target[1] += (ry * dx + uy * dy) * pxScale;
-                cam.target[2] += (rz * dx + uz * dy) * pxScale;
+                // NOTE: sign on dx is user-confirmed correct — do not flip.
+                cam.target[0] += rx * dx * pxScaleX + ux * dy * pxScaleY;
+                cam.target[1] += ry * dx * pxScaleX + uy * dy * pxScaleY;
+                cam.target[2] += rz * dx * pxScaleX + uz * dy * pxScaleY;
             }
             requestDraw();
-        });
+        };
 
-        window.addEventListener("mouseup", function () {
+        const onMouseUp = function () {
             if (!mode) return;
             mode = null;
             canvas.classList.remove("dragging");
             canvas.classList.remove("panning");
-        });
+        };
 
-        canvas.addEventListener("wheel", function (ev) {
+        const onWheel = function (ev) {
             ev.preventDefault();
             // deltaY > 0 → zoom out
             const factor = Math.exp(ev.deltaY * 0.0015);
@@ -576,30 +659,85 @@
             if (cam.radius < cam.minRadius) cam.radius = cam.minRadius;
             if (cam.radius > cam.maxRadius) cam.radius = cam.maxRadius;
             requestDraw();
-        }, { passive: false });
+        };
 
-        canvas.addEventListener("dblclick", function () {
+        const onDblClick = function () {
             cam.theta = -Math.PI / 3;
             cam.phi = 0.5;
             cam.radius = modelSize * 1.1;
             cam.target = [0, 0, 0];
             requestDraw();
-        });
+        };
+
+        // Context-loss handling. On loss, suppress further draws (GL calls
+        // against a lost context throw INVALID_OPERATION) and surface the
+        // static fallback image if one is available. Full re-initialization
+        // on restore (recompile shader, re-upload all buffers) is
+        // nontrivial, so we leave the PNG fallback in place and keep
+        // contextLost=true for this renderer instance.
+        const onContextLost = function (ev) {
+            ev.preventDefault();
+            contextLost = true;
+            rafPending = true;
+            try { showFallback(canvas); } catch (e) { /* best-effort */ }
+        };
+        const onContextRestored = function () {
+            // No-op: we already switched to the PNG fallback in
+            // onContextLost. Future draws stay suppressed.
+        };
+
+        canvas.addEventListener("contextmenu", onContextMenu);
+        canvas.addEventListener("mousedown", onMouseDown);
+        window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("mouseup", onMouseUp);
+        canvas.addEventListener("wheel", onWheel, { passive: false });
+        canvas.addEventListener("dblclick", onDblClick);
+        canvas.addEventListener("webglcontextlost", onContextLost);
+        canvas.addEventListener("webglcontextrestored", onContextRestored);
 
         // Re-render on size changes (responsive layout).
+        let resizeObserver = null;
+        let onWindowResize = null;
         if (typeof ResizeObserver !== "undefined") {
-            const ro = new ResizeObserver(function () { requestDraw(); });
-            ro.observe(canvas);
+            resizeObserver = new ResizeObserver(function () { requestDraw(); });
+            resizeObserver.observe(canvas);
         } else {
-            window.addEventListener("resize", requestDraw);
+            onWindowResize = function () { requestDraw(); };
+            window.addEventListener("resize", onWindowResize);
         }
 
         // Kick off the first draw.
         requestDraw();
 
+        function destroy() {
+            // Remove every listener this renderer attached. Called by
+            // initCanvas() before a replacement renderer binds to a new
+            // canvas after an HTMX swap.
+            canvas.removeEventListener("contextmenu", onContextMenu);
+            canvas.removeEventListener("mousedown", onMouseDown);
+            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("mouseup", onMouseUp);
+            canvas.removeEventListener("wheel", onWheel);
+            canvas.removeEventListener("dblclick", onDblClick);
+            canvas.removeEventListener("webglcontextlost", onContextLost);
+            canvas.removeEventListener("webglcontextrestored", onContextRestored);
+            if (resizeObserver) {
+                try { resizeObserver.disconnect(); } catch (e) { /* ignore */ }
+                resizeObserver = null;
+            }
+            if (onWindowResize) {
+                window.removeEventListener("resize", onWindowResize);
+                onWindowResize = null;
+            }
+            // Mark lost so any late raf callbacks short-circuit.
+            contextLost = true;
+            rafPending = true;
+        }
+
         return {
             canvas: canvas,
             requestDraw: requestDraw,
+            destroy: destroy,
             getFps: function () { return fpsEstimate; },
             getCount: function () { return count; },
         };
@@ -621,7 +759,19 @@
     }
 
     function initCanvas(canvas) {
-        if (!canvas || canvas.dataset.previewBound === "1") return;
+        if (!canvas) return;
+        // If this canvas already has a live renderer (e.g. HTMX re-ran the
+        // afterSwap hook on a container that included it, or the same node
+        // is being re-initialized), tear it down first so we don't
+        // double-bind window-level listeners. Clearing previewBound lets
+        // the same canvas node be re-initialized with fresh state.
+        if (canvas.__renderer && typeof canvas.__renderer.destroy === "function") {
+            try { canvas.__renderer.destroy(); } catch (e) { /* ignore */ }
+            canvas.__renderer = null;
+            delete canvas.dataset.previewBound;
+            delete canvas.dataset.previewReady;
+        }
+        if (canvas.dataset.previewBound === "1") return;
         canvas.dataset.previewBound = "1";
 
         const voxelsUrl = canvas.dataset.voxelsUrl;
@@ -639,6 +789,7 @@
                     showFallback(canvas);
                     return;
                 }
+                canvas.__renderer = r;
                 const t1 = performance.now();
                 // Attach timing info for debugging via browser devtools.
                 canvas.__previewMs = t1 - t0;

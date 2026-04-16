@@ -2,9 +2,15 @@
 
 {% macro tip(key) -%}
     {%- if param_help and key in param_help -%}
+    {# Touch-friendly: click / Enter / Space toggles a persistent-open
+       class so the tooltip bubble stays visible on devices that have no
+       hover state. Esc / blur dismisses it. #}
     <span class="tip" tabindex="0" role="button"
           aria-label="{{ param_help[key] }}"
-          data-tip="{{ param_help[key] }}">?</span>
+          data-tip="{{ param_help[key] }}"
+          onclick="this.classList.toggle('tip-open');"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.classList.toggle('tip-open');}else if(event.key==='Escape'){this.classList.remove('tip-open');}"
+          onblur="this.classList.remove('tip-open');">?</span>
     {%- endif -%}
 {%- endmacro %}
 
@@ -21,7 +27,7 @@
            min="{{ lo }}" max="{{ hi }}" step="{{ step }}"
            value="{{ value }}"
            aria-label="{{ name }} slider"
-           tabindex="-1">
+           tabindex="0">
     <input type="number" class="num-input"
            name="{{ name }}" step="{{ step }}"
            value="{{ value }}"
@@ -48,7 +54,7 @@
             <button type="button" id="randomize-seed" class="btn secondary seed-random"
                     data-role="randomize-seed"
                     onclick="document.getElementById('seed').value = Math.floor(Math.random() * 2147483648);">
-                Random seed
+                Randomize seed
             </button>
             <label>Palette {{ tip("palette") }}
                 <select name="palette">
@@ -118,8 +124,12 @@
             <label>Rivet period (0 off) {{ tip("rivet_period") }}
                 {{ num_range("rivet_period", 0, 32, 1, defaults.rivet_period) }}
             </label>
-            <label class="checkbox">
-                <input type="checkbox" name="engine_glow_ring" value="true"
+            {# Explicit for/id pair alongside the implicit wrapping label —
+               redundant but more robust for screen readers that prefer an
+               explicit association. #}
+            <label class="checkbox" for="engine_glow_ring">
+                <input type="checkbox" id="engine_glow_ring"
+                       name="engine_glow_ring" value="true"
                        {% if defaults.engine_glow_ring %}checked{% endif %}>
                 Engine glow ring {{ tip("engine_glow_ring") }}
             </label>
@@ -131,8 +141,7 @@
             Generate random ship
         </button>
         <div id="gen-indicator" class="progress-bar" role="progressbar"
-             aria-label="Generating spaceship" aria-valuetext="Generating"
-             aria-busy="true">
+             aria-label="Generating spaceship" aria-valuetext="Generating">
             <div class="progress-bar__track"></div>
         </div>
     </form>

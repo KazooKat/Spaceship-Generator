@@ -316,8 +316,10 @@ button.seed-random {
 
 .tip:hover::after,
 .tip:focus::after,
+.tip.tip-open::after,
 .tip:hover::before,
-.tip:focus::before {
+.tip:focus::before,
+.tip.tip-open::before {
     opacity: 1;
     visibility: visible;
     transition: opacity 0.12s ease, visibility 0s linear 0s;
@@ -334,16 +336,6 @@ button.seed-random {
     border-top-color: transparent;
     border-bottom-color: var(--border);
 }
-
-.indicator {
-    display: none;
-    margin-left: 0.5rem;
-    color: var(--muted);
-    font-size: 0.85rem;
-    font-style: italic;
-}
-.htmx-request .indicator,
-.htmx-request.indicator { display: inline; }
 
 /* Indeterminate progress bar for /generate (HTMX in-flight indicator) */
 .progress-bar {

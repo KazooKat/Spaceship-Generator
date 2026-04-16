@@ -240,6 +240,44 @@ def test_cli_verbose_prints_elapsed(tmp_path: Path, capsys):
     assert "Elapsed:" in captured.out
 
 
+def test_generate_rejects_path_traversal_filename(tmp_path: Path):
+    with pytest.raises(ValueError):
+        generate(
+            42,
+            palette="sci_fi_industrial",
+            shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+            out_dir=tmp_path,
+            filename="../evil.litematic",
+        )
+
+
+def test_generate_rejects_absolute_filename(tmp_path: Path):
+    # Use a platform-appropriate absolute path. On Windows this is "C:\\evil",
+    # on POSIX this is "/evil"; both fail os.path.isabs.
+    import os
+
+    absolute = os.path.abspath(os.sep + "evil.litematic")
+    with pytest.raises(ValueError):
+        generate(
+            42,
+            palette="sci_fi_industrial",
+            shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+            out_dir=tmp_path,
+            filename=absolute,
+        )
+
+
+def test_generate_rejects_illegal_char_filename(tmp_path: Path):
+    with pytest.raises(ValueError):
+        generate(
+            42,
+            palette="sci_fi_industrial",
+            shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+            out_dir=tmp_path,
+            filename="bad<name>|file?.litematic",
+        )
+
+
 def test_cli_quiet_suppresses_success_lines(tmp_path: Path, capsys):
     rc = cli_main([
         "--seed", "9",

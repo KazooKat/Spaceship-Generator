@@ -331,7 +331,12 @@ def test_preview_accepts_view_params(client):
 
 
 def test_voxels_endpoint_applies_alpha_to_translucent_roles(client):
-    """/voxels/<id>.json should emit alpha < 1 for roles mapped to translucent blocks."""
+    """/voxels/<id>.json should emit alpha < 1 for roles mapped to translucent blocks.
+
+    Also assert the top-level payload shape (dims, count, voxels, colors) matches
+    the documented contract in :func:`voxels` (base64-packed Int16 voxel buffer
+    alongside a per-role RGBA color map).
+    """
     # sci_fi_industrial maps WINDOW -> light_blue_stained_glass and
     # COCKPIT_GLASS -> tinted_glass, so both should come back translucent.
     resp = client.post(
@@ -347,8 +352,31 @@ def test_voxels_endpoint_applies_alpha_to_translucent_roles(client):
     vox_resp = client.get(f"/voxels/{gen_id}.json")
     assert vox_resp.status_code == 200
     data = vox_resp.get_json()
-    assert "colors" in data
+
+    # --- M15: top-level contract assertions -------------------------------
+    # dims: [W, H, L] — three positive ints.
+    assert "dims" in data, f"response missing 'dims': keys={list(data.keys())}"
+    dims = data["dims"]
+    assert isinstance(dims, list) and len(dims) == 3
+    assert all(isinstance(d, int) and d > 0 for d in dims), dims
+
+    # count: non-negative int, number of surface voxels.
+    assert "count" in data, f"response missing 'count': keys={list(data.keys())}"
+    assert isinstance(data["count"], int) and data["count"] >= 0
+
+    # voxels: base64-encoded packed Int16 buffer (4 * count int16 = 8 * count bytes).
+    assert "voxels" in data, f"response missing 'voxels': keys={list(data.keys())}"
+    assert isinstance(data["voxels"], str)
+    import base64 as _b64
+    raw = _b64.b64decode(data["voxels"])
+    assert len(raw) == data["count"] * 8, (
+        f"voxels buffer length {len(raw)} != 8 * count ({data['count']})"
+    )
+
+    # colors: dict of role-int-string -> 4-float RGBA list.
+    assert "colors" in data, f"response missing 'colors': keys={list(data.keys())}"
     colors = data["colors"]
+    assert isinstance(colors, dict) and len(colors) > 0
 
     window_rgba = colors.get(str(int(Role.WINDOW)))
     cockpit_rgba = colors.get(str(int(Role.COCKPIT_GLASS)))
@@ -366,14 +394,31 @@ def test_voxels_endpoint_applies_alpha_to_translucent_roles(client):
 
 
 def test_index_has_structure_style_select(client):
-    """Index page must expose a <select name='structure_style'> with options."""
+    """Index page must expose a <select name='structure_style'> with every
+    ``StructureStyle`` enum value rendered as an ``<option>``.
+
+    The form drives hull archetype selection; any silently dropped enum value
+    would regress the UI without breaking tests unless each value is checked
+    explicitly. We walk the live enum so adding a new archetype keeps the
+    assertion honest without hardcoding the list.
+    """
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'name="structure_style"' in body
-    # At least the default must be rendered.
-    assert "frigate" in body
-    assert "fighter" in body
+
+    from spaceship_generator.shape import StructureStyle
+
+    # Every enum value must appear as an <option value="..."> in the rendered
+    # HTML. Use a regex to tolerate attribute order and surrounding whitespace.
+    for style in StructureStyle:
+        pattern = re.compile(
+            r'<option\s+[^>]*value="' + re.escape(style.value) + r'"',
+            re.IGNORECASE,
+        )
+        assert pattern.search(body), (
+            f"StructureStyle.{style.name} ({style.value!r}) missing as <option> in index"
+        )
 
 
 def test_generate_with_structure_style_fighter(client):
@@ -403,14 +448,47 @@ def test_generate_with_invalid_structure_style_returns_400(client):
 
 
 def test_api_generate_with_structure_style(client):
-    """JSON API accepts structure_style and returns a generated ship."""
-    body = _minimal_json()
-    body["structure_style"] = "dreadnought"
-    resp = client.post("/api/generate", json=body)
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert "gen_id" in data
-    assert data["blocks"] > 0
+    """JSON API accepts structure_style and actually uses it.
+
+    The current /api/generate response dict does not echo ``structure_style``
+    back (keys are: seed, palette, shape, blocks, download_url, preview_url,
+    gen_id). To prove the field took effect we generate the same seed + params
+    under two different archetypes and assert the resulting ships differ —
+    either in overall bounding-box shape or in block count. Identical outputs
+    would mean the ``structure_style`` knob was silently ignored.
+    """
+    # Fighter: compact, typically lower block count than a dreadnought.
+    body_fighter = _minimal_json()
+    body_fighter["structure_style"] = "fighter"
+    resp_fighter = client.post("/api/generate", json=body_fighter)
+    assert resp_fighter.status_code == 200
+    data_fighter = resp_fighter.get_json()
+    assert "gen_id" in data_fighter
+    assert data_fighter["blocks"] > 0
+    # Contract check: no structure_style echo in the response (update this
+    # assertion if the API ever grows to echo it back).
+    assert "structure_style" not in data_fighter
+
+    # Dreadnought: larger bulk profile with the same seed+params.
+    body_dread = _minimal_json()
+    body_dread["structure_style"] = "dreadnought"
+    resp_dread = client.post("/api/generate", json=body_dread)
+    assert resp_dread.status_code == 200
+    data_dread = resp_dread.get_json()
+    assert data_dread["blocks"] > 0
+
+    # The archetype must produce a measurable difference: either the
+    # bounding-box shape changes, or the block count differs. If both match
+    # the two styles collapse to the same output — the style parameter has
+    # effectively done nothing.
+    assert (
+        data_fighter["shape"] != data_dread["shape"]
+        or data_fighter["blocks"] != data_dread["blocks"]
+    ), (
+        f"fighter and dreadnought produced identical ships "
+        f"(shape={data_fighter['shape']}, blocks={data_fighter['blocks']}): "
+        f"structure_style appears to be ignored"
+    )
 
 
 def test_api_generate_invalid_structure_style(client):
@@ -424,10 +502,25 @@ def test_api_generate_invalid_structure_style(client):
 
 
 def test_memory_eviction_cleans_up_litematic(small_client):
-    """Oldest .litematic on disk should be deleted when evicted from cache."""
+    """Oldest .litematic on disk should be deleted when evicted from cache.
+
+    Exercised through the public HTTP surface: POST enough /api/generate
+    calls to exceed MAX_RESULTS (which the fixture clamps to 2), then hit
+    /download/<first_gen_id> and expect 404 once the LRU has evicted it.
+    The on-disk .litematic file for the evicted id must also be gone.
+
+    FIXME: we still reach into ``app.config["_RESULTS"]`` once per create
+    to capture the disk path of the GenerationResult *before* eviction
+    removes its dict entry. The public API does not otherwise expose the
+    filesystem location, so this one private-attribute read is the minimal
+    hook needed to verify disk cleanup. If a public ``/api/result/<id>``
+    endpoint is ever added that returns the filename, replace this read.
+    """
     app, client = small_client
     assert app.config["MAX_RESULTS"] == 2
 
+    # FIXME(public-API): see docstring — used only to capture disk paths
+    # before eviction removes them from the store.
     results_store = app.config["_RESULTS"]
 
     gen_ids: list[str] = []
@@ -441,24 +534,140 @@ def test_memory_eviction_cleans_up_litematic(small_client):
         data = resp.get_json()
         gen_ids.append(data["gen_id"])
 
-        # Capture the disk path from the stored GenerationResult right now,
-        # since after eviction the entry will be removed from the store.
+        # Capture disk path at creation time (before possible eviction).
         result = results_store.get(data["gen_id"])
-        if result is not None:
-            disk_paths.append(Path(result.litematic_path))
+        assert result is not None, (
+            f"freshly created result {data['gen_id']} not in store"
+        )
+        disk_paths.append(Path(result.litematic_path))
 
-    # Only the last 2 should still be in the cache; the first was evicted.
-    assert gen_ids[0] not in results_store
-    assert gen_ids[1] in results_store
-    assert gen_ids[2] in results_store
+    # Public-API verification: the first (evicted) id should 404 on all
+    # result-serving endpoints.
+    first_id = gen_ids[0]
+    assert client.get(f"/download/{first_id}").status_code == 404, (
+        f"download of evicted id {first_id} should 404"
+    )
+    assert client.get(f"/result/{first_id}").status_code == 404
+    assert client.get(f"/preview/{first_id}.png").status_code == 404
 
-    # We captured 3 disk paths (even for the first one, at time of creation).
+    # The two most recent ids must still be downloadable.
+    for kept_id in gen_ids[1:]:
+        dl = client.get(f"/download/{kept_id}")
+        assert dl.status_code == 200, (
+            f"download of kept id {kept_id} should succeed, got {dl.status_code}"
+        )
+        assert "attachment" in dl.headers.get("Content-Disposition", "")
+
+    # Disk cleanup: evicted file removed, kept files still present.
     assert len(disk_paths) == 3
     evicted_path, kept_a, kept_b = disk_paths
-
-    # Evicted file was unlinked; kept ones still exist.
     assert not evicted_path.exists(), (
         f"evicted litematic should be removed from disk: {evicted_path}"
     )
     assert kept_a.exists()
     assert kept_b.exists()
+
+
+# --- New tests covering F5's app.py changes --------------------------------
+
+
+def test_download_404_when_file_deleted_from_disk(client):
+    """/download/<gen_id> must return 404 (not 500) when the .litematic is gone.
+
+    Covers M4 fixed in parallel by F5: the result can still be in the LRU
+    cache while its on-disk file vanishes (manual cleanup, tmpfs churn,
+    concurrent eviction of an earlier request writing to the same tree).
+    ``send_file`` would otherwise crash with a 500; the fix returns 404.
+    """
+    resp = client.post("/api/generate", json=_minimal_json())
+    assert resp.status_code == 200
+    data = resp.get_json()
+    gen_id = data["gen_id"]
+
+    # Sanity: download works right now. Close the response explicitly so
+    # the underlying file handle opened by ``send_file`` is released —
+    # on Windows a still-open handle blocks the subsequent ``unlink`` with
+    # a PermissionError (ERROR_SHARING_VIOLATION).
+    first = client.get(f"/download/{gen_id}")
+    assert first.status_code == 200
+    first.close()
+
+    # Reach into the store only to locate the disk file the route serves.
+    # This mirrors the operational scenario where an external process (or
+    # another worker) removes the file between list and serve.
+    results_store = client.application.config["_RESULTS"]
+    result = results_store.get(gen_id)
+    assert result is not None
+    disk_path = Path(result.litematic_path)
+    assert disk_path.exists()
+    disk_path.unlink()
+    assert not disk_path.exists()
+
+    # Now the route must 404 — not 500 — because the gen_id still maps
+    # to a cached GenerationResult but the underlying file is gone.
+    resp2 = client.get(f"/download/{gen_id}")
+    assert resp2.status_code == 404, (
+        f"expected 404 when .litematic missing on disk, got {resp2.status_code}"
+    )
+
+
+@pytest.mark.parametrize("bad_value", ["nan", "NaN", "inf", "Infinity", "-inf"])
+def test_generate_rejects_non_finite_float_params(client, bad_value):
+    """NaN/Inf floats must be rejected with 400 (not poison downstream numpy).
+
+    Covers M7 fixed in parallel by F5: ``float("nan")`` and ``float("inf")``
+    parse without error in Python, so without an explicit ``math.isfinite``
+    guard they would flow into ShapeParams and then into numpy-heavy code,
+    producing either NaN voxels or a 500 deep inside the generator. The fix
+    rejects them at the boundary with a 400.
+    """
+    data = _minimal_form()
+    data["wing_prob"] = bad_value
+    resp = client.post("/generate", data=data)
+    assert resp.status_code == 400, (
+        f"wing_prob={bad_value!r} should be rejected with 400, "
+        f"got {resp.status_code}"
+    )
+
+
+@pytest.mark.parametrize("bad_value", ["nan", "inf"])
+def test_api_generate_rejects_non_finite_float_params(client, bad_value):
+    """JSON API must also reject NaN/Inf floats with 400.
+
+    JSON parsers can round-trip the strings ``"nan"``/``"inf"`` as Python
+    floats via ``float(str)`` inside the param builder even if strict JSON
+    would not. The boundary guard must catch both entry paths.
+    """
+    body = _minimal_json()
+    body["wing_prob"] = bad_value
+    resp = client.post("/api/generate", json=body)
+    assert resp.status_code == 400, (
+        f"api wing_prob={bad_value!r} should be rejected with 400, "
+        f"got {resp.status_code}"
+    )
+    payload = resp.get_json()
+    assert isinstance(payload, dict) and "error" in payload
+
+
+def test_index_has_randomize_all_button(client):
+    """Randomize-all button and its inline randomizer script must be present.
+
+    Shipping the button without the script would give a silent no-op; shipping
+    the script without the button would be dead code. Assert both anchors.
+    """
+    resp = client.get("/")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+
+    # Button must be there, with the id the JS hook looks up by.
+    assert 'id="randomize-all"' in body
+
+    # And the inline randomizer must be wired to that id. We check for the
+    # core getElementById lookup used in the bound listener; whitespace /
+    # quote style is tolerated via a simple regex.
+    script_hook = re.compile(
+        r"getElementById\(\s*['\"]randomize-all['\"]\s*\)"
+    )
+    assert script_hook.search(body), (
+        "inline randomizer script not found — randomize-all button would be inert"
+    )

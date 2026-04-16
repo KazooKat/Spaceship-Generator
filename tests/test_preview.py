@@ -50,3 +50,12 @@ def test_render_preview_full_grid(palette):
 def test_render_preview_rejects_non_3d(palette):
     with pytest.raises(ValueError):
         render_preview(np.zeros((4, 4)), palette)
+
+
+def test_render_preview_rejects_nonfinite_view(palette):
+    g = np.zeros((3, 3, 3), dtype=np.int8)
+    g[0, 0, 0] = Role.HULL
+    with pytest.raises(ValueError):
+        render_preview(g, palette, view=(float("nan"), -62.0))
+    with pytest.raises(ValueError):
+        render_preview(g, palette, view=(22.0, float("inf")))

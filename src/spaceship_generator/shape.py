@@ -326,13 +326,30 @@ def _place_engines(grid: np.ndarray, rng: np.random.Generator, params: ShapePara
 
 
 def _engine_x_positions(n: int, width: int, radius: int) -> list[int]:
-    """Return engine X positions spread symmetrically across the ship width."""
+    """Return engine X positions spread symmetrically across the ship width.
+
+    Positions are clamped to ``[radius, width - 1 - radius]`` so that the
+    engine cylinder stays in-bounds. If the width is too narrow to hold
+    ``n`` distinct clamped positions (for example the pathological
+    ``n=4, width=4, radius=2`` case where ``usable`` would be negative),
+    all engines collapse to the ship's X center.
+    """
+    if n <= 0:
+        return []
     if n == 1:
         return [width // 2]
     cx = (width - 1) / 2.0
     half = n // 2
-    usable = (width - 2 * radius - 2) / 2.0   # space to each side of center
+    # Space from center to the outermost valid engine x. Clamp to >= 0 so a
+    # negative ``usable`` (cramped grid) does not flip offsets and create
+    # duplicates.
+    usable = max(0.0, (width - 2 * radius - 2) / 2.0)
     spacing = usable / max(half, 1)
+
+    # Valid in-bounds range for an engine of this radius.
+    lo = max(0, radius)
+    hi = min(width - 1, width - 1 - radius)
+
     xs: list[int] = []
     for i in range(1, half + 1):
         offset = spacing * i
@@ -340,6 +357,21 @@ def _engine_x_positions(n: int, width: int, radius: int) -> list[int]:
         xs.append(int(round(cx + offset)))
     if n % 2 == 1:
         xs.append(int(round(cx)))
+
+    # Clamp all positions into the valid in-bounds window.
+    if hi >= lo:
+        xs = [max(lo, min(hi, x)) for x in xs]
+    else:
+        # No valid window: fall back to ship center for every engine.
+        return [width // 2] * n
+
+    # Detect collisions introduced by cramped widths. If any duplicates
+    # remain we cannot cleanly separate the engines, so collapse them all
+    # to the ship center (matches the n == 1 behavior and keeps the shape
+    # symmetric and deterministic).
+    if len(set(xs)) != n:
+        return [width // 2] * n
+
     return xs
 
 

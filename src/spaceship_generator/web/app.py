@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import base64
 import io
+import math
 import random
+import threading
 import uuid
 from collections import OrderedDict
 from pathlib import Path
@@ -127,6 +129,9 @@ def _palette_key(palette_name: str) -> list[dict]:
     try:
         pal = load_palette(palette_name)
     except (FileNotFoundError, ValueError):
+        # FileNotFoundError: palette YAML missing on disk.
+        # ValueError: malformed YAML, missing required keys, or unparseable
+        # block/color specs — all surfaced by ``Palette.load``.
         return []
     approx = _approximate_role_colors(pal)
     entries: list[dict] = []
@@ -161,6 +166,11 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config.setdefault("MAX_RESULTS", _DEFAULT_MAX_RESULTS)
     results: "OrderedDict[str, GenerationResult]" = OrderedDict()
+    # Guards the insert + eviction loop in ``_store``. ``OrderedDict`` is not
+    # safe for concurrent mutation under a threaded WSGI server — without this
+    # lock, two simultaneous ``_store`` calls can double-evict (each thread
+    # sees ``len(results) > max`` after both inserts) or corrupt the LRU order.
+    _store_lock = threading.Lock()
 
     def _cleanup_result(result: GenerationResult) -> None:
         """Delete the on-disk .litematic file for an evicted result."""
@@ -172,10 +182,15 @@ def create_app() -> Flask:
 
     def _store(result: GenerationResult) -> str:
         gen_id = uuid.uuid4().hex[:12]
-        results[gen_id] = result
         max_results = int(app.config.get("MAX_RESULTS", _DEFAULT_MAX_RESULTS))
-        while len(results) > max_results:
-            _evicted_id, evicted_result = results.popitem(last=False)
+        evicted: list[GenerationResult] = []
+        with _store_lock:
+            results[gen_id] = result
+            while len(results) > max_results:
+                _evicted_id, evicted_result = results.popitem(last=False)
+                evicted.append(evicted_result)
+        # Disk I/O outside the lock — the OrderedDict is already consistent.
+        for evicted_result in evicted:
             _cleanup_result(evicted_result)
         return gen_id
 
@@ -183,6 +198,19 @@ def create_app() -> Flask:
         d = Path(app.instance_path) / "generated"
         d.mkdir(parents=True, exist_ok=True)
         return d
+
+    def _finite_float(source, key: str, default: float) -> float:
+        """Parse a float field that must be finite.
+
+        ``float("inf")`` / ``float("nan")`` parse without error but poison
+        downstream math (e.g. NaN propagates through numpy and then into the
+        voxel payload). Reject non-finite values up front; the caller's
+        ``except (ValueError, FileNotFoundError)`` returns 400.
+        """
+        v = float(source.get(key, default))
+        if not math.isfinite(v):
+            raise ValueError(f"{key} must be finite")
+        return v
 
     def _build_params_from_source(source) -> tuple[int, str, ShapeParams, TextureParams]:
         """Parse params from a dict-like source (form or JSON).
@@ -218,8 +246,8 @@ def create_app() -> Flask:
             width_max=int(source.get("width", 20)),
             height_max=int(source.get("height", 12)),
             engine_count=int(source.get("engines", 2)),
-            wing_prob=float(source.get("wing_prob", 0.75)),
-            greeble_density=float(source.get("greeble_density", 0.05)),
+            wing_prob=_finite_float(source, "wing_prob", 0.75),
+            greeble_density=_finite_float(source, "greeble_density", 0.05),
             cockpit_style=CockpitStyle(
                 source.get("cockpit", CockpitStyle.BUBBLE.value)
             ),
@@ -237,7 +265,7 @@ def create_app() -> Flask:
             window_period_cells=int(source.get("window_period", 4)),
             accent_stripe_period=int(source.get("accent_stripe_period", 8)),
             engine_glow_depth=int(source.get("engine_glow_depth", 1)),
-            hull_noise_ratio=float(source.get("hull_noise_ratio", 0.0)),
+            hull_noise_ratio=_finite_float(source, "hull_noise_ratio", 0.0),
             panel_line_bands=int(source.get("panel_line_bands", 1)),
             rivet_period=int(source.get("rivet_period", 0)),
             engine_glow_ring=engine_glow_ring,
@@ -517,6 +545,12 @@ def create_app() -> Flask:
     def download(gen_id: str):
         result = results.get(gen_id)
         if result is None:
+            abort(404)
+        # The .litematic file can disappear from disk between generation and
+        # download (LRU eviction of an earlier id that shared the same temp
+        # tree, manual cleanup, etc.). Treat it as 404 rather than letting
+        # ``send_file`` crash with a 500.
+        if not Path(result.litematic_path).exists():
             abort(404)
         return send_file(
             result.litematic_path,

@@ -9,7 +9,7 @@ import pytest
 from litemapy import Schematic
 
 from spaceship_generator.export import export_litematic, filled_voxel_count
-from spaceship_generator.palette import Role, load_palette
+from spaceship_generator.palette import Palette, Role, load_palette
 
 
 @pytest.fixture
@@ -107,3 +107,22 @@ def test_filled_voxel_count_nonzero():
     g[0, 0, 0] = Role.HULL
     g[4, 4, 4] = Role.WINDOW
     assert filled_voxel_count(g) == 2
+
+
+def test_export_raises_valueerror_on_unmapped_role(tmp_path: Path, palette):
+    # Build a palette lacking the HULL role and a grid that uses it. The
+    # exporter should surface a ValueError explaining the missing mapping,
+    # not a raw KeyError.
+    partial = Palette(
+        name="partial",
+        blocks={r: palette.blocks[r] for r in palette.blocks if r != Role.HULL},
+        preview_colors=palette.preview_colors,
+    )
+    grid = np.zeros((2, 2, 2), dtype=np.int8)
+    grid[0, 0, 0] = Role.HULL
+
+    with pytest.raises(ValueError) as excinfo:
+        export_litematic(grid, partial, tmp_path / "missing_role.litematic")
+    msg = str(excinfo.value)
+    assert "partial" in msg
+    assert "HULL" in msg or "role" in msg.lower()

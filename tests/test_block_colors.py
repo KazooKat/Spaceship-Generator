@@ -130,3 +130,36 @@ def test_block_alpha_opaque_is_one_translucent_is_sub_one():
         assert 0.0 < a < 1.0, f"alpha out of range: {a!r}"
     # Clear glass should be at least as transparent as stained glass.
     assert a_glass <= a_stained
+
+
+def test_block_alpha_exact_values_and_strict_ordering():
+    """Lock in the exact F2/F6-era alphas and their strict ordering.
+
+    Contract:
+      clear glass      = 0.35
+      stained glass    = 0.40
+      ice variants     = 0.40
+      honey/slime      = 0.75
+      opaque           = 1.00
+    And the strict inequality ``a_clear < a_stained < a_honey < a_opaque``
+    must hold so render compositing ordering is stable.
+    """
+    # Exact values.
+    assert block_alpha("minecraft:glass") == pytest.approx(0.35)
+    assert block_alpha("minecraft:glass_pane") == pytest.approx(0.35)
+    assert block_alpha("minecraft:tinted_glass") == pytest.approx(0.35)
+    assert block_alpha("minecraft:red_stained_glass") == pytest.approx(0.4)
+    assert block_alpha("minecraft:light_blue_stained_glass_pane") == pytest.approx(0.4)
+    assert block_alpha("minecraft:ice") == pytest.approx(0.4)
+    assert block_alpha("minecraft:packed_ice") == pytest.approx(0.4)
+    assert block_alpha("minecraft:honey_block") == pytest.approx(0.75)
+    assert block_alpha("minecraft:slime_block") == pytest.approx(0.75)
+    assert block_alpha("minecraft:stone") == pytest.approx(1.0)
+    assert block_alpha("minecraft:iron_block") == pytest.approx(1.0)
+
+    # Strict ordering across tiers.
+    a_clear = block_alpha("minecraft:glass")
+    a_stained = block_alpha("minecraft:red_stained_glass")
+    a_honey = block_alpha("minecraft:honey_block")
+    a_opaque = block_alpha("minecraft:stone")
+    assert a_clear < a_stained < a_honey < a_opaque

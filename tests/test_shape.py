@@ -174,6 +174,50 @@ def test_engine_x_positions_odd_count_includes_center():
     assert 10 in xs  # odd count on odd width → exact center present
 
 
+@pytest.mark.parametrize("n,W,radius", [
+    (2, 20, 2),
+    (4, 20, 2),
+    (6, 20, 2),
+    (2, 6, 2),
+    (4, 6, 2),
+    (6, 6, 2),
+    (4, 4, 2),  # pathological: usable would be negative
+    (1, 4, 1),
+])
+def test_engine_x_positions_no_duplicates(n, W, radius):
+    """Engines must resolve to valid positions — either ``n`` distinct slots
+    or a deliberate collapse to the ship's X center (which is acceptable when
+    the grid is too cramped to separate them)."""
+    xs = _engine_x_positions(n, width=W, radius=radius)
+    assert len(xs) == n
+    # Either all positions are distinct, or they all collapsed to one slot
+    # (the center). The buggy case returned a partial collision like
+    # [2, 1, 2, 0], which neither of these accept.
+    unique = set(xs)
+    if len(unique) != n:
+        assert len(unique) == 1, (
+            f"partial collision for (n={n}, W={W}, r={radius}): {xs}"
+        )
+        assert unique == {W // 2}
+
+
+@pytest.mark.parametrize("n,W,radius", [
+    (2, 20, 2),
+    (4, 20, 2),
+    (6, 20, 2),
+    (2, 6, 2),
+    (4, 6, 2),
+    (6, 6, 2),
+    (4, 4, 2),
+    (1, 4, 1),
+])
+def test_engine_x_positions_all_in_bounds(n, W, radius):
+    xs = _engine_x_positions(n, width=W, radius=radius)
+    assert len(xs) == n
+    for x in xs:
+        assert 0 <= x < W, f"x={x} out of bounds for W={W}"
+
+
 def test_surface_mask_all_filled_has_only_outer_shell():
     grid = np.full((3, 3, 3), Role.HULL, dtype=np.int8)
     surface = _surface_mask(grid)
