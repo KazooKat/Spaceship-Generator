@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spaceship-generator"
+version = "0.1.0"
+description = "Procedurally generate Minecraft spaceships and export them as Litematica schematic (.litematic) files."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "KazooKat" }]
+requires-python = ">=3.11"
+keywords = ["minecraft", "litematica", "procedural-generation", "spaceship", "voxel"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Games/Entertainment",
+    "Topic :: Multimedia :: Graphics",
+]
+dependencies = [
+    "litemapy>=0.11.0b0",
+    "numpy>=1.26",
+    "flask>=3.0",
+    "pyyaml>=6.0",
+    "matplotlib>=3.8",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/KazooKat/Spaceship-Generator"
+Issues = "https://github.com/KazooKat/Spaceship-Generator/issues"
+
+[project.scripts]
+spaceship-generator = "spaceship_generator.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+spaceship_generator = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
