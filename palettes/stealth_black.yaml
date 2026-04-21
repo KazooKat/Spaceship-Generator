@@ -16,7 +16,7 @@ blocks:
 preview_colors:
   HULL:          "#0a0a0a"
   HULL_DARK:     "#1a1a1a"
-  WINDOW:        "#1f6e78"
+  WINDOW:        "#33828c"
   ENGINE:        "#1a1622"
   ENGINE_GLOW:   "#4ed0d8"
   COCKPIT_GLASS: "#0a0a14"

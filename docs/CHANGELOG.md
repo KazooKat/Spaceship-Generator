@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Palettes**: tightened `preview_colors` to reduce `palette_lint.py` warnings from 36 to 23. Brightened dark WINDOW previews (`coral_reef`, `crimson_nether`, `rustic_salvage`, `stealth_black`, `steampunk_brass`) above the Y≥0.35 threshold and darkened HULL_DARK previews (`biopunk_fungal`, `candy_pop`, `crimson_nether`, `deepslate_drone`, `desert_sandstone`, `ice_crystal`, `nordic_scout`, `steampunk_brass`) to raise HULL contrast above 1.5. In-game block IDs are unchanged — only the 2D preview swatches were adjusted.
+
+### Notes
+- *Intentional "non-emissive ENGINE_GLOW" lint warnings are kept as design choices: `amethyst_crystal` (amethyst_block — crystal aesthetic), `candy_pop` (pink_glazed_terracotta — candy gloss), `end_void` (end_rod — end-dimension voidrunner motif), `rustic_salvage` (fire_coral_block — scrap-metal coral glow), `sleek_modern` (end_rod — minimalist accent).*
+- *Intentional duplicate-role warnings (same block assigned to two roles) are preserved when they reflect palette identity — e.g. `amethyst_crystal` HULL/WING both calcite, `stealth_black` HULL/INTERIOR both black_concrete, `wooden_frigate` WINDOW/COCKPIT_GLASS both glass.*
+
 ## [0.2.0] - 2026-04-21
 
 Wave-1 and wave-2 content expansion, performance, and infrastructure landings.
