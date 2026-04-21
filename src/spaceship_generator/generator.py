@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 import numpy as np
 
@@ -16,6 +16,7 @@ from .palette import Palette, Role, load_palette
 from .shape import ShapeParams, generate_shape
 from .structure_styles import HullStyle
 from .texture import TextureParams, assign_roles
+from .weapon_styles import WeaponType, scatter_weapons
 
 
 def _sanitize_filename(name: str) -> str:
@@ -91,6 +92,8 @@ def generate(
     hull_style: HullStyle | None = None,
     engine_style: EngineStyle | None = None,
     greeble_density: float = 0.0,
+    weapon_count: int = 0,
+    weapon_types: Iterable[WeaponType] | None = None,
 ) -> GenerationResult:
     """Run the full pipeline and write a ``.litematic`` to ``out_dir``.
 
@@ -127,6 +130,17 @@ def generate(
         greebles are added. When ``> 0``, :func:`scatter_greebles` is run
         after the main build and placements are written into empty cells
         only (existing hull/cockpit/engine cells are preserved).
+    weapon_count:
+        Non-negative integer number of weapon emplacements to scatter on
+        the ship's top-facing hull. ``0`` (default) leaves the grid
+        untouched. When ``> 0``, :func:`scatter_weapons` runs after the
+        main pipeline (and after greebles) and placements are written
+        into empty cells only so existing hull/cockpit/engine/wing cells
+        are preserved.
+    weapon_types:
+        Optional iterable of :class:`WeaponType` members restricting which
+        archetypes may be placed. ``None`` (default) allows every type.
+        Unknown members raise :class:`ValueError`.
     """
     out_dir = Path(out_dir)
 
@@ -137,6 +151,24 @@ def generate(
         raise ValueError(
             f"greeble_density must be in [0, 1]; got {greeble_density!r}"
         )
+    if int(weapon_count) < 0:
+        raise ValueError(
+            f"weapon_count must be >= 0; got {weapon_count!r}"
+        )
+    # Materialize weapon_types once so we can validate members eagerly and
+    # still hand a concrete list to scatter_weapons below.
+    allowed_weapon_types: list[WeaponType] | None
+    if weapon_types is None:
+        allowed_weapon_types = None
+    else:
+        allowed_weapon_types = []
+        for t in weapon_types:
+            if not isinstance(t, WeaponType):
+                raise ValueError(
+                    f"weapon_types entries must be WeaponType members; "
+                    f"got {t!r}"
+                )
+            allowed_weapon_types.append(t)
 
     shape_grid = generate_shape(seed, shape_params, hull_style=hull_style)
 
@@ -172,6 +204,21 @@ def generate(
         greeble_rng = np.random.default_rng(seed ^ 0x6E)
         for x, y, z, role in scatter_greebles(
             shape_grid, greeble_rng, float(greeble_density)
+        ):
+            if 0 <= x < W and 0 <= y < H and 0 <= z < L:
+                if shape_grid[x, y, z] == Role.EMPTY:
+                    shape_grid[x, y, z] = role
+
+    # Optional scattered weapons. Placements are written into empty cells
+    # only so existing hull/cockpit/engine/wing cells are preserved.
+    if int(weapon_count) > 0:
+        W, H, L = shape_grid.shape
+        weapon_rng = np.random.default_rng(seed ^ 0x7A)
+        for x, y, z, role in scatter_weapons(
+            shape_grid,
+            weapon_rng,
+            int(weapon_count),
+            types=allowed_weapon_types,
         ):
             if 0 <= x < W and 0 <= y < H and 0 <= z < L:
                 if shape_grid[x, y, z] == Role.EMPTY:

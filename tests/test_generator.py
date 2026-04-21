@@ -468,3 +468,177 @@ def test_generate_greeble_density_out_of_range_raises(tmp_path: Path):
             out_dir=tmp_path,
             greeble_density=1.5,
         )
+
+
+# ---------------------------------------------------------------------------
+# Wave 2 wiring: weapon_count / weapon_types
+# ---------------------------------------------------------------------------
+
+def test_generate_weapon_count_zero_matches_default(tmp_path: Path):
+    """weapon_count=0 (explicit) must produce a byte-identical grid to default."""
+    import numpy as np
+
+    from spaceship_generator.generator import generate
+
+    baseline = generate(
+        777,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="baseline.litematic",
+    )
+    explicit = generate(
+        777,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="explicit.litematic",
+        weapon_count=0,
+    )
+    assert np.array_equal(baseline.role_grid, explicit.role_grid)
+
+
+def test_generate_weapon_count_positive_adds_cells_and_preserves_existing(
+    tmp_path: Path,
+):
+    """weapon_count>0 adds new cells to previously-empty space without
+    overwriting existing hull/cockpit/engine/wing cells."""
+    import numpy as np
+
+    from spaceship_generator.generator import generate
+    from spaceship_generator.palette import Role
+
+    baseline = generate(
+        42,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="baseline.litematic",
+    )
+    armed = generate(
+        42,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="armed.litematic",
+        weapon_count=3,
+    )
+    # Scatter must actually write at least one weapon-role cell. Every
+    # weapon builder writes into previously-EMPTY cells (turret barrels,
+    # missile tubes, etc.), so the armed grid must differ.
+    assert not np.array_equal(baseline.role_grid, armed.role_grid)
+    assert armed.block_count > baseline.block_count
+    # Existing hull/cockpit/engine/wing cells must be preserved: every cell
+    # that held one of those roles in the baseline must still hold the same
+    # role in the armed grid.
+    for role in (
+        Role.HULL,
+        Role.COCKPIT_GLASS,
+        Role.ENGINE,
+        Role.ENGINE_GLOW,
+        Role.WING,
+    ):
+        mask = baseline.role_grid == role
+        assert np.array_equal(
+            armed.role_grid[mask], baseline.role_grid[mask]
+        ), f"weapon scatter clobbered existing {role.name} cells"
+
+
+def test_generate_weapon_count_negative_raises(tmp_path: Path):
+    """weapon_count < 0 must raise ValueError eagerly."""
+    from spaceship_generator.generator import generate
+
+    with pytest.raises(ValueError):
+        generate(
+            1,
+            palette="sci_fi_industrial",
+            shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+            out_dir=tmp_path,
+            weapon_count=-1,
+        )
+
+
+def test_generate_weapon_types_filter_restricts_output(tmp_path: Path):
+    """Passing weapon_types={POINT_DEFENSE} must restrict placements to
+    that subset — POINT_DEFENSE never emits ENGINE_GLOW, while the full
+    type list does (via MISSILE_POD and PLASMA_CORE)."""
+    import numpy as np
+
+    from spaceship_generator.generator import generate
+    from spaceship_generator.palette import Role
+    from spaceship_generator.weapon_styles import WeaponType
+
+    baseline = generate(
+        42,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="baseline.litematic",
+    )
+    baseline_glow = int((baseline.role_grid == Role.ENGINE_GLOW).sum())
+    all_types = generate(
+        42,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="all_types.litematic",
+        weapon_count=8,
+    )
+    only_pd = generate(
+        42,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="only_pd.litematic",
+        weapon_count=8,
+        weapon_types={WeaponType.POINT_DEFENSE},
+    )
+    # With the unrestricted scatter we expect extra ENGINE_GLOW cells
+    # (missile/plasma tips). With the POINT_DEFENSE-only filter there must
+    # be none, so the ENGINE_GLOW count stays equal to baseline.
+    all_glow = int((all_types.role_grid == Role.ENGINE_GLOW).sum())
+    pd_glow = int((only_pd.role_grid == Role.ENGINE_GLOW).sum())
+    assert all_glow > baseline_glow
+    assert pd_glow == baseline_glow
+    # The two filtered/unfiltered runs must also produce distinct grids.
+    assert not np.array_equal(all_types.role_grid, only_pd.role_grid)
+
+
+def test_generate_weapon_determinism(tmp_path: Path):
+    """Same seed + weapon_count must yield an identical grid on repeat."""
+    import numpy as np
+
+    from spaceship_generator.generator import generate
+
+    first = generate(
+        2024,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="first.litematic",
+        weapon_count=5,
+    )
+    second = generate(
+        2024,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="second.litematic",
+        weapon_count=5,
+    )
+    assert np.array_equal(first.role_grid, second.role_grid)
+
+
+def test_generate_weapon_types_rejects_unknown_member(tmp_path: Path):
+    """Non-WeaponType entries in weapon_types must raise ValueError."""
+    from spaceship_generator.generator import generate
+
+    with pytest.raises(ValueError):
+        generate(
+            1,
+            palette="sci_fi_industrial",
+            shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+            out_dir=tmp_path,
+            weapon_count=2,
+            weapon_types=["not_a_weapon_type"],  # type: ignore[list-item]
+        )
