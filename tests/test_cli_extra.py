@@ -1325,3 +1325,125 @@ def test_help_documents_preset_flags(capsys):
     out = capsys.readouterr().out
     assert "--preset" in out
     assert "--list-presets" in out
+
+
+# ----------- --stats flag -----------
+
+
+def _stats_cli_args(tmp_path: Path, *, seed: str = "1001") -> list[str]:
+    """Shared CLI args for ``--stats`` tests.
+
+    Uses small grid dims so each generate call is fast, and a stable seed so
+    the HULL cell count is non-zero and reproducible.
+    """
+    return [
+        "--seed",
+        seed,
+        "--palette",
+        "sci_fi_industrial",
+        "--length",
+        "20",
+        "--width",
+        "10",
+        "--height",
+        "8",
+        "--out",
+        str(tmp_path),
+    ]
+
+
+def test_stats_prints_role_distribution_table(tmp_path: Path, capsys):
+    """``--stats`` emits a role-distribution header, a HULL line, totals,
+    and a density line — in addition to the regular success output."""
+    rc = main(_stats_cli_args(tmp_path) + ["--stats"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    # Section header and at least one HULL line (HULL is never empty for a
+    # normal sci-fi ship on these dims).
+    assert "Role distribution:" in out
+    assert "HULL:" in out
+    # Percent marker appears at least once in the HULL row.
+    hull_line = next(
+        line for line in out.splitlines() if line.strip().startswith("HULL:")
+    )
+    assert "%" in hull_line
+    # Summary rows.
+    assert "Total blocks:" in out
+    assert "Density:" in out
+    # Baseline success output is still present.
+    assert "Seed: 1001" in out
+    assert "Wrote:" in out
+
+
+def test_stats_flag_off_matches_baseline_output(tmp_path: Path, capsys):
+    """Without ``--stats`` the output is byte-for-byte the baseline: no
+    ``Role distribution:`` header, no ``Density:`` line, and the rest of
+    the success lines match the pre-stats format."""
+    rc = main(_stats_cli_args(tmp_path))
+    assert rc == 0
+    out = capsys.readouterr().out
+    # The stats-only markers must not leak into the default output.
+    assert "Role distribution:" not in out
+    assert "Density:" not in out
+    # Legacy markers still work.
+    assert "Seed: 1001" in out
+    assert "Blocks:" in out
+    assert "Wrote:" in out
+
+
+def test_stats_shows_nonzero_hull_for_normal_generation(tmp_path: Path, capsys):
+    """A normal generation produces > 0 HULL cells; the stats row surfaces
+    an integer count greater than zero."""
+    import re
+
+    rc = main(_stats_cli_args(tmp_path, seed="1002") + ["--stats"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    m = re.search(r"^\s*HULL:\s+(\d+)\s+\(", out, flags=re.MULTILINE)
+    assert m is not None, f"HULL stats row missing from output:\n{out}"
+    hull_count = int(m.group(1))
+    assert hull_count > 0
+
+
+def test_stats_density_in_open_unit_interval(tmp_path: Path, capsys):
+    """The ``Density:`` value must be strictly in ``(0, 1)`` — a ship with
+    zero blocks or a completely packed grid would indicate a bug."""
+    import re
+
+    rc = main(_stats_cli_args(tmp_path, seed="1003") + ["--stats"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    m = re.search(r"^Density:\s+([0-9.]+)\s*$", out, flags=re.MULTILINE)
+    assert m is not None, f"Density row missing from output:\n{out}"
+    density = float(m.group(1))
+    assert 0.0 < density < 1.0, density
+
+
+def test_stats_skips_empty_role_and_sorts_desc(tmp_path: Path, capsys):
+    """Stats table must omit the ``EMPTY`` role entirely and emit rows in
+    descending count order."""
+    import re
+
+    rc = main(_stats_cli_args(tmp_path, seed="1004") + ["--stats"])
+    assert rc == 0
+    out = capsys.readouterr().out
+
+    # EMPTY is the dominant role in the grid but must not appear as a row.
+    # Match on a leading whitespace-prefixed ``EMPTY:`` to avoid false hits
+    # from any future unrelated occurrences of the word.
+    assert re.search(r"^\s+EMPTY:", out, flags=re.MULTILINE) is None
+
+    # Extract every ``<ROLE>: <count>`` pair and verify descending counts.
+    rows = re.findall(r"^\s+([A-Z_]+):\s+(\d+)\s+\(", out, flags=re.MULTILINE)
+    assert rows, f"No role rows matched in output:\n{out}"
+    counts = [int(c) for _, c in rows]
+    assert counts == sorted(counts, reverse=True)
+
+
+def test_stats_help_documents_flag(capsys):
+    """``--help`` output lists the new ``--stats`` flag."""
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--help"])
+    assert excinfo.value.code == 0
+    out = capsys.readouterr().out
+    assert "--stats" in out
