@@ -13,8 +13,8 @@ from .generator import GenerationResult, generate
 from .palette import list_palettes
 from .shape import CockpitStyle, ShapeParams, StructureStyle
 from .structure_styles import HullStyle
-from .wing_styles import WingStyle
 from .texture import TextureParams
+from .wing_styles import WingStyle
 
 # Optional modules — the CLI keeps working when they're missing so a partial
 # rollout (weapons landed but fleet didn't yet, or vice versa) still ships a
@@ -211,6 +211,15 @@ def build_parser() -> argparse.ArgumentParser:
                         "When omitted, legacy defaults apply.")
     p.add_argument("--cockpit", choices=[c.value for c in CockpitStyle],
                    default=CockpitStyle.BUBBLE.value, help="Cockpit style.")
+    p.add_argument(
+        "--cockpit-style",
+        choices=[c.value for c in CockpitStyle],
+        default=None,
+        help="Cockpit archetype "
+             "(bubble, pointed, integrated, canopy_dome, wrap_bridge, "
+             "offset_turret). When omitted, the legacy auto-selection "
+             "(driven by --cockpit) is used.",
+    )
     p.add_argument(
         "--structure-style",
         choices=[s.value for s in StructureStyle],
@@ -429,35 +438,54 @@ def _run_one(
     # case we gracefully fall back to the legacy signature.
     hull_style = HullStyle(args.hull_style) if args.hull_style else None
     engine_style = EngineStyle(args.engine_style) if args.engine_style else None
+    # ``--cockpit-style`` is opt-in: when omitted we leave cockpit selection
+    # to the legacy ``ShapeParams.cockpit_style`` (driven by ``--cockpit``).
+    cockpit_style = (
+        CockpitStyle(args.cockpit_style) if args.cockpit_style else None
+    )
     gen_greeble = args.greeble_density if args.greeble_density is not None else 0.0
 
-    base_kwargs = dict(
-        palette=args.palette,
-        shape_params=shape_params,
-        texture_params=texture_params,
-        out_dir=args.out,
-        filename=filename,
-        author=args.author,
-        name=args.name,
-        with_preview=bool(args.preview),
-        preview_size=args.preview_size,
-    )
+    # When ``--cockpit-style`` is explicitly set, push it onto ShapeParams
+    # too so consumers that read ``shape_params.cockpit_style`` (rather
+    # than the new generator-level kwarg) also see the override.
+    if cockpit_style is not None:
+        shape_params.cockpit_style = cockpit_style
+
+    base_kwargs = {
+        "palette": args.palette,
+        "shape_params": shape_params,
+        "texture_params": texture_params,
+        "out_dir": args.out,
+        "filename": filename,
+        "author": args.author,
+        "name": args.name,
+        "with_preview": bool(args.preview),
+        "preview_size": args.preview_size,
+    }
     try:
-        result = generate(
-            seed,
-            hull_style=hull_style,
-            engine_style=engine_style,
-            greeble_density=gen_greeble,
-            **base_kwargs,
-        )
+        # Forward ``cockpit_style`` alongside the other new-style kwargs.
+        # The generator may not accept it yet — handled below via TypeError.
+        extra_kwargs = {
+            "hull_style": hull_style,
+            "engine_style": engine_style,
+            "greeble_density": gen_greeble,
+        }
+        if cockpit_style is not None:
+            extra_kwargs["cockpit_style"] = cockpit_style
+        result = generate(seed, **extra_kwargs, **base_kwargs)
     except TypeError:
         # Generator's new-style params aren't wired yet — warn and retry
         # with the legacy-only signature so the CLI stays usable in
         # lockstep-less rollouts.
-        if hull_style is not None or engine_style is not None or gen_greeble:
+        if (
+            hull_style is not None
+            or engine_style is not None
+            or gen_greeble
+            or cockpit_style is not None
+        ):
             print(
-                "Warning: --hull-style/--engine-style/--greeble-density not "
-                "supported by this generator; ignoring.",
+                "Warning: --hull-style/--engine-style/--greeble-density/"
+                "--cockpit-style not supported by this generator; ignoring.",
                 file=sys.stderr,
             )
         result = generate(seed, **base_kwargs)
@@ -589,6 +617,9 @@ def main(argv: list[str] | None = None) -> int:
         print("Wing styles:")
         for w in WingStyle:
             print(f"  {w.value}")
+        print("Cockpit styles:")
+        for c in CockpitStyle:
+            print(f"  {c.value}")
         # Weapon types only appear when the optional module is available.
         # The fallback message goes to stderr so piping ``--list-styles``
         # into another program still gets clean hull/engine/wing output.

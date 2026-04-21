@@ -19,7 +19,6 @@ import pytest
 from spaceship_generator import cli
 from spaceship_generator.cli import _parse_preview_size, _parse_seeds, main
 
-
 # ----------- _parse_preview_size -----------
 
 
@@ -324,8 +323,9 @@ def _stub_generate(monkeypatch, calls: list[dict]):
     ``calls`` is a mutable list the test owns; each invocation appends its
     kwargs so the test can assert on what the CLI forwarded.
     """
-    from spaceship_generator.generator import GenerationResult
     import numpy as np
+
+    from spaceship_generator.generator import GenerationResult
 
     def _fake_generate(seed, **kwargs):
         calls.append({"seed": seed, **kwargs})
@@ -945,8 +945,9 @@ def test_generator_without_new_params_falls_back(monkeypatch, tmp_path: Path, ca
     """If ``generate`` doesn't accept ``hull_style``/``engine_style``/
     ``greeble_density``, the CLI falls back to the legacy signature and
     emits a warning on stderr."""
-    from spaceship_generator.generator import GenerationResult
     import numpy as np
+
+    from spaceship_generator.generator import GenerationResult
 
     calls: list[dict] = []
 
@@ -994,3 +995,161 @@ def test_generator_without_new_params_falls_back(monkeypatch, tmp_path: Path, ca
     # Warning surfaced to stderr.
     err = capsys.readouterr().err
     assert "Warning" in err and "--hull-style" in err
+
+
+# ----------- --cockpit-style flag -----------
+
+
+def test_list_styles_includes_all_cockpit_styles(capsys):
+    """``--list-styles`` prints a ``Cockpit styles:`` section listing every
+    :class:`CockpitStyle` value (3 originals + 3 new = 6 total)."""
+    from spaceship_generator.shape import CockpitStyle
+
+    rc = main(["--list-styles"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "Cockpit styles:" in out
+    expected = {
+        "bubble",
+        "pointed",
+        "integrated",
+        "canopy_dome",
+        "wrap_bridge",
+        "offset_turret",
+    }
+    # Sanity-check the enum itself carries exactly these 6 values.
+    assert {c.value for c in CockpitStyle} == expected
+    for value in expected:
+        assert value in out
+
+
+def test_cockpit_style_bubble_forwards_to_generate(monkeypatch, tmp_path: Path):
+    """``--cockpit-style bubble`` forwards ``CockpitStyle.BUBBLE`` to
+    ``generate()`` and sets it on ``ShapeParams`` too."""
+    from spaceship_generator.shape import CockpitStyle
+
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    rc = main(
+        [
+            "--seed",
+            "51",
+            "--cockpit-style",
+            "bubble",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert len(calls) == 1
+    assert calls[0]["cockpit_style"] == CockpitStyle.BUBBLE
+    assert calls[0]["shape_params"].cockpit_style == CockpitStyle.BUBBLE
+
+
+def test_cockpit_style_wrap_bridge_forwards_to_generate(
+    monkeypatch, tmp_path: Path
+):
+    """``--cockpit-style wrap_bridge`` forwards the new enum member through."""
+    from spaceship_generator.shape import CockpitStyle
+
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    rc = main(
+        [
+            "--seed",
+            "53",
+            "--cockpit-style",
+            "wrap_bridge",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert len(calls) == 1
+    assert calls[0]["cockpit_style"] == CockpitStyle.WRAP_BRIDGE
+    assert calls[0]["shape_params"].cockpit_style == CockpitStyle.WRAP_BRIDGE
+
+
+def test_invalid_cockpit_style_exits_non_zero(capsys):
+    """``--cockpit-style foo`` must be rejected by argparse (exit code 2)."""
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--cockpit-style", "foo"])
+    assert excinfo.value.code != 0
+    err = capsys.readouterr().err
+    assert "--cockpit-style" in err or "invalid choice" in err
+
+
+def test_cockpit_style_omitted_preserves_legacy_behavior(
+    monkeypatch, tmp_path: Path
+):
+    """Without ``--cockpit-style``, the CLI does NOT forward a
+    ``cockpit_style`` kwarg and ``ShapeParams.cockpit_style`` falls back to
+    the ``--cockpit`` default (``BUBBLE``). This keeps the legacy
+    auto-selection path byte-for-byte identical."""
+    from spaceship_generator.shape import CockpitStyle
+
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    rc = main(["--seed", "57", "--out", str(tmp_path), "--quiet"])
+    assert rc == 0
+    assert len(calls) == 1
+    # No new-style override forwarded when the flag is omitted.
+    assert "cockpit_style" not in calls[0]
+    # ShapeParams still gets the legacy ``--cockpit`` default.
+    assert calls[0]["shape_params"].cockpit_style == CockpitStyle.BUBBLE
+
+
+def test_cockpit_style_typeerror_fallback_warns_and_retries(
+    monkeypatch, tmp_path: Path, capsys
+):
+    """If ``generate`` rejects ``cockpit_style`` kwarg, the CLI warns on
+    stderr and retries with the legacy signature — mirroring the
+    hull/engine/greeble fallback."""
+    import numpy as np
+
+    from spaceship_generator.generator import GenerationResult
+
+    calls: list[dict] = []
+
+    def _legacy_generate(seed, **kwargs):
+        if "cockpit_style" in kwargs:
+            raise TypeError(
+                "generate() got an unexpected keyword argument 'cockpit_style'"
+            )
+        calls.append({"seed": seed, **kwargs})
+        out_dir = kwargs.get("out_dir")
+        filename = kwargs.get("filename") or f"ship_{seed}.litematic"
+        path = Path(out_dir) / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"stub")
+        return GenerationResult(
+            seed=seed,
+            palette_name="stub_palette",
+            litematic_path=path,
+            role_grid=np.zeros((2, 2, 2), dtype=np.int8),
+        )
+
+    monkeypatch.setattr(cli, "generate", _legacy_generate)
+
+    rc = main(
+        [
+            "--seed",
+            "59",
+            "--cockpit-style",
+            "offset_turret",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    # The retry (legacy) call succeeded exactly once.
+    assert len(calls) == 1
+    assert "cockpit_style" not in calls[0]
+    err = capsys.readouterr().err
+    assert "Warning" in err and "--cockpit-style" in err
