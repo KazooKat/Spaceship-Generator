@@ -1,0 +1,26 @@
+name: biopunk_fungal
+description: Living fungal bio-craft. Moss hull, warped hyphae spines, shroomlight thrusters, slime viewports.
+
+blocks:
+  HULL:          minecraft:moss_block
+  HULL_DARK:     minecraft:warped_hyphae
+  WINDOW:        minecraft:slime_block
+  ENGINE:        minecraft:warped_planks
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:green_stained_glass
+  WING:          minecraft:warped_wart_block
+  GREEBLE:       minecraft:warped_nylium
+  LIGHT:         minecraft:ochre_froglight
+  INTERIOR:      minecraft:warped_planks
+
+preview_colors:
+  HULL:          "#596d2d"
+  HULL_DARK:     "#393b4d"
+  WINDOW:        "#6fc05b"
+  ENGINE:        "#2b6863"
+  ENGINE_GLOW:   "#f09246"
+  COCKPIT_GLASS: "#667f33"
+  WING:          "#167779"
+  GREEBLE:       "#2b7265"
+  LIGHT:         "#faf5ce"
+  INTERIOR:      "#2b6863"

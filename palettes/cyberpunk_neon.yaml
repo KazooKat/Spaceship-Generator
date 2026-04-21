@@ -1,0 +1,26 @@
+name: cyberpunk_neon
+description: Night-city runner. Matte black concrete hull, magenta/cyan neon glass, sea-lantern engine wash and soul-lantern running lights.
+
+blocks:
+  HULL:          minecraft:black_concrete
+  HULL_DARK:     minecraft:gray_concrete
+  WINDOW:        minecraft:magenta_stained_glass
+  ENGINE:        minecraft:polished_blackstone
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:cyan_stained_glass
+  WING:          minecraft:cyan_concrete
+  GREEBLE:       minecraft:purple_concrete
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:black_wool
+
+preview_colors:
+  HULL:          "#080a0f"
+  HULL_DARK:     "#36393d"
+  WINDOW:        "#b24cd8"
+  ENGINE:        "#353038"
+  ENGINE_GLOW:   "#acc8be"
+  COCKPIT_GLASS: "#4c7f99"
+  WING:          "#157788"
+  GREEBLE:       "#641f9c"
+  LIGHT:         "#466272"
+  INTERIOR:      "#141519"

@@ -1,0 +1,26 @@
+name: steampunk_brass
+description: Victorian airship. Copper plating, weathered verdigris trim, blackstone engine housings, redstone-lamp rivets.
+
+blocks:
+  HULL:          minecraft:copper_block
+  HULL_DARK:     minecraft:waxed_copper_block
+  WINDOW:        minecraft:brown_stained_glass
+  ENGINE:        minecraft:polished_blackstone
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:orange_stained_glass
+  WING:          minecraft:weathered_copper
+  GREEBLE:       minecraft:polished_blackstone_bricks
+  LIGHT:         minecraft:redstone_lamp[lit=true]
+  INTERIOR:      minecraft:dark_oak_planks
+
+preview_colors:
+  HULL:          "#c06b4f"
+  HULL_DARK:     "#a35a42"
+  WINDOW:        "#664c33"
+  ENGINE:        "#353038"
+  ENGINE_GLOW:   "#f09246"
+  COCKPIT_GLASS: "#d87f33"
+  WING:          "#6c996e"
+  GREEBLE:       "#302a31"
+  LIGHT:         "#8e653c"
+  INTERIOR:      "#422b14"
