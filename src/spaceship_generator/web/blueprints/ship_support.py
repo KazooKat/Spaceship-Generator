@@ -31,6 +31,7 @@ from ...block_colors import (
 from ...engine_styles import EngineStyle
 from ...generator import GenerationResult
 from ...palette import Palette, Role, list_palettes, load_palette
+from ... import presets as _presets
 from ...shape import CockpitStyle, ShapeParams, StructureStyle
 from ...structure_styles import HullStyle
 from ...texture import TextureParams
@@ -263,6 +264,127 @@ def _parse_optional_enum(
         ) from exc
 
 
+def _parse_preset(source: Any) -> str | None:
+    """Return a valid preset name from ``source``, or ``None``.
+
+    Accepts a ``preset`` field on the form/JSON source and validates it
+    against :func:`spaceship_generator.presets.list_presets`. Empty strings,
+    missing values, and unknown preset names all collapse to ``None`` so a
+    typo or stale client can't 400 the request — the preset is simply
+    ignored and the raw form values drive generation.
+    """
+    if not hasattr(source, "get"):
+        return None
+    raw = source.get("preset")
+    if raw is None or not isinstance(raw, str):
+        return None
+    name = raw.strip()
+    if not name:
+        return None
+    if name not in _presets.list_presets():
+        return None
+    return name
+
+
+def _merge_preset_into_source(source: Any, preset_name: str) -> dict[str, Any]:
+    """Return a new dict layering preset defaults under ``source``.
+
+    Mirrors the CLI's override rule: individual form fields win, preset
+    values fill in gaps. Concretely:
+
+    * Style enum fields (``hull_style``, ``engine_style``, ``wing_style``,
+      ``cockpit_style``, ``cockpit``) accept the preset value when the form
+      sends ``auto``/empty/missing — ``auto`` is the UI sentinel for
+      "don't override the pipeline default", and with a preset in play the
+      preset IS the pipeline default.
+    * Numeric shape fields (``length``, ``width``, ``height``) accept the
+      preset value only when the form omits the key entirely (a submitted
+      number is treated as an explicit user choice).
+    * ``greeble_density``, ``weapon_count``, ``weapon_types`` follow the
+      same "absent key → preset wins" rule as the shape fields.
+
+    Returns a fresh ``dict`` so callers can mutate safely. ``weapon_types``
+    from the preset is flattened to the raw string tokens the downstream
+    parser already understands, matching the CLI's own mapping.
+    """
+    preset_kwargs = _presets.apply_preset(preset_name)
+    preset_shape: ShapeParams = preset_kwargs["shape_params"]
+
+    # Preserve MultiDict semantics when the caller passed one (form path)
+    # so ``weapon_types=turret_large&weapon_types=missile_pod`` doesn't
+    # collapse to a single value during the merge. JSON callers already
+    # pass plain dicts so we fall back to ``dict`` for them.
+    if hasattr(source, "getlist") and hasattr(source, "setlist"):
+        # werkzeug MultiDict (or mutable subclass) — reuse the mutable form.
+        try:
+            from werkzeug.datastructures import MultiDict  # local import
+            merged = MultiDict(source)
+        except ImportError:  # pragma: no cover - werkzeug is a flask dep
+            merged = dict(source)
+    elif hasattr(source, "getlist"):
+        # Immutable MultiDict (``request.form``) — promote to mutable MultiDict
+        # by copying items including all values.
+        try:
+            from werkzeug.datastructures import MultiDict  # local import
+            merged = MultiDict(source)
+        except ImportError:  # pragma: no cover - werkzeug is a flask dep
+            merged = dict(source)
+    else:
+        merged = dict(source)
+
+    def _style_missing(key: str) -> bool:
+        """True when ``key`` is absent or the ``auto`` sentinel."""
+        if key not in merged:
+            return True
+        v = merged[key]
+        if v is None:
+            return True
+        if isinstance(v, str) and v.strip().lower() in ("", "auto", "__auto__"):
+            return True
+        return False
+
+    # Size dimensions — preset wins only when the form omits the field.
+    if "length" not in merged:
+        merged["length"] = preset_shape.length
+    if "width" not in merged:
+        merged["width"] = preset_shape.width_max
+    if "height" not in merged:
+        merged["height"] = preset_shape.height_max
+
+    # Style enums — preset wins when the form sends auto/empty.
+    hull_style = preset_kwargs.get("hull_style")
+    if hull_style is not None and _style_missing("hull_style"):
+        merged["hull_style"] = hull_style.value
+    engine_style = preset_kwargs.get("engine_style")
+    if engine_style is not None and _style_missing("engine_style"):
+        merged["engine_style"] = engine_style.value
+    if _style_missing("wing_style") and preset_shape.wing_style is not None:
+        merged["wing_style"] = preset_shape.wing_style.value
+    if _style_missing("cockpit_style") and preset_shape.cockpit_style is not None:
+        merged["cockpit_style"] = preset_shape.cockpit_style.value
+    # ``cockpit`` is the shape-level picker; mirror the same rule so the
+    # ShapeParams cockpit_style (used when no override is set) also reflects
+    # the preset's cockpit archetype.
+    if _style_missing("cockpit") and preset_shape.cockpit_style is not None:
+        merged["cockpit"] = preset_shape.cockpit_style.value
+
+    # Generator-level scalars — preset wins when the key is absent.
+    if "greeble_density" not in merged and "greeble_density" in preset_kwargs:
+        merged["greeble_density"] = float(preset_kwargs["greeble_density"])
+    if "weapon_count" not in merged and "weapon_count" in preset_kwargs:
+        merged["weapon_count"] = int(preset_kwargs["weapon_count"])
+    if "weapon_types" not in merged and preset_kwargs.get("weapon_types"):
+        wt_values = [wt.value for wt in preset_kwargs["weapon_types"]]
+        # MultiDict-aware assign so the downstream ``getlist`` path sees the
+        # full preset list rather than just the first element.
+        if hasattr(merged, "setlist"):
+            merged.setlist("weapon_types", wt_values)
+        else:
+            merged["weapon_types"] = wt_values
+
+    return merged
+
+
 def build_params_from_source(
     source: Any,
 ) -> tuple[int, str, ShapeParams, TextureParams, dict[str, Any]]:
@@ -277,8 +399,21 @@ def build_params_from_source(
     older ``generate`` implementations that don't accept those kwargs still
     work.
 
+    If the source carries a ``preset`` field matching one of
+    :func:`spaceship_generator.presets.list_presets`, the preset's values
+    seed the parsing as defaults; individual form fields still override the
+    preset the same way ``--hull-style`` etc. override ``--preset`` on the
+    CLI. Unknown/empty preset names are silently ignored so a stale client
+    can never 400 the request.
+
     Raises ValueError on bad input (caught by callers).
     """
+    # Preset merge happens first so every downstream lookup (shape,
+    # texture, extras) sees the seeded defaults. The merge is a pure
+    # dict-level operation — individual parsers stay preset-agnostic.
+    preset_name = _parse_preset(source)
+    if preset_name is not None:
+        source = _merge_preset_into_source(source, preset_name)
     seed = int(source.get("seed") or 0)
     palette_name = source.get("palette", "sci_fi_industrial")
 
@@ -480,6 +615,8 @@ def render_result_partial(gen_id: str, result: GenerationResult) -> str:
 __all__ = [
     "PARAM_HELP",
     "ROLE_LABELS",
+    "_parse_preset",
+    "_merge_preset_into_source",
     "approximate_role_colors",
     "build_params_from_source",
     "clamp",

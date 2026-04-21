@@ -148,6 +148,40 @@
             </div>
             {% endif %}
 
+            {# ── Preset picker ─────────────────────────────────────
+               Named archetype bundles (corvette, dropship, …). Sits
+               above Shape/Style so users can grab a whole silhouette
+               before tweaking individual dials. ``(none)`` keeps the
+               form explicit — no preset is applied and every other
+               field drives generation directly. Individual fields
+               below always override preset values (same priority as
+               ``--preset`` on the CLI). ─────────────────────────── #}
+            <section class="panel-group" data-group="preset" x-data="{open: true}">
+                <header class="panel-group-header"
+                        @click="open = !open"
+                        :aria-expanded="open"
+                        tabindex="0"
+                        role="button"
+                        @keydown.enter.prevent="open = !open"
+                        @keydown.space.prevent="open = !open">
+                    <h3>PRESET</h3>
+                    <i data-lucide="chevron-down"
+                       :style="open ? '' : 'transform: rotate(-90deg)'"></i>
+                </header>
+                <div class="panel-group-body" x-show="open" x-transition>
+                    <div class="control" data-param="preset">
+                        <label>Preset
+                            <select name="preset" id="preset">
+                                <option value="" selected>(none)</option>
+                                {% for p in presets %}
+                                <option value="{{ p }}">{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
             {# ── Seed & palette group ────────────────────────────── #}
             <section class="panel-group" data-group="seed" x-data="{open: true}">
                 <header class="panel-group-header"

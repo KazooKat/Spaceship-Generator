@@ -993,3 +993,358 @@ class TestPreviewLite:
         assert statuses.count(429) >= 1, (
             f"expected at least one 429 after 31 spam requests; statuses={statuses}"
         )
+
+
+# --- TestPresetDropdown -----------------------------------------------------
+
+
+@pytest.mark.ui
+class TestPresetDropdown:
+    """Top-of-form ``<select name="preset">`` drives preset merging.
+
+    The dropdown lists every :func:`spaceship_generator.presets.list_presets`
+    role with ``(none)`` (empty value) as the default. When the user picks a
+    preset, the server seeds generation from ``apply_preset(name)`` and any
+    explicitly-set form field wins — matching the CLI's ``--preset`` +
+    per-flag override rule.
+    """
+
+    def test_index_renders_preset_select_with_all_values(self, client):
+        """GET / must render ``<select name="preset">`` carrying the empty
+        default plus every preset name from :func:`list_presets`."""
+        from spaceship_generator.presets import list_presets
+
+        body = client.get("/").get_data(as_text=True)
+        # The <select> block itself; regex-scope so the preset-specific
+        # options are checked inside the right element (``auto`` and other
+        # common tokens live in sibling selects).
+        m = re.search(
+            r'<select[^>]*name="preset"[^>]*>(.*?)</select>',
+            body,
+            re.DOTALL,
+        )
+        assert m is not None, 'form missing <select name="preset">'
+        block = m.group(1)
+        # Empty default so the form submits "no preset" unless the user
+        # opts in — matches the "(none)" sentinel parsed server-side.
+        assert 'value=""' in block, "preset select missing empty (none) option"
+        # Every list_presets() name must be an option value.
+        names = list_presets()
+        assert len(names) == 6, (
+            f"expected 6 presets; got {len(names)}: {names!r}"
+        )
+        for name in names:
+            assert f'value="{name}"' in block, (
+                f"preset option {name!r} missing from <select>"
+            )
+
+    def test_api_meta_exposes_presets_list(self, client):
+        """``/api/meta`` must expose the same preset list as the template."""
+        from spaceship_generator.presets import list_presets
+
+        data = client.get("/api/meta").get_json()
+        assert "presets" in data, "/api/meta missing 'presets' key"
+        assert isinstance(data["presets"], list)
+        assert data["presets"] == list_presets(), (
+            f"/api/meta presets out of sync with list_presets(); "
+            f"got {data['presets']!r}"
+        )
+
+    def test_post_with_preset_corvette_uses_preset_styles(self, client):
+        """POST with ``preset=corvette`` and no style fields → 200 and the
+        parser seeds generation from the preset. We verify via the parser
+        directly so we don't depend on the generator's output shape."""
+        from spaceship_generator.presets import apply_preset
+        from spaceship_generator.structure_styles import HullStyle
+        from spaceship_generator.web.blueprints.ship_support import (
+            build_params_from_source,
+        )
+
+        # Form-level POST must succeed end-to-end.
+        form = {
+            "seed": "42",
+            "palette": "sci_fi_industrial",
+            "preset": "corvette",
+        }
+        resp = client.post(
+            "/generate", data=form, headers={"HX-Request": "true"}
+        )
+        assert resp.status_code == 200, (
+            f"preset=corvette POST returned {resp.status_code}: "
+            f"{resp.get_data(as_text=True)[:300]}"
+        )
+
+        # Parser-level verification: the preset's hull/engine/greeble seep
+        # through when no explicit style field is set.
+        source = {"seed": "42", "palette": "sci_fi_industrial", "preset": "corvette"}
+        _seed, _pal, shape_params, _tex, extras = build_params_from_source(source)
+        expected = apply_preset("corvette")
+        assert extras["hull_style"] == expected["hull_style"], (
+            f"preset hull_style not applied; got {extras['hull_style']!r}, "
+            f"expected {expected['hull_style']!r}"
+        )
+        assert extras["engine_style"] == expected["engine_style"], (
+            f"preset engine_style not applied; got {extras['engine_style']!r}"
+        )
+        assert extras["hull_style"] == HullStyle.DAGGER, (
+            "corvette preset's DAGGER hull not wired through"
+        )
+        # Preset's wing + cockpit flow into ShapeParams the same way as the CLI.
+        assert shape_params.wing_style == expected["shape_params"].wing_style
+        assert shape_params.cockpit_style == expected["shape_params"].cockpit_style
+
+    def test_post_with_preset_and_explicit_hull_style_override_wins(self, client):
+        """POST with ``preset=corvette`` + ``hull_style=saucer`` → user value
+        wins. Mirrors the CLI rule: explicit flag beats preset default."""
+        from spaceship_generator.structure_styles import HullStyle
+        from spaceship_generator.web.blueprints.ship_support import (
+            build_params_from_source,
+        )
+
+        form = {
+            "seed": "42",
+            "palette": "sci_fi_industrial",
+            "preset": "corvette",
+            # Explicit style pick must override corvette's DAGGER default.
+            "hull_style": "saucer",
+        }
+        resp = client.post(
+            "/generate", data=form, headers={"HX-Request": "true"}
+        )
+        assert resp.status_code == 200, (
+            f"preset+override POST returned {resp.status_code}: "
+            f"{resp.get_data(as_text=True)[:300]}"
+        )
+        # Parser-level verification of the priority rule.
+        _seed, _pal, _shape, _tex, extras = build_params_from_source(form)
+        assert extras["hull_style"] == HullStyle.SAUCER, (
+            f"explicit hull_style=saucer must override preset; "
+            f"got {extras['hull_style']!r}"
+        )
+
+    def test_post_with_unknown_preset_is_ignored(self, client):
+        """POST with an unknown preset name must not 500 — the parser
+        silently drops the preset and the request uses the raw form. We
+        allow either 200 (silent-ignore path) or 400 (if a stricter future
+        implementation chooses to reject) per the task spec."""
+        from spaceship_generator.web.blueprints.ship_support import (
+            _parse_preset,
+            build_params_from_source,
+        )
+
+        # _parse_preset drops unknown names up front → returns None, so no
+        # merge is attempted and the raw form drives parsing.
+        assert _parse_preset({"preset": "nonexistent"}) is None
+        assert _parse_preset({"preset": ""}) is None
+        assert _parse_preset({}) is None
+
+        # End-to-end: POST must not crash.
+        form = {
+            "seed": "42",
+            "palette": "sci_fi_industrial",
+            "preset": "nonexistent",
+        }
+        resp = client.post(
+            "/generate", data=form, headers={"HX-Request": "true"}
+        )
+        assert resp.status_code in (200, 400), (
+            f"unknown preset should be 200 (ignored) or 400, got "
+            f"{resp.status_code}"
+        )
+
+        # Parser-level: the extras dict has no preset-specific side effects
+        # when the preset name is unknown.
+        _seed, _pal, _shape, _tex, extras = build_params_from_source(form)
+        # Default hull_style is None (from "auto") when not picked.
+        assert extras["hull_style"] is None, (
+            f"unknown preset should not seed hull_style; got {extras['hull_style']!r}"
+        )
+
+
+# --- TestDownloadFleet ------------------------------------------------------
+
+
+@pytest.mark.ui
+class TestDownloadFleet:
+    """``GET /download-fleet`` — bulk fleet planner + zipped litematic export.
+
+    Packs ``count`` ships into a single ``application/zip`` response. Shares
+    validation and the per-IP rate limiter with the rest of the web surface.
+    Generation is heavy (count × full generate()), so tests drop ``count``
+    to 2-3 and keep to the smallest valid size tier where possible.
+    """
+
+    def test_normal_request_returns_zip_with_n_litematic_entries(self, client):
+        """count=3, small tier → zip with exactly 3 non-empty .litematic entries.
+
+        ``small`` keeps each ship cheap (15x10x25-ish dims) so the test
+        completes quickly even on CI. The zip envelope must be a proper
+        PK-header zip; every entry name must end in ``.litematic``; every
+        entry must be non-empty so we know generate() actually wrote bytes.
+        """
+        import io as _io
+        import zipfile as _zipfile
+
+        resp = client.get(
+            "/download-fleet"
+            "?seed=42&palette=sci_fi_industrial&count=3&size_tier=small"
+            "&style_coherence=0.7"
+        )
+        assert resp.status_code == 200, (
+            f"expected 200 zip, got {resp.status_code}: "
+            f"{resp.get_data(as_text=True)[:300]}"
+        )
+        assert resp.mimetype == "application/zip", (
+            f"expected application/zip, got {resp.mimetype!r}"
+        )
+        # Content-Disposition carries the documented filename shape.
+        cd = resp.headers.get("Content-Disposition", "")
+        assert "fleet_42_sci_fi_industrial.zip" in cd, (
+            f"Content-Disposition missing fleet filename; got {cd!r}"
+        )
+
+        body = resp.get_data()
+        # Real zip magic header (``PK\x03\x04``).
+        assert body[:2] == b"PK", "response is not a valid zip archive"
+
+        with _zipfile.ZipFile(_io.BytesIO(body)) as zf:
+            names = zf.namelist()
+            assert len(names) == 3, (
+                f"expected 3 entries in zip, got {len(names)}: {names!r}"
+            )
+            for name in names:
+                assert name.endswith(".litematic"), (
+                    f"non-.litematic entry in fleet zip: {name!r}"
+                )
+                size = zf.getinfo(name).file_size
+                assert size > 0, f"zip entry {name!r} is empty"
+
+    @pytest.mark.parametrize("bad_count", ["0", "100", "-1", "21"])
+    def test_invalid_count_returns_400(self, client, bad_count):
+        """count outside [1, 20] must 400. Covers both the 0 and "too big"
+        edges from the task spec plus the neighbouring boundary (21)."""
+        resp = client.get(
+            f"/download-fleet?seed=1&palette=sci_fi_industrial"
+            f"&count={bad_count}&size_tier=small"
+        )
+        assert resp.status_code == 400, (
+            f"expected 400 for count={bad_count!r}, got {resp.status_code}"
+        )
+        assert resp.is_json, "400 response should be JSON"
+        assert "error" in resp.get_json()
+
+    def test_invalid_palette_returns_400(self, client):
+        """Unknown palette name must 400 with a JSON error, never 500 —
+        we validate the palette up front so we never start generating."""
+        resp = client.get(
+            "/download-fleet"
+            "?seed=1&palette=__definitely_not_a_palette__&count=2"
+            "&size_tier=small"
+        )
+        assert resp.status_code == 400, (
+            f"expected 400 for bad palette, got {resp.status_code}: "
+            f"{resp.get_data(as_text=True)[:300]}"
+        )
+        assert resp.is_json
+        assert "error" in resp.get_json()
+
+    def test_determinism_same_seed_same_filenames_and_sizes(self, client):
+        """Same seed+params → same filenames in the same order.
+
+        Filenames are derived from per-ship seeds, which come straight from
+        the deterministic ``fleet.generate_fleet`` planner, so the filename
+        list itself is the rock-solid deterministic surface. We do NOT
+        assert raw byte equality (litemapy's gzip stream bakes its own
+        mtime into the ``.litematic`` payload) nor per-entry file size (the
+        same gzip-mtime drift bumps the compressed length by a byte or two
+        between calls). Per-entry sizes land within a small tolerance; we
+        check that too so gross non-determinism (e.g. wrong seed threading)
+        still fails the test.
+        """
+        import io as _io
+        import zipfile as _zipfile
+
+        url = (
+            "/download-fleet?seed=7&palette=sci_fi_industrial"
+            "&count=2&size_tier=small&style_coherence=0.9"
+        )
+        resp1 = client.get(url)
+        resp2 = client.get(url)
+        assert resp1.status_code == 200 and resp2.status_code == 200, (
+            f"both determinism requests must succeed; got "
+            f"{resp1.status_code}, {resp2.status_code}"
+        )
+
+        def _name_size_map(raw: bytes) -> dict[str, int]:
+            with _zipfile.ZipFile(_io.BytesIO(raw)) as zf:
+                return {info.filename: info.file_size for info in zf.infolist()}
+
+        map1 = _name_size_map(resp1.get_data())
+        map2 = _name_size_map(resp2.get_data())
+
+        # Filename set + order must match exactly — this is the strong
+        # determinism claim backed by fleet.generate_fleet.
+        assert list(map1.keys()) == list(map2.keys()), (
+            f"fleet zip filenames differ across calls; "
+            f"first={list(map1.keys())!r} second={list(map2.keys())!r}"
+        )
+        # Per-entry sizes match within a tiny tolerance. litemapy's gzip
+        # mtime can shift the compressed length by a single byte between
+        # calls even when the raw voxel grid is identical; anything larger
+        # indicates a real non-determinism bug.
+        for name in map1:
+            assert abs(map1[name] - map2[name]) <= 4, (
+                f"entry {name!r} size drifted too much: "
+                f"{map1[name]} vs {map2[name]}"
+            )
+        # Sanity: count matches what we asked for.
+        assert len(map1) == 2, f"expected 2 ships, got {len(map1)}: {map1!r}"
+
+    def test_rate_limiter_still_applies(self, tmp_path, monkeypatch):
+        """31 spam requests with a non-loopback XFF → at least one 429.
+
+        Uses count=1+size_tier=small so each request is as cheap as the
+        pipeline allows. We can't truly undercut the generator's fixed
+        cost, so this test is intentionally slow-ish (30+ tiny fleets) and
+        still finishes well under the default per-test budget.
+        """
+        monkeypatch.delenv("SHIPFORGE_RATE_LIMIT", raising=False)
+        monkeypatch.delenv("SHIPFORGE_RATE_WINDOW", raising=False)
+        app = create_app()
+        app.config["TESTING"] = True
+        monkeypatch.setattr(app, "instance_path", str(tmp_path))
+        url = (
+            "/download-fleet?seed=1&palette=sci_fi_industrial"
+            "&count=1&size_tier=small"
+        )
+        headers = {"X-Forwarded-For": "203.0.113.99"}
+        with app.test_client() as c:
+            statuses: list[int] = []
+            for _ in range(31):
+                statuses.append(c.get(url, headers=headers).status_code)
+        assert statuses.count(429) >= 1, (
+            f"expected at least one 429 after 31 spam requests; "
+            f"statuses={statuses}"
+        )
+
+    def test_invalid_size_tier_returns_400(self, client):
+        """Unknown size_tier must 400. Mirrors the count / palette 400 shape
+        so the client error surface stays consistent across bad params."""
+        resp = client.get(
+            "/download-fleet"
+            "?seed=1&palette=sci_fi_industrial&count=2&size_tier=gigantic"
+        )
+        assert resp.status_code == 400
+        assert resp.is_json
+        assert "error" in resp.get_json()
+
+    def test_invalid_style_coherence_returns_400(self, client):
+        """style_coherence outside [0, 1] must 400 (not a crash mid-fleet)."""
+        resp = client.get(
+            "/download-fleet"
+            "?seed=1&palette=sci_fi_industrial&count=2&size_tier=small"
+            "&style_coherence=5.0"
+        )
+        assert resp.status_code == 400
+        assert resp.is_json
+        assert "error" in resp.get_json()

@@ -10,6 +10,9 @@ from __future__ import annotations
 import base64
 import io
 import random
+import tempfile
+import zipfile
+from pathlib import Path
 
 import numpy as np
 from flask import (
@@ -25,10 +28,12 @@ from flask import (
 
 from ...block_colors import block_alpha, is_translucent
 from ...engine_styles import EngineStyle, build_engines
+from ...fleet import SIZE_TIERS, FleetParams, generate_fleet
 from ...generator import generate
 from ...greeble_styles import scatter_greebles
 from ...palette import Role, list_palettes, load_palette
-from ...shape import CockpitStyle, StructureStyle, generate_shape
+from ... import presets
+from ...shape import CockpitStyle, ShapeParams, StructureStyle, generate_shape
 from ...structure_styles import HullStyle
 from ...texture import assign_roles
 from ...weapon_styles import WeaponType
@@ -76,6 +81,7 @@ def index():
     return render_template(
         "index.html",
         palettes=list_palettes(),
+        presets=presets.list_presets(),
         cockpit_styles=[c.value for c in CockpitStyle],
         structure_styles=[s.value for s in StructureStyle],
         wing_styles=[w.value for w in WingStyle],
@@ -142,6 +148,7 @@ def do_generate():
             render_template(
                 "index.html",
                 palettes=list_palettes(),
+                presets=presets.list_presets(),
                 cockpit_styles=[c.value for c in CockpitStyle],
                 structure_styles=[s.value for s in StructureStyle],
                 wing_styles=[w.value for w in WingStyle],
@@ -471,6 +478,7 @@ def api_meta():
     return jsonify(
         {
             "palettes": list_palettes(),
+            "presets": presets.list_presets(),
             "cockpit_styles": [c.value for c in CockpitStyle],
             "structure_styles": [s.value for s in StructureStyle],
             "wing_styles": [w.value for w in WingStyle],
@@ -502,6 +510,197 @@ def api_meta():
             },
             "version": version,
         }
+    )
+
+
+# --- /download-fleet --------------------------------------------------------
+# Bulk "plan-and-pack-a-fleet" endpoint. Given a seed + palette + count + size
+# tier + coherence, plan N ships via ``fleet.generate_fleet``, run each through
+# ``generate()`` into a scratch dir, then stream the .litematic files back as
+# a single zip. Kept as a GET so the frontend can just drop a link; the
+# download is still subject to the per-IP rate limiter.
+
+
+# ZipFile mtimes influence the raw bytes of the archive. Fix the per-entry
+# timestamp to a constant so the zip envelope is byte-deterministic for the
+# same seed + params. The underlying .litematic payloads come from litemapy,
+# which writes its own gzip stream with its own mtime inside each file — so
+# we still only assert filename + size equality across two calls, not full
+# byte equality.
+_ZIP_FIXED_MTIME = (2020, 1, 1, 0, 0, 0)
+
+_ALLOWED_SIZE_TIERS = frozenset(set(SIZE_TIERS) | {"mixed"})
+
+
+def _parse_download_fleet_args(args) -> tuple[int, str, int, str, float]:
+    """Parse + validate ``/download-fleet`` query params.
+
+    Returns ``(seed, palette, count, size_tier, coherence)``. Raises
+    :class:`ValueError` on any bad input so the caller can map to a 400.
+
+    Parameter contract:
+    * ``count``    — int in ``[1, 20]`` (1 minimum so we never pack an empty
+                     zip; 20 upper bound bounds generation cost per request).
+    * ``size_tier``— one of ``SIZE_TIERS.keys()`` ∪ ``{"mixed"}``.
+    * ``style_coherence`` — float in ``[0.0, 1.0]``.
+    * ``palette``  — must resolve via ``load_palette``; unknown name → 400.
+    * ``seed``     — int, defaults to 0 (matching the rest of the web surface).
+    """
+    try:
+        seed = int(args.get("seed") or 0)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"seed must be an integer; got {args.get('seed')!r}"
+        ) from exc
+
+    palette_name = (args.get("palette") or "sci_fi_industrial").strip()
+    if not palette_name:
+        raise ValueError("palette must be a non-empty string")
+    # Confirm the palette actually resolves before we spend any generate()
+    # cycles. load_palette raises FileNotFoundError / ValueError for missing
+    # or malformed YAML; either maps to a 400.
+    try:
+        load_palette(palette_name)
+    except (FileNotFoundError, ValueError) as exc:
+        raise ValueError(str(exc)) from exc
+
+    raw_count = args.get("count", "1")
+    try:
+        count = int(float(raw_count))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"count must be an integer; got {raw_count!r}") from exc
+    if not 1 <= count <= 20:
+        raise ValueError(f"count must be in [1, 20]; got {count}")
+
+    size_tier = (args.get("size_tier") or "mixed").strip().lower()
+    if size_tier not in _ALLOWED_SIZE_TIERS:
+        allowed = sorted(_ALLOWED_SIZE_TIERS)
+        raise ValueError(
+            f"size_tier must be one of {allowed}; got {size_tier!r}"
+        )
+
+    raw_coherence = args.get("style_coherence", "0.7")
+    try:
+        coherence = float(raw_coherence)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"style_coherence must be a float; got {raw_coherence!r}"
+        ) from exc
+    if not 0.0 <= coherence <= 1.0:
+        raise ValueError(
+            f"style_coherence must be in [0.0, 1.0]; got {coherence}"
+        )
+
+    return seed, palette_name, count, size_tier, coherence
+
+
+@ship_bp.route("/download-fleet", methods=["GET"], endpoint="download_fleet")
+def download_fleet():
+    """Plan ``count`` ships and stream them back as one zip of ``.litematic``.
+
+    Query params (all optional except where noted):
+
+    * ``seed`` — int seed for fleet planning (default 0).
+    * ``palette`` — palette name (default ``sci_fi_industrial``). Must exist.
+    * ``count`` — 1-20 ships (enforced).
+    * ``size_tier`` — ``small``/``mid``/``large``/``capital``/``mixed``.
+    * ``style_coherence`` — 0-1, passed straight through to ``FleetParams``.
+
+    Returns ``application/zip`` with
+    ``Content-Disposition: attachment; filename=fleet_<seed>_<palette>.zip``.
+
+    Error surface:
+    * Bad params → 400 JSON ``{"error": "..."}``.
+    * Generation failure (e.g. palette blew up mid-pipeline) → 500 JSON.
+    * Rate-limited → 429 from :func:`check_rate_limit`.
+    """
+    limited = check_rate_limit(as_json=True)
+    if limited is not None:
+        return limited
+
+    try:
+        seed, palette_name, count, size_tier, coherence = (
+            _parse_download_fleet_args(request.args)
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    fleet_params = FleetParams(
+        count=count,
+        palette=palette_name,
+        size_tier=size_tier,
+        style_coherence=coherence,
+        seed=seed,
+    )
+    try:
+        ships = generate_fleet(fleet_params)
+    except ValueError as exc:
+        # Should not hit given the validation above, but FleetParams itself
+        # re-validates and could drift. Treat as 400 so the client can fix
+        # the request.
+        return jsonify({"error": str(exc)}), 400
+
+    # Generate every ship into a fresh scratch dir so concurrent fleet
+    # downloads can't overwrite each other's ship_<seed>.litematic files.
+    buf = io.BytesIO()
+    with tempfile.TemporaryDirectory(prefix="fleet_") as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        try:
+            results = []
+            for idx, ship in enumerate(ships):
+                w, h, length = ship.dims
+                shape_params = ShapeParams(
+                    length=length,
+                    width_max=w,
+                    height_max=h,
+                    wing_style=ship.wing_style,
+                )
+                # Per-ship filename. Prefix with the fleet index so two ships
+                # that happen to draw the same seed from the fleet RNG still
+                # get distinct zip entries.
+                filename = f"ship_{idx:02d}_{ship.seed}.litematic"
+                result = generate(
+                    seed=ship.seed,
+                    palette=palette_name,
+                    shape_params=shape_params,
+                    out_dir=tmp_path,
+                    filename=filename,
+                    with_preview=False,
+                    hull_style=ship.hull_style,
+                    engine_style=ship.engine_style,
+                    greeble_density=ship.greeble_density,
+                )
+                results.append(result)
+        except (ValueError, FileNotFoundError, OSError) as exc:
+            # Anything that trips mid-pipeline (bad palette at load time,
+            # corrupt YAML, disk full) is a 500 — the request was shaped
+            # correctly but the server failed to satisfy it.
+            return jsonify({"error": f"fleet generation failed: {exc}"}), 500
+
+        # Pack results into an in-memory zip. Use ZIP_DEFLATED so the zip is
+        # noticeably smaller than a stored-only pack — .litematic payloads
+        # are already gzipped inside, so compression gains are modest but
+        # non-zero on entry metadata + filenames.
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for result in results:
+                path = Path(result.litematic_path)
+                info = zipfile.ZipInfo(
+                    filename=path.name,
+                    date_time=_ZIP_FIXED_MTIME,
+                )
+                info.compress_type = zipfile.ZIP_DEFLATED
+                zf.writestr(info, path.read_bytes())
+
+    buf.seek(0)
+    safe_palette = "".join(
+        ch for ch in palette_name if ch.isalnum() or ch in "_-"
+    )
+    download_name = f"fleet_{seed}_{safe_palette or 'palette'}.zip"
+    return send_file(
+        buf,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=download_name,
     )
 
 
