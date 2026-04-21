@@ -20,7 +20,7 @@ from enum import Enum
 
 import numpy as np
 
-from ..structure_styles import StructureStyle, wing_prob_override
+from ..structure_styles import HullStyle, StructureStyle, apply_hull_style, wing_prob_override
 from ..wing_styles import WingStyle
 
 
@@ -112,10 +112,24 @@ def _body_profile(t: float) -> float:
     return max(0.0, min(1.0, f))
 
 
-def generate_shape(seed: int, params: ShapeParams | None = None) -> np.ndarray:
+def generate_shape(
+    seed: int,
+    params: ShapeParams | None = None,
+    *,
+    hull_style: HullStyle | None = None,
+) -> np.ndarray:
     """Return a ``(W, H, L)`` int8 array of :class:`Role` codes.
 
-    Deterministic given ``seed`` and ``params``.
+    Deterministic given ``seed``, ``params``, and ``hull_style``.
+
+    Parameters
+    ----------
+    hull_style:
+        Optional :class:`HullStyle` archetype. When set, the base hull is
+        stamped by :func:`apply_hull_style` *instead of* the default
+        :func:`_place_hull`. All downstream parts (cockpit, engines, wings,
+        greebles) are then placed on top of that hull. ``None`` (default)
+        preserves the original behavior byte-for-byte.
     """
     # Local imports so each stage module can safely import from ``core``
     # without creating an import cycle.
@@ -134,7 +148,10 @@ def generate_shape(seed: int, params: ShapeParams | None = None) -> np.ndarray:
     W, H, L = params.width_max, params.height_max, params.length
     grid = np.zeros((W, H, L), dtype=np.int8)
 
-    _place_hull(grid, rng, params)
+    if hull_style is None:
+        _place_hull(grid, rng, params)
+    else:
+        apply_hull_style(grid, hull_style)
     _place_cockpit(grid, rng, params)
     _place_engines(grid, rng, params)
     effective_wing_prob = wing_prob_override(params.structure_style, params.wing_prob)

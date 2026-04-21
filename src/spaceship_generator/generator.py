@@ -9,9 +9,12 @@ from typing import Optional
 
 import numpy as np
 
+from .engine_styles import EngineStyle, build_engines
 from .export import export_litematic, filled_voxel_count
-from .palette import Palette, load_palette
+from .greeble_styles import scatter_greebles
+from .palette import Palette, Role, load_palette
 from .shape import ShapeParams, generate_shape
+from .structure_styles import HullStyle
 from .texture import TextureParams, assign_roles
 
 
@@ -85,6 +88,9 @@ def generate(
     name: str | None = None,
     with_preview: bool = False,
     preview_size: tuple[int, int] = (800, 800),
+    hull_style: HullStyle | None = None,
+    engine_style: EngineStyle | None = None,
+    greeble_density: float = 0.0,
 ) -> GenerationResult:
     """Run the full pipeline and write a ``.litematic`` to ``out_dir``.
 
@@ -107,14 +113,70 @@ def generate(
         If True, also render a matplotlib preview PNG and return its bytes.
     preview_size:
         Preview image size in pixels.
+    hull_style:
+        Optional :class:`HullStyle` archetype. When ``None`` (default) the
+        current hull behavior is preserved. When set, :func:`apply_hull_style`
+        stamps the base hull before parts placement inside ``generate_shape``.
+    engine_style:
+        Optional :class:`EngineStyle` archetype. When ``None`` (default) the
+        built-in engine placer is used. When set, the default ENGINE and
+        ENGINE_GLOW cells are cleared and replaced with placements from
+        :func:`build_engines`.
+    greeble_density:
+        Fraction in ``[0.0, 1.0]``. When ``0.0`` (default) no extra surface
+        greebles are added. When ``> 0``, :func:`scatter_greebles` is run
+        after the main build and placements are written into empty cells
+        only (existing hull/cockpit/engine cells are preserved).
     """
     out_dir = Path(out_dir)
 
     pal = palette if isinstance(palette, Palette) else load_palette(palette)
     shape_params = shape_params or ShapeParams()
     texture_params = texture_params or TextureParams()
+    if not 0.0 <= float(greeble_density) <= 1.0:
+        raise ValueError(
+            f"greeble_density must be in [0, 1]; got {greeble_density!r}"
+        )
 
-    shape_grid = generate_shape(seed, shape_params)
+    shape_grid = generate_shape(seed, shape_params, hull_style=hull_style)
+
+    # Optional engine override: wipe the default engine cells and rewrite
+    # using the chosen EngineStyle. Engines sit at the rear slab (z=0).
+    if engine_style is not None:
+        W, H, L = shape_grid.shape
+        engine_mask = (shape_grid == Role.ENGINE) | (shape_grid == Role.ENGINE_GLOW)
+        shape_grid[engine_mask] = Role.EMPTY
+        engine_rng = np.random.default_rng(seed ^ 0xE5)
+        # Match the geometry conventions used by the default engine placer:
+        # radius = max(1, min(W, H) // 10), length = max(2, L // 8), spread
+        # across half the width so multi-engine layouts don't collide.
+        base_radius = max(1, min(W, H) // 10)
+        engine_length = max(2, L // 8)
+        spread = max(2, W // 4)
+        cy_engine = max(base_radius + 1, H // 2 - 1)
+        placements = build_engines(
+            shape_grid,
+            engine_style,
+            position=(W // 2, cy_engine, 0),
+            size=(base_radius, engine_length, spread),
+            rng=engine_rng,
+        )
+        for x, y, z, role in placements:
+            if 0 <= x < W and 0 <= y < H and 0 <= z < L:
+                shape_grid[x, y, z] = role
+
+    # Optional scattered greebles. Write into empty cells only so existing
+    # hull/cockpit/engine/wing cells aren't clobbered.
+    if greeble_density > 0.0:
+        W, H, L = shape_grid.shape
+        greeble_rng = np.random.default_rng(seed ^ 0x6E)
+        for x, y, z, role in scatter_greebles(
+            shape_grid, greeble_rng, float(greeble_density)
+        ):
+            if 0 <= x < W and 0 <= y < H and 0 <= z < L:
+                if shape_grid[x, y, z] == Role.EMPTY:
+                    shape_grid[x, y, z] = role
+
     role_grid = assign_roles(shape_grid, texture_params)
 
     filename = filename or f"ship_{seed}.litematic"

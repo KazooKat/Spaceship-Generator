@@ -292,3 +292,179 @@ def test_cli_quiet_suppresses_success_lines(tmp_path: Path, capsys):
     assert "Palette:" not in captured.out
     assert "Wrote:" not in captured.out
     assert (tmp_path / "ship_9.litematic").exists()
+
+
+# ---------------------------------------------------------------------------
+# Wave 1 wiring: hull_style / engine_style / greeble_density
+# ---------------------------------------------------------------------------
+
+def test_generate_hull_style_none_matches_default(tmp_path: Path):
+    """hull_style=None must preserve byte-identical behavior with the default."""
+    import numpy as np
+
+    from spaceship_generator.generator import generate
+
+    baseline = generate(
+        123,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+        out_dir=tmp_path,
+        filename="baseline.litematic",
+    )
+    explicit = generate(
+        123,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+        out_dir=tmp_path,
+        filename="explicit.litematic",
+        hull_style=None,
+    )
+    assert np.array_equal(baseline.role_grid, explicit.role_grid)
+
+
+def test_generate_hull_style_changes_grid(tmp_path: Path):
+    """Setting hull_style must produce a different role grid than default."""
+    import numpy as np
+
+    from spaceship_generator.generator import generate
+    from spaceship_generator.structure_styles import HullStyle
+
+    default = generate(
+        7,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=12, height_max=8),
+        out_dir=tmp_path,
+        filename="default.litematic",
+    )
+    saucer = generate(
+        7,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=12, height_max=8),
+        out_dir=tmp_path,
+        filename="saucer.litematic",
+        hull_style=HullStyle.SAUCER,
+    )
+    # Saucer is dramatically different in silhouette — the grids must diverge.
+    assert not np.array_equal(default.role_grid, saucer.role_grid)
+    assert saucer.litematic_path.exists()
+    assert saucer.block_count > 0
+
+
+def test_generate_engine_style_none_matches_default(tmp_path: Path):
+    """engine_style=None must preserve byte-identical behavior with the default."""
+    import numpy as np
+
+    from spaceship_generator.generator import generate
+
+    baseline = generate(
+        321,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+        out_dir=tmp_path,
+        filename="baseline.litematic",
+    )
+    explicit = generate(
+        321,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+        out_dir=tmp_path,
+        filename="explicit.litematic",
+        engine_style=None,
+    )
+    assert np.array_equal(baseline.role_grid, explicit.role_grid)
+
+
+def test_generate_engine_style_replaces_engines(tmp_path: Path):
+    """Setting engine_style must change engine cells vs default placement."""
+    import numpy as np
+
+    from spaceship_generator.engine_styles import EngineStyle
+    from spaceship_generator.generator import generate
+    from spaceship_generator.palette import Role
+
+    default = generate(
+        11,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="default.litematic",
+    )
+    ring = generate(
+        11,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=24, width_max=14, height_max=10),
+        out_dir=tmp_path,
+        filename="ring.litematic",
+        engine_style=EngineStyle.RING,
+    )
+    # Engine cells must differ — RING leaves the center hollow, which the
+    # default solid-disk placer does not.
+    default_engine = (default.role_grid == Role.ENGINE) | (default.role_grid == Role.ENGINE_GLOW)
+    ring_engine = (ring.role_grid == Role.ENGINE) | (ring.role_grid == Role.ENGINE_GLOW)
+    assert not np.array_equal(default_engine, ring_engine)
+    assert ring_engine.sum() > 0  # some engine cells were placed
+
+
+def test_generate_greeble_density_zero_matches_default(tmp_path: Path):
+    """greeble_density=0.0 (default) must match the baseline exactly."""
+    import numpy as np
+
+    from spaceship_generator.generator import generate
+
+    baseline = generate(
+        555,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+        out_dir=tmp_path,
+        filename="baseline.litematic",
+    )
+    explicit = generate(
+        555,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+        out_dir=tmp_path,
+        filename="explicit.litematic",
+        greeble_density=0.0,
+    )
+    assert np.array_equal(baseline.role_grid, explicit.role_grid)
+
+
+def test_generate_greeble_density_adds_cells(tmp_path: Path):
+    """greeble_density > 0 must increase the block count vs baseline."""
+    from spaceship_generator.generator import generate
+
+    baseline = generate(
+        99,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(
+            length=24, width_max=14, height_max=10, greeble_density=0.0
+        ),
+        out_dir=tmp_path,
+        filename="baseline.litematic",
+    )
+    dense = generate(
+        99,
+        palette="sci_fi_industrial",
+        shape_params=ShapeParams(
+            length=24, width_max=14, height_max=10, greeble_density=0.0
+        ),
+        out_dir=tmp_path,
+        filename="dense.litematic",
+        greeble_density=0.5,
+    )
+    # Scatter should add at least one new cell — strictly more voxels filled.
+    assert dense.block_count > baseline.block_count
+
+
+def test_generate_greeble_density_out_of_range_raises(tmp_path: Path):
+    """greeble_density outside [0, 1] must raise ValueError eagerly."""
+    from spaceship_generator.generator import generate
+
+    with pytest.raises(ValueError):
+        generate(
+            1,
+            palette="sci_fi_industrial",
+            shape_params=ShapeParams(length=20, width_max=10, height_max=8),
+            out_dir=tmp_path,
+            greeble_density=1.5,
+        )
