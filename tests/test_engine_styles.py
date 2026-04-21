@@ -30,7 +30,6 @@ from spaceship_generator.engine_styles import (
 )
 from spaceship_generator.palette import Role
 
-
 # --- Enum ------------------------------------------------------------------
 
 

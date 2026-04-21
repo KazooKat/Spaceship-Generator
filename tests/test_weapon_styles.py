@@ -28,7 +28,6 @@ from spaceship_generator.weapon_styles import (
     scatter_weapons,
 )
 
-
 # --- enum ------------------------------------------------------------------
 
 
@@ -155,7 +154,7 @@ def test_builder_is_translation_invariant(name, builder):
     base = builder((0, 0, 0), rng_a)
     shifted = builder((dx, dy, dz), rng_b)
     assert len(base) == len(shifted)
-    for (bx, by, bz, br), (sx, sy, sz, sr) in zip(base, shifted):
+    for (bx, by, bz, br), (sx, sy, sz, sr) in zip(base, shifted, strict=False):
         assert (sx, sy, sz, sr) == (bx + dx, by + dy, bz + dz, br)
 
 

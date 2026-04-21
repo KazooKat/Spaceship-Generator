@@ -27,19 +27,18 @@ Adding a new greeble is a two-step change:
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from enum import StrEnum
 
 import numpy as np
 
 from .palette import Role
 
-
 # Output type alias — a single voxel placement.
 Placement = tuple[int, int, int, Role]
 
 
-class GreebleType(str, Enum):
+class GreebleType(StrEnum):
     """A surface-detail archetype.
 
     * :attr:`TURRET` — compact gun stub: base + barrel + light tip.
@@ -272,7 +271,7 @@ def _surface_anchors_from_grid(grid: np.ndarray) -> list[tuple[int, int, int]]:
     return anchors
 
 
-def _coerce_shape(shape: "np.ndarray | Sequence[int]") -> tuple[int, int, int]:
+def _coerce_shape(shape: np.ndarray | Sequence[int]) -> tuple[int, int, int]:
     """Accept either a numpy grid or a ``(W, H, L)`` tuple."""
     if isinstance(shape, np.ndarray):
         if shape.ndim != 3:
@@ -290,7 +289,7 @@ def _coerce_shape(shape: "np.ndarray | Sequence[int]") -> tuple[int, int, int]:
 
 
 def scatter_greebles(
-    shape: "np.ndarray | Sequence[int]",
+    shape: np.ndarray | Sequence[int],
     rng: np.random.Generator,
     density: float,
     *,

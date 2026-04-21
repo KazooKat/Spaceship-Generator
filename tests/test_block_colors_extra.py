@@ -14,7 +14,6 @@ import io
 import json
 import urllib.error
 from pathlib import Path
-from typing import Optional
 
 import pytest
 
@@ -30,7 +29,6 @@ from spaceship_generator.block_colors import (
     block_texture_png,
     hex_to_rgba,
 )
-
 
 # ----------- helpers -----------
 
@@ -270,7 +268,7 @@ def test_approximate_block_color_uses_fetched_png(monkeypatch, tmp_path: Path):
 
     calls: list[str] = []
 
-    def _fake_fetch(stem: str, timeout: float = 5.0) -> Optional[bytes]:
+    def _fake_fetch(stem: str, timeout: float = 5.0) -> bytes | None:
         calls.append(stem)
         return payload
 
@@ -317,7 +315,7 @@ def test_approximate_block_color_skips_when_avg_color_returns_none(
     transparent = _make_solid_png((0, 0, 0, 0))
     solid = _make_solid_png((32, 64, 96, 255))
 
-    def _fetcher(stem: str, timeout: float = 5.0) -> Optional[bytes]:
+    def _fetcher(stem: str, timeout: float = 5.0) -> bytes | None:
         # First call -> all-transparent; later calls -> a real color.
         if stem == "stone":
             return transparent
@@ -405,7 +403,7 @@ def test_block_texture_png_network_path_writes_disk_and_caches_stem(
 
     payload = _make_solid_png((200, 100, 50, 255), size=4)
 
-    def _fetch(stem: str, timeout: float = 5.0) -> Optional[bytes]:
+    def _fetch(stem: str, timeout: float = 5.0) -> bytes | None:
         return payload if stem == "iron_block" else None
 
     monkeypatch.setattr(bc, "_fetch_png", _fetch)

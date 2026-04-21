@@ -17,19 +17,18 @@ from spaceship_generator.shape import (
     generate_shape,
 )
 
-
 # ----- ShapeParams validation -----
 
 @pytest.mark.parametrize("bad", [
-    dict(length=4),
-    dict(width_max=2),
-    dict(height_max=2),
-    dict(engine_count=-1),
-    dict(engine_count=99),
-    dict(wing_prob=-0.1),
-    dict(wing_prob=1.5),
-    dict(greeble_density=-0.1),
-    dict(greeble_density=0.9),
+    {"length": 4},
+    {"width_max": 2},
+    {"height_max": 2},
+    {"engine_count": -1},
+    {"engine_count": 99},
+    {"wing_prob": -0.1},
+    {"wing_prob": 1.5},
+    {"greeble_density": -0.1},
+    {"greeble_density": 0.9},
 ])
 def test_shape_params_validate(bad):
     with pytest.raises(ValueError):
@@ -157,7 +156,7 @@ def test_engine_x_positions_symmetric_pairs():
     for n in range(2, 6):
         xs = _engine_x_positions(n, width=21, radius=1)  # odd width → clean center
         xs_sorted = sorted(xs)
-        for lo, hi in zip(xs_sorted, reversed(xs_sorted)):
+        for lo, hi in zip(xs_sorted, reversed(xs_sorted), strict=False):
             assert lo + hi == 20  # width - 1 = 20
 
 
@@ -548,7 +547,7 @@ def test_structure_style_is_one_connected_mass(style):
 def test_structure_styles_produce_distinguishable_grids():
     """At least two styles must differ in voxel content for the same seed."""
     seed = 42
-    p_base = dict(length=40, width_max=20, height_max=12)
+    p_base = {"length": 40, "width_max": 20, "height_max": 12}
     grids = {
         style: generate_shape(seed, ShapeParams(**p_base, structure_style=style))
         for style in StructureStyle

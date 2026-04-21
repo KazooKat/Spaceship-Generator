@@ -26,19 +26,18 @@ Adding a new weapon type is a two-step change:
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from enum import StrEnum
 
 import numpy as np
 
 from .palette import Role
 
-
 # Output type alias — a single voxel placement.
 Placement = tuple[int, int, int, Role]
 
 
-class WeaponType(str, Enum):
+class WeaponType(StrEnum):
     """A weapon-emplacement archetype.
 
     * :attr:`TURRET_LARGE` — heavy gun: wide base + tall twin barrels + tip glow.
@@ -249,7 +248,7 @@ def _top_face_anchors_from_shape(
     return anchors
 
 
-def _coerce_shape(shape: "np.ndarray | Sequence[int]") -> tuple[int, int, int]:
+def _coerce_shape(shape: np.ndarray | Sequence[int]) -> tuple[int, int, int]:
     """Accept either a numpy grid or a ``(W, H, L)`` tuple."""
     if isinstance(shape, np.ndarray):
         if shape.ndim != 3:
@@ -267,7 +266,7 @@ def _coerce_shape(shape: "np.ndarray | Sequence[int]") -> tuple[int, int, int]:
 
 
 def scatter_weapons(
-    shape: "np.ndarray | Sequence[int]",
+    shape: np.ndarray | Sequence[int],
     rng: np.random.Generator,
     count: int,
     *,

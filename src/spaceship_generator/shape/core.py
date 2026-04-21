@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 import numpy as np
 
@@ -24,7 +24,7 @@ from ..structure_styles import HullStyle, StructureStyle, apply_hull_style, wing
 from ..wing_styles import WingStyle
 
 
-class CockpitStyle(str, Enum):
+class CockpitStyle(StrEnum):
     BUBBLE = "bubble"
     POINTED = "pointed"
     INTEGRATED = "integrated"

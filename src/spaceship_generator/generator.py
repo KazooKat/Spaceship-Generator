@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional
 
 import numpy as np
 
@@ -49,7 +49,7 @@ class GenerationResult:
     palette_name: str
     litematic_path: Path
     role_grid: np.ndarray
-    preview_png: Optional[bytes] = None
+    preview_png: bytes | None = None
 
     @property
     def shape(self) -> tuple[int, int, int]:
@@ -239,7 +239,7 @@ def generate(
         description=f"Procedurally generated spaceship (seed={seed}, palette={pal.name})",
     )
 
-    preview_bytes: Optional[bytes] = None
+    preview_bytes: bytes | None = None
     if with_preview:
         # Import here so the CLI/export path doesn't always pull in matplotlib.
         from .preview import render_preview

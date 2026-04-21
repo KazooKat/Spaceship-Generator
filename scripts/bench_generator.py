@@ -14,8 +14,8 @@ from __future__ import annotations
 import argparse
 import cProfile
 import json
-import pstats
 import platform
+import pstats
 import sys
 import tempfile
 import time

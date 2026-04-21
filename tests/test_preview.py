@@ -13,7 +13,6 @@ from spaceship_generator.preview import render_preview
 from spaceship_generator.shape import ShapeParams, generate_shape
 from spaceship_generator.texture import assign_roles
 
-
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 

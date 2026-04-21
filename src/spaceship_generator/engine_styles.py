@@ -31,18 +31,17 @@ Contract
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import Tuple
+from enum import StrEnum
 
 import numpy as np
 
 from .palette import Role
 
 #: One voxel placement: integer grid coords plus semantic role.
-Placement = Tuple[int, int, int, Role]
+Placement = tuple[int, int, int, Role]
 
 
-class EngineStyle(str, Enum):
+class EngineStyle(StrEnum):
     """Engine-block archetype.
 
     * :attr:`SINGLE_CORE` — one large central thruster (shuttles, fighters).
@@ -61,7 +60,7 @@ class EngineStyle(str, Enum):
 
 def build_engines(
     shape: np.ndarray,
-    engine_style: "EngineStyle",
+    engine_style: EngineStyle,
     *,
     position: tuple[int, int, int],
     size: tuple[int, int, int],

@@ -54,7 +54,7 @@ def load_baseline(path: Path) -> dict[str, Any]:
         return json.loads(path.read_text())
     except json.JSONDecodeError as exc:
         print(f"bench_compare: invalid JSON in {path}: {exc}", file=sys.stderr)
-        raise SystemExit(2)
+        raise SystemExit(2) from exc
 
 
 def get_phase_seconds(data: dict[str, Any], phase: str) -> float:

@@ -29,7 +29,6 @@ from spaceship_generator.shape import ShapeParams
 from spaceship_generator.structure_styles import HullStyle
 from spaceship_generator.wing_styles import WingStyle
 
-
 # ---------------------------------------------------------------------------
 # Dataclass shape
 # ---------------------------------------------------------------------------

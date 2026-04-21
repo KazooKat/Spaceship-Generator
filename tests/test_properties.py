@@ -33,7 +33,6 @@ from spaceship_generator.shape import (
 )
 from spaceship_generator.wing_styles import WingStyle
 
-
 # Keep grids modest so the property suite stays fast on CI.
 _lengths = st.integers(min_value=8, max_value=24)
 _widths = st.integers(min_value=4, max_value=16)

@@ -112,7 +112,7 @@ class Palette:
         return self.preview_colors[r]
 
     @classmethod
-    def load(cls, path: str | Path) -> "Palette":
+    def load(cls, path: str | Path) -> Palette:
         """Load a palette from a YAML file.
 
         Errors raised by :meth:`from_dict` are wrapped so that the offending
@@ -127,7 +127,7 @@ class Palette:
             raise ValueError(f"{path}: {exc}") from exc
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Palette":
+    def from_dict(cls, data: dict) -> Palette:
         if "name" not in data or "blocks" not in data:
             raise ValueError("Palette YAML must include 'name' and 'blocks'")
         name = str(data["name"])

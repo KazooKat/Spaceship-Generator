@@ -19,7 +19,6 @@ import re
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Optional
 
 try:  # pragma: no cover - import guard
     from PIL import Image
@@ -126,7 +125,7 @@ def _candidate_textures(block_id: str) -> list[str]:
     return ordered
 
 
-def _fetch_png(stem: str, timeout: float = 5.0) -> Optional[bytes]:
+def _fetch_png(stem: str, timeout: float = 5.0) -> bytes | None:
     url = _MCMETA_BASE + stem + ".png"
     try:
         with urllib.request.urlopen(url, timeout=timeout) as resp:
@@ -137,7 +136,7 @@ def _fetch_png(stem: str, timeout: float = 5.0) -> Optional[bytes]:
         return None
 
 
-def _avg_color(png_bytes: bytes) -> Optional[str]:
+def _avg_color(png_bytes: bytes) -> str | None:
     """Return alpha-weighted ``#rrggbb`` mean, or None if undetermined."""
     if Image is None:
         return None
@@ -163,14 +162,12 @@ def _avg_color(png_bytes: bytes) -> Optional[str]:
         a_sum += pa
     if a_sum == 0:
         return None
-    return "#{:02x}{:02x}{:02x}".format(
-        r_sum // a_sum, g_sum // a_sum, b_sum // a_sum
-    )
+    return f"#{r_sum // a_sum:02x}{g_sum // a_sum:02x}{b_sum // a_sum:02x}"
 
 
 def approximate_block_color(
     block_id: str, *, allow_network: bool = True
-) -> Optional[str]:
+) -> str | None:
     """Return a ``"#rrggbb"`` color approximating ``block_id``.
 
     Results (including negatives) are cached on disk. Set ``allow_network=False``
@@ -261,7 +258,7 @@ def _crop_first_frame(png_bytes: bytes) -> bytes:
 
 def block_texture_png(
     block_id: str, *, allow_network: bool = True
-) -> Optional[bytes]:
+) -> bytes | None:
     """Return PNG bytes of a representative texture for ``block_id``.
 
     Resolution order:

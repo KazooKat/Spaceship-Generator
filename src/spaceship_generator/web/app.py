@@ -29,7 +29,6 @@ from .blueprints.ship import ship_bp
 from .blueprints.ship_support import init_ship_state
 from .blueprints.static_ext import static_ext_bp
 
-
 # --- CSP / security headers + cache-control ----------------------------
 # Single after_request hook handles both concerns:
 # 1. Adds a CSP that allows the CDN scripts the sci-fi console frontend

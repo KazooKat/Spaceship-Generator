@@ -26,7 +26,6 @@ from spaceship_generator.greeble_styles import (
 )
 from spaceship_generator.palette import Role
 
-
 # --- enum ------------------------------------------------------------------
 
 
@@ -133,7 +132,7 @@ def test_build_greeble_matches_direct_builder_call():
         (GreebleType.TURRET, GreebleType.DISH, GreebleType.VENT,
          GreebleType.ANTENNA, GreebleType.PANEL_LINE, GreebleType.SENSOR_POD),
         (build_turret, build_dish, build_vent,
-         build_antenna, build_panel_line, build_sensor_pod),
+         build_antenna, build_panel_line, build_sensor_pod), strict=False,
     ):
         direct = builder(_ANCHOR, np.random.default_rng(42))
         routed = build_greeble(gtype, _ANCHOR, np.random.default_rng(42))

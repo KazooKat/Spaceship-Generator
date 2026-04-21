@@ -28,7 +28,6 @@ from spaceship_generator.structure_styles import (
     hull_style_rx_ry,
 )
 
-
 # --- Enum wire values -----------------------------------------------------
 
 
@@ -108,7 +107,7 @@ def test_each_style_stays_in_bounds(style):
     apply_hull_style(grid, style)
     assert grid.shape == shape
     # Only EMPTY or HULL are written by this stamper.
-    unique_vals = set(int(v) for v in np.unique(grid))
+    unique_vals = {int(v) for v in np.unique(grid)}
     assert unique_vals <= {int(Role.EMPTY), int(Role.HULL)}, (
         f"{style.value} wrote unexpected role codes: {unique_vals}"
     )

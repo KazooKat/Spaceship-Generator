@@ -28,7 +28,6 @@ from spaceship_generator.structure_styles import HullStyle
 from spaceship_generator.weapon_styles import WeaponType
 from spaceship_generator.wing_styles import WingStyle
 
-
 # Expected preset role names. Locked so renaming a key is a deliberate break.
 EXPECTED_PRESET_NAMES = {
     "corvette",
@@ -79,11 +78,11 @@ def test_every_preset_enum_types_are_correct(name):
 
 @pytest.mark.parametrize("name", sorted(EXPECTED_PRESET_NAMES))
 def test_every_preset_size_is_valid(name):
-    w, h, l = SHIP_PRESETS[name]["size"]
-    assert w >= 4 and h >= 4 and l >= 8, (
-        f"preset {name!r} size=({w},{h},{l}) violates ShapeParams minimums"
+    w, h, length = SHIP_PRESETS[name]["size"]
+    assert w >= 4 and h >= 4 and length >= 8, (
+        f"preset {name!r} size=({w},{h},{length}) violates ShapeParams minimums"
     )
-    assert isinstance(w, int) and isinstance(h, int) and isinstance(l, int)
+    assert isinstance(w, int) and isinstance(h, int) and isinstance(length, int)
 
 
 @pytest.mark.parametrize("name", sorted(EXPECTED_PRESET_NAMES))
@@ -183,8 +182,8 @@ def test_freighter_heavy_has_no_weapons():
 def test_interceptor_is_small_and_fast():
     spec = SHIP_PRESETS["interceptor"]
     # Smallest preset by bounding-box volume.
-    w, h, l = spec["size"]
-    assert (w, h, l) == (15, 10, 45)
+    w, h, length = spec["size"]
+    assert (w, h, length) == (15, 10, 45)
     assert spec["weapon_count"] == 1
     assert spec["weapon_types"] == (WeaponType.LASER_LANCE,)
 
@@ -212,8 +211,8 @@ def test_generate_accepts_apply_preset_kwargs(name, tmp_path):
     assert result.litematic_path.suffix == ".litematic"
     assert result.litematic_path.stat().st_size > 0
     # Grid dimensions match the preset size exactly.
-    w, h, l = kwargs["shape_params"].width_max, kwargs["shape_params"].height_max, kwargs["shape_params"].length
-    assert result.role_grid.shape == (w, h, l)
+    w, h, length = kwargs["shape_params"].width_max, kwargs["shape_params"].height_max, kwargs["shape_params"].length
+    assert result.role_grid.shape == (w, h, length)
     # At least some filled voxels — a shape that collapses to zero blocks
     # means the preset was silently invalid.
     assert result.block_count > 0

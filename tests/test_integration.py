@@ -32,7 +32,6 @@ from spaceship_generator.palette import Role
 from spaceship_generator.shape import CockpitStyle, ShapeParams, StructureStyle
 from spaceship_generator.web.app import create_app
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
@@ -169,7 +168,7 @@ def test_generate_api_and_voxels_roundtrip(client):
 
     # Every role present in the voxel payload has a color entry.
     packed = np.frombuffer(raw, dtype="<i2").reshape(count, 4)
-    roles_present = set(int(r) for r in packed[:, 3])
+    roles_present = {int(r) for r in packed[:, 3]}
     colors = vox["colors"]
     for role_int in roles_present:
         assert str(role_int) in colors, (
@@ -257,7 +256,7 @@ def test_download_route_returns_404_when_file_missing_on_disk(client):
     }
     # Use HTMX mode so response body is the partial fragment (with gen_id in it),
     # but it's simpler to call /api/generate and extract gen_id cleanly.
-    api_resp = c.post("/api/generate", json={k: v for k, v in form.items()})
+    api_resp = c.post("/api/generate", json=dict(form.items()))
     assert api_resp.status_code == 200, api_resp.get_data(as_text=True)
     gen_id = api_resp.get_json()["gen_id"]
 

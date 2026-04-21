@@ -15,7 +15,6 @@ from spaceship_generator.shape import ShapeParams, StructureStyle, generate_shap
 from spaceship_generator.web.app import create_app
 from spaceship_generator.wing_styles import WingStyle
 
-
 # --- WingStyle enum --------------------------------------------------------
 
 
@@ -128,10 +127,10 @@ def test_styles_produce_distinct_silhouettes():
     a moderately sized ship. Otherwise two enum values collapse to the
     same output and the user-facing dropdown is a lie."""
     seed = 1234
-    common = dict(
-        length=40, width_max=20, height_max=12,
-        wing_prob=1.0, structure_style=StructureStyle.FRIGATE,
-    )
+    common = {
+        "length": 40, "width_max": 20, "height_max": 12,
+        "wing_prob": 1.0, "structure_style": StructureStyle.FRIGATE,
+    }
     grids = {
         style: generate_shape(seed, ShapeParams(**common, wing_style=style))
         for style in WingStyle

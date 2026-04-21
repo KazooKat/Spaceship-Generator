@@ -45,7 +45,6 @@ from .structure_styles import HullStyle
 from .weapon_styles import WeaponType
 from .wing_styles import WingStyle
 
-
 # Keys every preset entry carries. Kept as a module-level tuple so tests
 # can assert the schema without duplicating the list.
 PRESET_KEYS: tuple[str, ...] = (

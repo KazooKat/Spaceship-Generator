@@ -17,7 +17,6 @@ from flask import Blueprint, abort, current_app, send_file
 
 from ...block_colors import block_texture_png
 
-
 # Accept namespaced block ids, with optional state spec (e.g. ``[lit=true]``).
 # Matches what ``block_colors._BLOCKID_RE`` accepts so the route can safely
 # round-trip the block ids produced by the palette key.

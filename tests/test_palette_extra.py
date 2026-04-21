@@ -21,7 +21,6 @@ from spaceship_generator.palette import (
     validate_palette_file,
 )
 
-
 # ----------- _parse_color -----------
 
 
@@ -95,7 +94,7 @@ def test_from_dict_missing_preview_color_uses_gray_fallback():
     """No ``preview_colors`` mapping → every role gets mid-gray preview."""
     full = {
         "name": "minimal",
-        "blocks": {r: "minecraft:stone" for r in REQUIRED_ROLES},
+        "blocks": dict.fromkeys(REQUIRED_ROLES, "minecraft:stone"),
     }
     pal = Palette.from_dict(full)
     for r in REQUIRED_ROLES:
@@ -105,7 +104,7 @@ def test_from_dict_missing_preview_color_uses_gray_fallback():
 
 def test_from_dict_partial_preview_colors_fallback_only_for_missing_roles():
     """Only the omitted role falls back to gray; the rest keep their colors."""
-    blocks = {r: "minecraft:stone" for r in REQUIRED_ROLES}
+    blocks = dict.fromkeys(REQUIRED_ROLES, "minecraft:stone")
     preview = {r: "#112233" for r in REQUIRED_ROLES if r != "WINDOW"}
     pal = Palette.from_dict(
         {"name": "partial", "blocks": blocks, "preview_colors": preview}

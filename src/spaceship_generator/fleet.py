@@ -254,7 +254,7 @@ def generate_fleet(params: FleetParams) -> list[GeneratedShip]:
     coherence = float(params.style_coherence)
 
     ships: list[GeneratedShip] = []
-    for i in range(params.count):
+    for _i in range(params.count):
         # Per-ship seed is deterministic and decoupled from the style RNG
         # stream so mixing the same fleet in a different order still produces
         # recognisably similar ships for the same index.

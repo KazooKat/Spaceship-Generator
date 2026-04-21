@@ -15,8 +15,9 @@ hull silhouettes without running the full generator pipeline.
 from __future__ import annotations
 
 import math
-from enum import Enum
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -26,7 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only, avoids circular import
     from .shape import CockpitStyle
 
 
-class StructureStyle(str, Enum):
+class StructureStyle(StrEnum):
     """Visual archetype for the overall ship silhouette.
 
     * :attr:`FRIGATE` — default, moderately tapered, original behavior.
@@ -220,8 +221,8 @@ def wing_size_scale(style: StructureStyle) -> tuple[float, float, float]:
 
 
 def default_cockpit_for(
-    style: StructureStyle, requested: "CockpitStyle"
-) -> "CockpitStyle":
+    style: StructureStyle, requested: CockpitStyle
+) -> CockpitStyle:
     """Some styles have a preferred cockpit when the user left the default.
 
     Currently a pass-through: ``requested`` is always honored. The hook is kept
@@ -236,7 +237,7 @@ def default_cockpit_for(
 # ---------------------------------------------------------------------------
 
 
-class HullStyle(str, Enum):
+class HullStyle(StrEnum):
     """Silhouette archetype for the hull alone.
 
     Unlike :class:`StructureStyle`, this dial affects only the hull

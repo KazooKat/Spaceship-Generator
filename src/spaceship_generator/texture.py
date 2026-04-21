@@ -29,7 +29,6 @@ import numpy as np
 from .palette import Role
 from .shape import _surface_mask
 
-
 # Roles protected from overwrite by later lighting passes.
 # INTERIOR is included so belly/nose-tip light passes don't carve into the
 # hull's hidden interior; LIGHT so a previously-painted running light is not

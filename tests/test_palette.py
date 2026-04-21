@@ -18,7 +18,6 @@ from spaceship_generator.palette import (
     validate_palette_file,
 )
 
-
 # ----- parse_block_state -----
 
 def test_parse_block_state_plain():

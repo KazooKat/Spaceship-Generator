@@ -19,14 +19,14 @@ break determinism for every existing seed.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 import numpy as np
 
 from .palette import Role
 
 
-class WingStyle(str, Enum):
+class WingStyle(StrEnum):
     """Planform / cross-section archetype for the ship's wings.
 
     * :attr:`STRAIGHT` — rectangular slab. Legacy default; byte-compat.
@@ -47,7 +47,7 @@ class WingStyle(str, Enum):
 
 def place_wings(
     grid: np.ndarray,
-    wing_style: "WingStyle",
+    wing_style: WingStyle,
     *,
     span: int,
     thickness: int,
