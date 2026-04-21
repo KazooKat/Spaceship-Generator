@@ -337,6 +337,42 @@
                                   aria-live="polite">{{ defaults.greeble_density }}</span>
                         </label>
                     </div>
+                    {# Cockpit style override — distinct from the shape-level
+                       ``cockpit`` picker above. ``auto`` (= None server-side)
+                       lets the generator pick its own default; any concrete
+                       CockpitStyle value is forwarded as a top-level generate
+                       kwarg via ``extra_gen_kwargs``. #}
+                    <div class="control" data-param="cockpit_style">
+                        <label>Cockpit style (override)
+                            <select name="cockpit_style">
+                                <option value="auto" selected>auto</option>
+                                {% for c in cockpit_styles %}
+                                <option value="{{ c }}">{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                    {# Weapon count — 0 disables weapon scattering entirely.
+                       Server clamps to [0, 8] so manual URL tampering can't
+                       overflow the generator's scatter loop. #}
+                    <div class="control" data-param="weapon_count">
+                        <label>Weapon count
+                            <input type="number" name="weapon_count"
+                                   min="0" max="8" step="1" value="0">
+                        </label>
+                    </div>
+                    {# Weapon types — multi-select allow-list. No selections
+                       means "use all types" server-side (forwarded as None).
+                       Unknown tokens are dropped with a stderr warning. #}
+                    <div class="control" data-param="weapon_types">
+                        <label>Weapon types
+                            <select name="weapon_types" multiple size="5">
+                                {% for w in weapon_types %}
+                                <option value="{{ w }}">{{ w }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
                 </div>
             </section>
 

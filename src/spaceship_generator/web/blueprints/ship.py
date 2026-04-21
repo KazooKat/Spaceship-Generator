@@ -12,7 +12,6 @@ import io
 import random
 
 import numpy as np
-
 from flask import (
     Blueprint,
     abort,
@@ -32,6 +31,7 @@ from ...palette import Role, list_palettes, load_palette
 from ...shape import CockpitStyle, StructureStyle, generate_shape
 from ...structure_styles import HullStyle
 from ...texture import assign_roles
+from ...weapon_styles import WeaponType
 from ...wing_styles import WingStyle
 from .ratelimit import check_rate_limit
 from .ship_support import (
@@ -44,7 +44,6 @@ from .ship_support import (
     render_result_partial,
     state,
 )
-
 
 ship_bp = Blueprint("ship", __name__)
 
@@ -82,6 +81,7 @@ def index():
         wing_styles=[w.value for w in WingStyle],
         hull_styles=[h.value for h in HullStyle],
         engine_styles=[e.value for e in EngineStyle],
+        weapon_types=[w.value for w in WeaponType],
         param_help=PARAM_HELP,
         defaults={
             "seed": random.randint(0, 2**31 - 1),
@@ -147,6 +147,7 @@ def do_generate():
                 wing_styles=[w.value for w in WingStyle],
                 hull_styles=[h.value for h in HullStyle],
                 engine_styles=[e.value for e in EngineStyle],
+                weapon_types=[w.value for w in WeaponType],
                 param_help=PARAM_HELP,
                 defaults=request.form.to_dict(),
                 error=str(exc),
@@ -475,6 +476,7 @@ def api_meta():
             "wing_styles": [w.value for w in WingStyle],
             "hull_styles": [h.value for h in HullStyle],
             "engine_styles": [e.value for e in EngineStyle],
+            "weapon_types": [w.value for w in WeaponType],
             "param_help": dict(help_map),
             "defaults": {
                 "seed": 42,

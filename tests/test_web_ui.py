@@ -29,7 +29,6 @@ import pytest
 
 from spaceship_generator.web.app import create_app
 
-
 # --- Fixtures ---------------------------------------------------------------
 
 
@@ -707,6 +706,203 @@ class TestStylePickers:
             assert h.value in data["hull_styles"]
         for e in EngineStyle:
             assert e.value in data["engine_styles"]
+
+
+# --- TestCockpitWeaponControls ----------------------------------------------
+
+
+@pytest.mark.ui
+class TestCockpitWeaponControls:
+    """New STYLES section controls: cockpit_style override, weapon_count,
+    weapon_types (multi-select).
+
+    All three feed :func:`build_params_from_source` into ``extra_gen_kwargs``
+    and flow through the same ``try/except TypeError`` fallback helper as the
+    pre-existing hull / engine pickers. ``cockpit_style`` is intentionally
+    distinct from the shape-level ``cockpit`` field (which stays on
+    ``ShapeParams``).
+    """
+
+    def test_get_renders_all_three_new_controls(self, client):
+        """GET / must render every new form field name on the page."""
+        body = client.get("/").get_data(as_text=True)
+        for name in ("cockpit_style", "weapon_count", "weapon_types"):
+            assert (
+                f'name="{name}"' in body or f"name='{name}'" in body
+            ), f"new control name={name!r} missing from rendered index"
+
+    def test_cockpit_style_select_has_auto_and_all_enum_values(self, client):
+        """The cockpit_style <select> must offer ``auto`` plus every
+        :class:`CockpitStyle` value. ``auto`` maps to ``None`` server-side."""
+        from spaceship_generator.shape import CockpitStyle
+
+        body = client.get("/").get_data(as_text=True)
+        # Find the <select name="cockpit_style"> ... </select> block so we
+        # scope the option check tightly (``auto`` is reused elsewhere).
+        m = re.search(
+            r'<select[^>]*name="cockpit_style"[^>]*>(.*?)</select>',
+            body,
+            re.DOTALL,
+        )
+        assert m is not None, "cockpit_style <select> not found"
+        block = m.group(1)
+        assert 'value="auto"' in block, "cockpit_style missing auto option"
+        for c in CockpitStyle:
+            assert f'value="{c.value}"' in block, (
+                f"cockpit_style option {c.value!r} missing"
+            )
+
+    def test_weapon_count_input_attributes(self, client):
+        """weapon_count must be a number input with min=0, max=8, step=1,
+        default value 0 — matches the server-side clamp range."""
+        body = client.get("/").get_data(as_text=True)
+        m = re.search(
+            r'<input[^>]*name="weapon_count"[^>]*>',
+            body,
+        )
+        assert m is not None, "weapon_count <input> not found"
+        tag = m.group()
+        assert 'type="number"' in tag, "weapon_count must be type=number"
+        assert 'min="0"' in tag, "weapon_count missing min=0"
+        assert 'max="8"' in tag, "weapon_count missing max=8"
+        assert 'step="1"' in tag, "weapon_count missing step=1"
+        assert 'value="0"' in tag, "weapon_count default should be 0"
+
+    def test_weapon_types_is_multiple_select_with_all_enum_values(self, client):
+        """weapon_types must be a <select multiple> with every WeaponType
+        value as an option."""
+        from spaceship_generator.weapon_styles import WeaponType
+
+        body = client.get("/").get_data(as_text=True)
+        m = re.search(
+            r'<select[^>]*name="weapon_types"[^>]*>(.*?)</select>',
+            body,
+            re.DOTALL,
+        )
+        assert m is not None, "weapon_types <select> not found"
+        tag = body[m.start():m.start() + 200]
+        assert "multiple" in tag, "weapon_types must be a multi-select"
+        block = m.group(1)
+        for w in WeaponType:
+            assert f'value="{w.value}"' in block, (
+                f"weapon_types option {w.value!r} missing"
+            )
+
+    def test_post_with_wrap_bridge_cockpit_and_weapons_returns_200(self, client):
+        """POST /generate with cockpit_style=wrap_bridge, weapon_count=2,
+        weapon_types=[turret_large] must complete successfully."""
+        form = _style_form_base() | {
+            "cockpit_style": "wrap_bridge",
+            "weapon_count": "2",
+            "weapon_types": ["turret_large"],
+        }
+        resp = client.post(
+            "/generate", data=form, headers={"HX-Request": "true"}
+        )
+        assert resp.status_code == 200, (
+            f"POST with wrap_bridge + 2 turrets returned "
+            f"{resp.status_code}: {resp.get_data(as_text=True)[:300]}"
+        )
+
+    def test_post_with_weapon_count_999_is_clamped_to_8(self, client):
+        """Huge weapon_count values must be clamped server-side rather than
+        rejected — we verify the clamp at the parser level so we don't need
+        the generator to actually succeed with 999 weapons."""
+        from spaceship_generator.web.blueprints.ship_support import (
+            build_params_from_source,
+        )
+
+        form = _style_form_base() | {"weapon_count": "999"}
+        _seed, _pal, _shape, _tex, extras = build_params_from_source(form)
+        assert extras["weapon_count"] == 8, (
+            f"expected weapon_count clamped to 8, got {extras['weapon_count']!r}"
+        )
+        # And the route doesn't crash with a clamped value.
+        resp = client.post(
+            "/generate", data=form, headers={"HX-Request": "true"}
+        )
+        assert resp.status_code == 200, (
+            f"clamped-weapon-count POST returned {resp.status_code}"
+        )
+
+    def test_post_with_invalid_cockpit_style_returns_200_or_400(self, client):
+        """Unknown cockpit_style values must never 500 — either the parser
+        rejects with 400 or the generator fallback silently succeeds."""
+        form = _style_form_base() | {"cockpit_style": "not_a_real_cockpit"}
+        resp = client.post(
+            "/generate", data=form, headers={"HX-Request": "true"}
+        )
+        assert resp.status_code in (200, 400), (
+            f"invalid cockpit_style should be 200 or 400, got {resp.status_code}"
+        )
+
+    def test_api_meta_exposes_cockpit_and_weapon_types_lists(self, client):
+        """``/api/meta`` must publish cockpit_styles (already present) and the
+        new weapon_types enum list so a JSON-driven frontend can render
+        the same pickers."""
+        from spaceship_generator.shape import CockpitStyle
+        from spaceship_generator.weapon_styles import WeaponType
+
+        data = client.get("/api/meta").get_json()
+        assert "cockpit_styles" in data, "/api/meta missing cockpit_styles key"
+        assert "weapon_types" in data, "/api/meta missing weapon_types key"
+        for c in CockpitStyle:
+            assert c.value in data["cockpit_styles"]
+        for w in WeaponType:
+            assert w.value in data["weapon_types"]
+
+    def test_default_values_auto_zero_empty_parse_cleanly(self):
+        """Unit-level: default values for all three new controls must parse
+        to ``(None, 0, None)`` in ``extra_gen_kwargs`` so the generator sees
+        the "auto / none / all types" baseline."""
+        from spaceship_generator.web.blueprints.ship_support import (
+            build_params_from_source,
+        )
+
+        # Plain dict mirrors a JSON body. No weapon_types field = empty list
+        # downstream. weapon_count absent = 0. cockpit_style = "auto" → None.
+        source = _style_form_base() | {
+            "cockpit_style": "auto",
+            "weapon_count": "0",
+        }
+        _seed, _pal, _shape, _tex, extras = build_params_from_source(source)
+        assert extras["cockpit_style"] is None, (
+            f"expected cockpit_style=None for auto, got {extras['cockpit_style']!r}"
+        )
+        assert extras["weapon_count"] == 0, (
+            f"expected weapon_count=0, got {extras['weapon_count']!r}"
+        )
+        assert extras["weapon_types"] is None, (
+            f"expected weapon_types=None when unset, got {extras['weapon_types']!r}"
+        )
+
+    def test_unknown_weapon_type_token_dropped_with_warning(self, capsys):
+        """Unknown tokens in weapon_types must be dropped (not raise) and a
+        warning must be emitted on stderr."""
+        from werkzeug.datastructures import ImmutableMultiDict
+
+        from spaceship_generator.web.blueprints.ship_support import (
+            build_params_from_source,
+        )
+
+        # Mix valid + invalid tokens. Use MultiDict so ``getlist`` works.
+        items = list(_style_form_base().items()) + [
+            ("weapon_types", "turret_large"),
+            ("weapon_types", "bogus_weapon"),
+        ]
+        source = ImmutableMultiDict(items)
+        _seed, _pal, _shape, _tex, extras = build_params_from_source(source)
+        # Only the known token survived.
+        assert extras["weapon_types"] is not None
+        values = [w.value for w in extras["weapon_types"]]
+        assert values == ["turret_large"], (
+            f"expected only turret_large survived, got {values!r}"
+        )
+        # Warning emitted on stderr.
+        captured = capsys.readouterr()
+        assert "bogus_weapon" in captured.err, (
+            f"expected stderr warning about bogus_weapon; got {captured.err!r}"
+        )
 
 
 # --- TestPreviewLite --------------------------------------------------------

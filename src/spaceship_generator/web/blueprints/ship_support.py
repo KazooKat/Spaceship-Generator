@@ -14,6 +14,7 @@ Extracted from ``ship.py`` so the route module stays under the project's
 from __future__ import annotations
 
 import math
+import sys
 import threading
 import uuid
 from collections import OrderedDict
@@ -27,14 +28,14 @@ from ...block_colors import (
     block_texture_png,
     hex_to_rgba,
 )
-from ...generator import GenerationResult
 from ...engine_styles import EngineStyle
+from ...generator import GenerationResult
 from ...palette import Palette, Role, list_palettes, load_palette
 from ...shape import CockpitStyle, ShapeParams, StructureStyle
 from ...structure_styles import HullStyle
 from ...texture import TextureParams
+from ...weapon_styles import WeaponType
 from ...wing_styles import WingStyle
-
 
 # Human-readable descriptions used for UI tooltips.
 PARAM_HELP: dict[str, str] = {
@@ -82,11 +83,7 @@ _DEFAULT_MAX_RESULTS = 100
 
 def rgba_to_hex(rgba: tuple[float, float, float, float]) -> str:
     r, g, b, _a = rgba
-    return "#{:02x}{:02x}{:02x}".format(
-        max(0, min(255, int(round(r * 255)))),
-        max(0, min(255, int(round(g * 255)))),
-        max(0, min(255, int(round(b * 255)))),
-    )
+    return f"#{max(0, min(255, int(round(r * 255)))):02x}{max(0, min(255, int(round(g * 255)))):02x}{max(0, min(255, int(round(b * 255)))):02x}"
 
 
 def approximate_role_colors(
@@ -164,7 +161,7 @@ class _ShipState:
 
     def __init__(self, app: Flask) -> None:
         self.app = app
-        self.results: "OrderedDict[str, GenerationResult]" = OrderedDict()
+        self.results: OrderedDict[str, GenerationResult] = OrderedDict()
         # Guards the insert + eviction loop in ``store``. ``OrderedDict`` is
         # not safe for concurrent mutation under a threaded WSGI server —
         # without this lock, two simultaneous ``store`` calls can
@@ -368,8 +365,74 @@ def build_params_from_source(
             source, "engine_style", EngineStyle
         ),
         "greeble_density": gen_greeble_density,
+        "cockpit_style": _parse_optional_enum(
+            source, "cockpit_style", CockpitStyle
+        ),
+        "weapon_count": _parse_weapon_count(source),
+        "weapon_types": _parse_weapon_types(source),
     }
     return seed, palette_name, shape_params, texture_params, extra_gen_kwargs
+
+
+def _parse_weapon_count(source: Any) -> int:
+    """Parse the weapon_count form/JSON field.
+
+    Coerces to int and clamps to ``[0, 8]`` so the generator's scatter loop
+    can't be driven into pathological territory by a tampered URL or hand-
+    rolled JSON body. Non-numeric or missing values collapse to ``0``.
+    """
+    raw = source.get("weapon_count", 0)
+    try:
+        n = int(float(raw)) if raw not in (None, "") else 0
+    except (TypeError, ValueError):
+        n = 0
+    return int(clamp(n, 0, 8))
+
+
+def _parse_weapon_types(source: Any) -> list[WeaponType] | None:
+    """Parse weapon_types from a form (``getlist``) or JSON (``list``).
+
+    * Unknown tokens are dropped with a stderr warning so the request still
+      succeeds — the generator just ends up with a narrower allow-list than
+      the user asked for.
+    * An empty result returns ``None`` (meaning "use all types" downstream).
+    """
+    # ``werkzeug.ImmutableMultiDict`` (form) exposes ``getlist``; plain
+    # dicts (JSON) don't. Branch on availability.
+    raw: list[Any]
+    if hasattr(source, "getlist"):
+        raw = list(source.getlist("weapon_types"))
+    else:
+        maybe = source.get("weapon_types")
+        if maybe is None:
+            raw = []
+        elif isinstance(maybe, (list, tuple)):
+            raw = list(maybe)
+        elif isinstance(maybe, str):
+            # Tolerate a comma-separated string so JSON callers can hand
+            # us a single field — mirrors the CLI's parse path.
+            raw = [tok for tok in maybe.split(",") if tok.strip()]
+        else:
+            raw = [maybe]
+
+    resolved: list[WeaponType] = []
+    for tok in raw:
+        if tok is None:
+            continue
+        if isinstance(tok, WeaponType):
+            resolved.append(tok)
+            continue
+        tok_str = str(tok).strip().lower()
+        if not tok_str:
+            continue
+        try:
+            resolved.append(WeaponType(tok_str))
+        except ValueError:
+            print(
+                f"warning: dropping unknown weapon_type token {tok!r}",
+                file=sys.stderr,
+            )
+    return resolved or None
 
 
 def clamp(v: float, lo: float, hi: float) -> float:
