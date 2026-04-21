@@ -162,3 +162,57 @@ bench re-run to confirm the delta.
    measurement this matters little (texture is 0.4 % of wall), but it's
    worth revisiting if `_surface_mask` is ever moved out of the 6-direction
    NumPy-shift form it's in today.
+
+## Wave 2 optimizations
+
+### export: pre-seed litemapy palette + vectorized block writes
+
+Landed in `perf(export): cache BlockState by role`. The old `export_litematic`
+loop did one Python-level `region[x,y,z] = bs` per filled voxel, and
+litemapy's `Region.__setitem__` resolves each write by scanning the region's
+block palette linearly (`block in self.__palette` + `self.__palette.index(block)`),
+which calls `BlockState.__eq__` per comparison. For n=20 ships that was
+~790 k `__eq__` calls and ~31 % of total wall time charged to
+`export.py:13:export_litematic` + its litemapy callees.
+
+The fix keeps the same public signature but:
+
+1. Scans `role_grid` once with `np.unique(..., return_index=True)` to find
+   each unique role's first-encounter offset, in C-order — exactly the order
+   the naive loop would add them to the palette.
+2. Pre-appends one `BlockState` per role (reused instance from
+   `palette.block_state`) into the region's `_Region__palette` in that
+   order, so indices 1..N match what the naive loop would have produced.
+3. Builds a tiny `uint32` LUT keyed by role value and assigns the whole
+   paletted-index buffer in one vectorized write
+   (`region._Region__blocks[...] = lut[role_grid]`).
+
+Result (20 ships, n=20 on the same machine as the baseline table above):
+
+```
+phase             base_s    cur_s   delta_s  delta_%
+shape_build       0.1805   0.1545   -0.0260   -14.4%
+role_assign       0.0036   0.0034   -0.0002    -4.9%
+palette_lookup    0.0016   0.0012   -0.0004   -22.3%
+export            0.5903   0.2829   -0.3074   -52.1%
+other             0.3076   0.1819   -0.1258   -40.9%
+WALL TOTAL        1.0833   0.6237   -0.4596   -42.4%
+```
+
+Export time per ship dropped from ~27 ms to ~14 ms. `BlockState.__eq__` fell
+out of the top-5 hottest functions (it was ~103 ms total before). Total
+profiled function calls dropped from ~4.46 M to ~1.79 M. Remaining export
+cost is dominated by `schematic.py:342:to_nbt` (~150 ms) and
+`storage.py:63:__setitem__` (~107 ms) — both inside litemapy's NBT
+serializer, not the write loop.
+
+**Byte-identity caveat.** Raw `.litematic` bytes are not reproducible even
+between two back-to-back runs of the *old* code (litemapy's gzipped NBT
+stream carries non-deterministic metadata). The regression contract is
+*block-identity*: the palette ordering and per-voxel block content of the
+loaded schematic must match across runs. That is enforced by
+`tests/test_export.py::test_export_block_equivalence_across_runs`. A direct
+spot-check across four sampled ships (seeds 1000/1037/1074/1111 across all
+four palettes and all three dim presets) confirmed palette ordering
+identical and 0/58368 block mismatches when comparing the new exporter's
+output against the old one's.

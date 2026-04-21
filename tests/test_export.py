@@ -109,6 +109,43 @@ def test_filled_voxel_count_nonzero():
     assert filled_voxel_count(g) == 2
 
 
+def test_export_block_equivalence_across_runs(tmp_path: Path, palette):
+    # Regression guard for the BlockState-palette-cache fast path in
+    # export_litematic: exporting the same grid+palette twice must yield
+    # schematics whose palette ordering and per-voxel block contents are
+    # identical. (Raw .litematic bytes are *not* required to match — litemapy's
+    # gzip/NBT output includes non-deterministic metadata — but the block-level
+    # semantics must be stable.)
+    rng = np.random.default_rng(0xC0FFEE)
+    grid = np.zeros((16, 10, 8), dtype=np.int8)
+    # Sprinkle every non-EMPTY role in so the palette is exercised.
+    roles = [r for r in Role if r != Role.EMPTY]
+    mask = rng.random(grid.shape) < 0.4
+    # Pick a role per filled cell in a deterministic but non-trivial pattern.
+    role_idx = rng.integers(0, len(roles), size=grid.shape)
+    for i, r in enumerate(roles):
+        grid[mask & (role_idx == i)] = r
+
+    out_a = export_litematic(grid, palette, tmp_path / "a.litematic")
+    out_b = export_litematic(grid.copy(), palette, tmp_path / "b.litematic")
+
+    from litemapy import Schematic
+    region_a = list(Schematic.load(str(out_a)).regions.values())[0]
+    region_b = list(Schematic.load(str(out_b)).regions.values())[0]
+
+    # Palette must have the same entries in the same order.
+    assert [str(b) for b in region_a.palette] == [str(b) for b in region_b.palette]
+
+    # Every voxel must resolve to the same block id + properties.
+    w, h, l = abs(region_a.width), abs(region_a.height), abs(region_a.length)
+    for x in range(w):
+        for y in range(h):
+            for z in range(l):
+                assert str(region_a[x, y, z]) == str(region_b[x, y, z]), (
+                    f"block mismatch at ({x},{y},{z})"
+                )
+
+
 def test_export_raises_valueerror_on_unmapped_role(tmp_path: Path, palette):
     # Build a palette lacking the HULL role and a grid that uses it. The
     # exporter should surface a ValueError explaining the missing mapping,
