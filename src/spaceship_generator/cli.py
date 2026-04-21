@@ -16,6 +16,25 @@ from .structure_styles import HullStyle
 from .wing_styles import WingStyle
 from .texture import TextureParams
 
+# Optional modules — the CLI keeps working when they're missing so a partial
+# rollout (weapons landed but fleet didn't yet, or vice versa) still ships a
+# usable generator. Every call-site guards on the corresponding flag.
+try:
+    from . import weapon_styles as _weapon_styles  # type: ignore
+except ImportError as _exc:  # pragma: no cover - exercised via monkeypatch
+    _weapon_styles = None
+    _weapon_styles_error: str | None = str(_exc)
+else:
+    _weapon_styles_error = None
+
+try:
+    from . import fleet as _fleet  # type: ignore
+except ImportError as _exc:  # pragma: no cover - exercised via monkeypatch
+    _fleet = None
+    _fleet_error: str | None = str(_exc)
+else:
+    _fleet_error = None
+
 
 def _parse_preview_size(value: str) -> tuple[int, int]:
     """Parse a ``WxH`` string into ``(W, H)``.
@@ -87,6 +106,55 @@ def _parse_seeds(value: str) -> list[int]:
     if not seeds:
         raise argparse.ArgumentTypeError(f"--seeds produced no values from {value!r}")
     return seeds
+
+
+def _parse_nonneg_int(value: str) -> int:
+    """Parse a non-negative integer (``>= 0``)."""
+    try:
+        i = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"must be a non-negative integer, got {value!r}"
+        ) from exc
+    if i < 0:
+        raise argparse.ArgumentTypeError(
+            f"must be >= 0, got {i}"
+        )
+    return i
+
+
+def _parse_pos_int(value: str) -> int:
+    """Parse a positive integer (``>= 1``)."""
+    try:
+        i = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"must be a positive integer, got {value!r}"
+        ) from exc
+    if i < 1:
+        raise argparse.ArgumentTypeError(
+            f"must be >= 1, got {i}"
+        )
+    return i
+
+
+def _parse_weapon_types(value: str) -> list[str]:
+    """Parse a comma-separated list of weapon-type tokens.
+
+    Validation against :class:`WeaponType` happens later (only if the
+    ``weapon_styles`` module is importable), so this helper just normalizes
+    whitespace and drops empty tokens.
+    """
+    value = value.strip()
+    if not value:
+        raise argparse.ArgumentTypeError("--weapon-types must not be empty")
+    tokens = [t.strip() for t in value.split(",")]
+    tokens = [t for t in tokens if t]
+    if not tokens:
+        raise argparse.ArgumentTypeError(
+            f"--weapon-types produced no values from {value!r}"
+        )
+    return tokens
 
 
 def _parse_unit_float(value: str) -> float:
@@ -189,6 +257,30 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--engine-glow-ring", action="store_true",
                    help="Wrap ENGINE_GLOW cells with a HULL_DARK ring for a layered look.")
 
+    # Weapons (optional — requires weapon_styles module).
+    p.add_argument("--weapon-count", type=_parse_nonneg_int, default=0,
+                   help="Number of weapons to scatter onto the ship "
+                        "(0 disables, default 0). Requires the weapon_styles "
+                        "module.")
+    p.add_argument("--weapon-types", type=_parse_weapon_types, default=None,
+                   help="Comma-separated list of weapon types to restrict "
+                        "placement to (e.g. 'turret_large,missile_pod'). "
+                        "Defaults to all types.")
+
+    # Fleet (optional — requires fleet module; enabled when --fleet-count > 1).
+    p.add_argument("--fleet-count", type=_parse_pos_int, default=1,
+                   help="Generate a fleet of N ships (default 1, single-ship "
+                        "legacy behavior). Each ship is written as "
+                        "ship_<seed>_<i>.litematic. Requires the fleet module.")
+    p.add_argument("--fleet-size-tier",
+                   choices=["small", "mid", "large", "capital", "mixed"],
+                   default="mixed",
+                   help="Fleet size tier (only used when --fleet-count > 1).")
+    p.add_argument("--fleet-style-coherence", type=_parse_unit_float,
+                   default=0.7,
+                   help="Fleet style coherence in [0.0, 1.0] "
+                        "(only used when --fleet-count > 1).")
+
     # Output
     p.add_argument("--out", type=Path, default=Path("out"),
                    help="Output directory (default: ./out).")
@@ -214,6 +306,87 @@ def build_parser() -> argparse.ArgumentParser:
                         "Mutually exclusive with --verbose.")
 
     return p
+
+
+def _resolve_weapon_types(tokens: list[str] | None) -> tuple[list, list[str]]:
+    """Turn CLI tokens into ``WeaponType`` members, collecting any bad names.
+
+    Returns ``(allowed, unknown)``. ``allowed`` is the parsed list (may be
+    empty when every token is unknown); ``unknown`` lists the rejected
+    tokens so the caller can surface a single clear warning. When
+    ``tokens`` is ``None`` (flag not set) we return ``([], [])`` and the
+    caller defaults to "all types".
+    """
+    if _weapon_styles is None or not tokens:
+        return ([], [])
+    allowed = []
+    unknown: list[str] = []
+    valid = {wt.value: wt for wt in _weapon_styles.WeaponType}
+    for tok in tokens:
+        if tok in valid:
+            allowed.append(valid[tok])
+        else:
+            unknown.append(tok)
+    return (allowed, unknown)
+
+
+def _apply_weapons(
+    result: GenerationResult,
+    *,
+    seed: int,
+    count: int,
+    types: list | None,
+    palette_obj,
+    author: str,
+    schem_name: str,
+) -> None:
+    """Scatter weapons into ``result.role_grid`` (in place) and re-export.
+
+    No-op when ``weapon_styles`` is missing, ``count == 0``, or the scatter
+    produces zero placements. Callers are expected to have already warned
+    on stderr if the module is missing.
+    """
+    import numpy as np
+
+    from .export import export_litematic
+
+    if _weapon_styles is None or count <= 0:
+        return
+
+    rng = np.random.default_rng(seed ^ 0x7EA9)
+    placements = _weapon_styles.scatter_weapons(
+        result.role_grid, rng, count, types=types
+    )
+    if not placements:
+        return
+
+    grid = result.role_grid
+    W, H, L = grid.shape
+    for x, y, z, role in placements:
+        if 0 <= x < W and 0 <= y < H and 0 <= z < L:
+            grid[x, y, z] = role
+
+    # Re-export so the weapons persist into the on-disk .litematic.
+    export_litematic(
+        grid,
+        palette_obj,
+        result.litematic_path,
+        name=schem_name,
+        author=author,
+        description=f"Procedurally generated spaceship with weapons (seed={seed})",
+    )
+
+    # Refresh the preview PNG if one was rendered originally so the saved
+    # image reflects the weaponised grid.
+    if result.preview_png is not None:
+        try:
+            from .preview import render_preview
+
+            result.preview_png = render_preview(
+                grid, palette_obj, size=(800, 800)
+            )
+        except Exception:  # pragma: no cover - preview is best-effort
+            pass
 
 
 def _run_one(
@@ -289,11 +462,86 @@ def _run_one(
             )
         result = generate(seed, **base_kwargs)
 
+    # Optional weapon pass. The scatter writes into ``result.role_grid`` in
+    # place and re-exports the .litematic so the weapons persist on disk.
+    weapon_count = int(getattr(args, "weapon_count", 0) or 0)
+    if weapon_count > 0:
+        if _weapon_styles is None:
+            print(
+                f"weapons unavailable: {_weapon_styles_error}",
+                file=sys.stderr,
+            )
+        else:
+            allowed, unknown = _resolve_weapon_types(
+                getattr(args, "weapon_types", None)
+            )
+            if unknown:
+                print(
+                    "Warning: unknown --weapon-types ignored: "
+                    + ", ".join(unknown),
+                    file=sys.stderr,
+                )
+            types_arg = allowed or None
+            try:
+                from .palette import load_palette
+
+                pal_obj = load_palette(args.palette)
+                _apply_weapons(
+                    result,
+                    seed=seed,
+                    count=weapon_count,
+                    types=types_arg,
+                    palette_obj=pal_obj,
+                    author=args.author,
+                    schem_name=args.name or f"Ship {seed}",
+                )
+            except TypeError as exc:
+                print(f"weapons unavailable: {exc}", file=sys.stderr)
+
     if args.preview:
         preview_path = result.litematic_path.with_suffix(".png")
         result.save_preview(preview_path)
 
     return result
+
+
+def _run_fleet_ship(
+    planned,
+    *,
+    idx: int,
+    args: argparse.Namespace,
+) -> GenerationResult:
+    """Run one ship from a fleet plan.
+
+    ``planned`` is a :class:`fleet.GeneratedShip`. We copy its parameters
+    onto a shallow clone of ``args`` (so ``_run_one`` keeps a single
+    plumbing path) and force the filename to ``ship_<seed>_<idx>.litematic``
+    so fleet outputs never collide with each other or with solo-ship runs.
+    """
+    import copy
+
+    ship_args = copy.copy(args)
+    w, h, length = planned.dims
+    ship_args.width = int(w)
+    ship_args.height = int(h)
+    ship_args.length = int(length)
+    ship_args.palette = planned.palette
+    if planned.hull_style is not None:
+        ship_args.hull_style = planned.hull_style.value
+    if planned.engine_style is not None:
+        ship_args.engine_style = planned.engine_style.value
+    if planned.wing_style is not None:
+        ship_args.wing_style = planned.wing_style.value
+    # Fleet ships always carry their own greeble density so the fleet as a
+    # whole reads as a curated set rather than a uniform sweep.
+    ship_args.greeble_density = float(planned.greeble_density)
+    # Each ship gets a per-ship schematic name so Litematica's in-game
+    # browser doesn't show ``count`` identical entries.
+    if args.name is None:
+        ship_args.name = f"Ship {planned.seed}"
+
+    filename = f"ship_{planned.seed}_{idx}.litematic"
+    return _run_one(planned.seed, args=ship_args, filename=filename)
 
 
 def _print_success(result: GenerationResult, *, elapsed: float | None, args: argparse.Namespace) -> None:
@@ -341,9 +589,81 @@ def main(argv: list[str] | None = None) -> int:
         print("Wing styles:")
         for w in WingStyle:
             print(f"  {w.value}")
+        # Weapon types only appear when the optional module is available.
+        # The fallback message goes to stderr so piping ``--list-styles``
+        # into another program still gets clean hull/engine/wing output.
+        if _weapon_styles is not None:
+            print("Weapon types:")
+            for wt in _weapon_styles.WeaponType:
+                print(f"  {wt.value}")
+        else:
+            print(
+                f"weapon_styles unavailable: {_weapon_styles_error}",
+                file=sys.stderr,
+            )
         return 0
 
-    # Determine the seed list.
+    # Fleet mode short-circuits the seeds loop: one fleet seed plans N ships
+    # and each planned ship is generated individually.
+    fleet_count = int(getattr(args, "fleet_count", 1) or 1)
+    if fleet_count > 1:
+        if _fleet is None:
+            print(f"fleet unavailable: {_fleet_error}", file=sys.stderr)
+            # Fall back to single-ship behavior so partial rollouts still
+            # produce *something* rather than silently doing nothing.
+            fleet_count = 1
+        elif args.seeds is not None:
+            print(
+                "Error: --seeds and --fleet-count > 1 are mutually exclusive.",
+                file=sys.stderr,
+            )
+            return 2
+
+    if fleet_count > 1:
+        fleet_seed = args.seed if args.seed is not None else random.randint(0, 2**31 - 1)
+        try:
+            fleet_params = _fleet.FleetParams(
+                count=fleet_count,
+                palette=args.palette,
+                size_tier=args.fleet_size_tier,
+                style_coherence=float(args.fleet_style_coherence),
+                seed=fleet_seed,
+            )
+            planned_ships = _fleet.generate_fleet(fleet_params)
+        except (TypeError, ValueError) as exc:
+            print(f"fleet unavailable: {exc}", file=sys.stderr)
+            planned_ships = []
+
+        successes = 0
+        failures = 0
+        for i, planned in enumerate(planned_ships):
+            started = time.perf_counter() if args.verbose else None
+            try:
+                result = _run_fleet_ship(planned, idx=i, args=args)
+            except FileNotFoundError as exc:
+                print(f"Error (fleet ship {i}, seed={planned.seed}): {exc}",
+                      file=sys.stderr)
+                failures += 1
+                continue
+            except ValueError as exc:
+                print(f"Error (fleet ship {i}, seed={planned.seed}): {exc}",
+                      file=sys.stderr)
+                failures += 1
+                continue
+
+            elapsed = (time.perf_counter() - started) if started is not None else None
+            if i > 0 and not args.quiet:
+                print()
+            _print_success(result, elapsed=elapsed, args=args)
+            successes += 1
+
+        if successes == 0:
+            return 2
+        if failures > 0:
+            return 1
+        return 0
+
+    # Determine the seed list (legacy single + --seeds bulk modes).
     if args.seeds is not None:
         seeds = list(args.seeds)
         bulk_mode = True

@@ -531,6 +531,416 @@ def test_help_documents_new_flags(capsys):
         assert flag in out
 
 
+# ----------- weapon + fleet flags -----------
+
+
+def test_parse_weapon_types_happy_path():
+    """Valid comma-list parses into trimmed tokens."""
+    from spaceship_generator.cli import _parse_weapon_types
+
+    assert _parse_weapon_types("turret_large,missile_pod") == [
+        "turret_large",
+        "missile_pod",
+    ]
+    # Whitespace + empties dropped.
+    assert _parse_weapon_types(" turret_large , ,missile_pod ") == [
+        "turret_large",
+        "missile_pod",
+    ]
+
+
+def test_parse_weapon_types_rejects_empty():
+    """Empty input must fail at parse time."""
+    from spaceship_generator.cli import _parse_weapon_types
+
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_weapon_types("")
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_weapon_types(",,,")
+
+
+def test_parse_nonneg_int_rejects_negative_and_non_int():
+    """``--weapon-count`` helper enforces ``>= 0``."""
+    from spaceship_generator.cli import _parse_nonneg_int
+
+    assert _parse_nonneg_int("0") == 0
+    assert _parse_nonneg_int("5") == 5
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_nonneg_int("-1")
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_nonneg_int("abc")
+
+
+def test_parse_pos_int_rejects_zero_and_negative():
+    """``--fleet-count`` helper enforces ``>= 1``."""
+    from spaceship_generator.cli import _parse_pos_int
+
+    assert _parse_pos_int("1") == 1
+    assert _parse_pos_int("7") == 7
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_pos_int("0")
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_pos_int("-3")
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_pos_int("xyz")
+
+
+def test_list_styles_includes_weapon_types_when_module_available(capsys):
+    """``--list-styles`` should list weapon types when ``weapon_styles`` is
+    importable."""
+    rc = main(["--list-styles"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "Weapon types:" in out
+    # Every enum value from weapon_styles appears in the output.
+    from spaceship_generator.weapon_styles import WeaponType
+
+    for wt in WeaponType:
+        assert wt.value in out
+
+
+def test_list_styles_when_weapon_module_missing_prints_unavailable(
+    monkeypatch, capsys
+):
+    """``weapon_styles`` being ``None`` must print a stderr fallback line
+    and omit the ``Weapon types:`` header."""
+    monkeypatch.setattr(cli, "_weapon_styles", None)
+    monkeypatch.setattr(cli, "_weapon_styles_error", "simulated missing")
+    rc = main(["--list-styles"])
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert "Weapon types:" not in captured.out
+    assert "weapon_styles unavailable" in captured.err
+    assert "simulated missing" in captured.err
+
+
+def test_weapon_count_zero_does_not_call_scatter(monkeypatch, tmp_path: Path):
+    """``--weapon-count 0`` (the default) must never invoke the scatter,
+    so legacy single-ship runs aren't slowed down."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    scatter_calls: list[tuple] = []
+
+    def _tracking_scatter(*args, **kwargs):
+        scatter_calls.append((args, kwargs))
+        return []
+
+    monkeypatch.setattr(
+        cli._weapon_styles, "scatter_weapons", _tracking_scatter
+    )
+    rc = main(
+        [
+            "--seed",
+            "31",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert len(calls) == 1
+    assert scatter_calls == []
+
+
+def test_weapon_count_invokes_scatter_and_restricts_types(
+    monkeypatch, tmp_path: Path
+):
+    """``--weapon-count 4 --weapon-types X,Y`` forwards the count and the
+    enum allow-list to ``scatter_weapons``."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    from spaceship_generator.weapon_styles import WeaponType
+
+    seen: dict = {}
+
+    def _fake_scatter(shape, rng, count, *, types=None):
+        seen["count"] = count
+        seen["types"] = list(types) if types is not None else None
+        return []  # zero placements → re-export is skipped
+
+    monkeypatch.setattr(cli._weapon_styles, "scatter_weapons", _fake_scatter)
+    rc = main(
+        [
+            "--seed",
+            "33",
+            "--weapon-count",
+            "4",
+            "--weapon-types",
+            "turret_large,missile_pod",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert seen["count"] == 4
+    assert seen["types"] == [WeaponType.TURRET_LARGE, WeaponType.MISSILE_POD]
+
+
+def test_weapon_unknown_type_warns_and_keeps_known(monkeypatch, tmp_path: Path, capsys):
+    """Unknown ``--weapon-types`` tokens surface a stderr warning but the
+    known tokens still get through to the scatter."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    from spaceship_generator.weapon_styles import WeaponType
+
+    seen: dict = {}
+
+    def _fake_scatter(shape, rng, count, *, types=None):
+        seen["types"] = list(types) if types is not None else None
+        return []
+
+    monkeypatch.setattr(cli._weapon_styles, "scatter_weapons", _fake_scatter)
+    rc = main(
+        [
+            "--seed",
+            "35",
+            "--weapon-count",
+            "2",
+            "--weapon-types",
+            "turret_large,not_a_weapon",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert seen["types"] == [WeaponType.TURRET_LARGE]
+    err = capsys.readouterr().err
+    assert "unknown --weapon-types" in err
+    assert "not_a_weapon" in err
+
+
+def test_weapon_count_without_module_prints_unavailable(
+    monkeypatch, tmp_path: Path, capsys
+):
+    """If ``weapon_styles`` is missing, ``--weapon-count 2`` logs a stderr
+    fallback line but the ship itself still gets written."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    monkeypatch.setattr(cli, "_weapon_styles", None)
+    monkeypatch.setattr(cli, "_weapon_styles_error", "not installed")
+
+    rc = main(
+        [
+            "--seed",
+            "37",
+            "--weapon-count",
+            "2",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert len(calls) == 1  # base ship still generated
+    err = capsys.readouterr().err
+    assert "weapons unavailable" in err
+    assert "not installed" in err
+
+
+def test_fleet_count_greater_than_one_generates_n_files(
+    monkeypatch, tmp_path: Path
+):
+    """``--fleet-count 3`` produces three ``ship_<seed>_<i>.litematic`` files
+    with distinct per-ship seeds."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    rc = main(
+        [
+            "--seed",
+            "101",
+            "--fleet-count",
+            "3",
+            "--fleet-size-tier",
+            "small",
+            "--fleet-style-coherence",
+            "1.0",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    # Exactly three generator calls and three files on disk.
+    assert len(calls) == 3
+    files = sorted(p.name for p in tmp_path.iterdir())
+    assert len(files) == 3
+    for i, name in enumerate(files):
+        assert name.endswith(f"_{i}.litematic") or f"_{i}.litematic" in name
+    # Every filename is of the shape ship_<seed>_<i>.litematic.
+    assert all(f.startswith("ship_") for f in files)
+
+
+def test_fleet_style_coherence_forwards_to_fleet_params(monkeypatch, tmp_path: Path):
+    """The coherence value reaches ``fleet.FleetParams`` unchanged."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    from spaceship_generator import fleet as fleet_mod
+
+    observed: dict = {}
+    real_generate_fleet = fleet_mod.generate_fleet
+
+    def _spy_generate_fleet(params):
+        observed["count"] = params.count
+        observed["tier"] = params.size_tier
+        observed["coherence"] = params.style_coherence
+        observed["palette"] = params.palette
+        observed["seed"] = params.seed
+        return real_generate_fleet(params)
+
+    monkeypatch.setattr(cli._fleet, "generate_fleet", _spy_generate_fleet)
+
+    rc = main(
+        [
+            "--seed",
+            "202",
+            "--fleet-count",
+            "2",
+            "--fleet-size-tier",
+            "mid",
+            "--fleet-style-coherence",
+            "0.25",
+            "--palette",
+            "sci_fi_industrial",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert observed["count"] == 2
+    assert observed["tier"] == "mid"
+    assert observed["coherence"] == pytest.approx(0.25)
+    assert observed["palette"] == "sci_fi_industrial"
+    assert observed["seed"] == 202
+
+
+def test_fleet_count_one_preserves_single_ship_behavior(
+    monkeypatch, tmp_path: Path
+):
+    """``--fleet-count 1`` is the legacy default: no fleet module use, and
+    a single ``ship_<seed>.litematic`` is written."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    # If the fleet branch were taken it would call generate_fleet — trip a
+    # sentinel to catch the regression.
+    from spaceship_generator import fleet as fleet_mod
+
+    tripped: list[bool] = []
+
+    def _tripwire(params):  # pragma: no cover - should not fire
+        tripped.append(True)
+        return fleet_mod.generate_fleet(params)
+
+    monkeypatch.setattr(cli._fleet, "generate_fleet", _tripwire)
+
+    rc = main(
+        [
+            "--seed",
+            "303",
+            "--fleet-count",
+            "1",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert tripped == []
+    assert (tmp_path / "ship_303.litematic").exists()
+
+
+def test_fleet_without_module_prints_unavailable_and_falls_back(
+    monkeypatch, tmp_path: Path, capsys
+):
+    """If ``fleet`` is missing, ``--fleet-count 3`` logs a warning and
+    falls back to single-ship generation so the run still produces output."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    monkeypatch.setattr(cli, "_fleet", None)
+    monkeypatch.setattr(cli, "_fleet_error", "module absent")
+
+    rc = main(
+        [
+            "--seed",
+            "404",
+            "--fleet-count",
+            "3",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    err = capsys.readouterr().err
+    assert "fleet unavailable" in err
+    assert "module absent" in err
+    # Fallback path: a single legacy ship gets written.
+    assert len(calls) == 1
+    assert (tmp_path / "ship_404.litematic").exists()
+
+
+def test_fleet_and_seeds_are_mutually_exclusive(monkeypatch, tmp_path: Path, capsys):
+    """``--fleet-count > 1`` together with ``--seeds`` must error out (2)."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    rc = main(
+        [
+            "--seeds",
+            "1,2",
+            "--fleet-count",
+            "3",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "mutually exclusive" in err
+    assert calls == []
+
+
+def test_fleet_count_rejects_zero(capsys):
+    """``--fleet-count 0`` violates the ``>= 1`` constraint."""
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--fleet-count", "0"])
+    assert excinfo.value.code != 0
+
+
+def test_weapon_count_rejects_negative(capsys):
+    """``--weapon-count -1`` violates the ``>= 0`` constraint."""
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--weapon-count", "-1"])
+    assert excinfo.value.code != 0
+
+
+def test_help_documents_new_weapon_and_fleet_flags(capsys):
+    """``--help`` output lists every new flag added in this wave."""
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--help"])
+    assert excinfo.value.code == 0
+    out = capsys.readouterr().out
+    for flag in (
+        "--weapon-count",
+        "--weapon-types",
+        "--fleet-count",
+        "--fleet-size-tier",
+        "--fleet-style-coherence",
+    ):
+        assert flag in out
+
+
 def test_generator_without_new_params_falls_back(monkeypatch, tmp_path: Path, capsys):
     """If ``generate`` doesn't accept ``hull_style``/``engine_style``/
     ``greeble_density``, the CLI falls back to the legacy signature and
