@@ -20,31 +20,111 @@ def _enforce_x_symmetry(grid: np.ndarray) -> None:
 def _label_components(grid: np.ndarray) -> tuple[np.ndarray, int]:
     """Label each filled voxel with its 6-connected component id (-1 = empty).
 
-    Returns ``(labels, n_components)``. Iteration order is fixed (x then y then
-    z) so labeling is deterministic for a given input grid.
+    Returns ``(labels, n_components)``. Labels are assigned in a deterministic
+    order: the first component encountered in x-then-y-then-z scan order
+    receives id 0, the next gets id 1, and so on — matching the original
+    pure-Python DFS labeling up to equality of the *set* of label values.
+
+    Implementation: a fully-vectorized label-propagation pass.
+
+    * Pass 1 assigns every filled voxel a unique provisional id in scan
+      order via ``cumsum`` on the boolean mask.
+    * Pass 2 enumerates all (lo, hi) neighbor-pair equivalences along x,
+      y, z with pure numpy slicing, then repeatedly lowers parent ids
+      toward the smaller endpoint with ``np.minimum.at`` followed by a
+      path-halving sweep ``parent = parent[parent]``. Every step is a
+      numpy ufunc over the pair arrays — no Python loop walks individual
+      voxels. Converges in O(diameter) iterations, which is ~log(n) for
+      ship-shaped grids.
+    * Pass 3 remaps the union-find roots to dense 0..k-1 labels in scan
+      order so downstream callers that iterate ``for label in range(n)``
+      continue to work.
+
+    This replaces the original iterative DFS, which did per-cell
+    ``ndarray.__getitem__`` plus per-neighbor bounds checks inside a pure
+    Python loop.
     """
     W, H, L = grid.shape
     filled = grid != Role.EMPTY
     labels = np.full((W, H, L), -1, dtype=np.int32)
-    neigh = ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))
-    current = 0
-    for x in range(W):
-        for y in range(H):
-            for z in range(L):
-                if not filled[x, y, z] or labels[x, y, z] != -1:
-                    continue
-                labels[x, y, z] = current
-                stack = [(x, y, z)]
-                while stack:
-                    cx, cy, cz = stack.pop()
-                    for dx, dy, dz in neigh:
-                        nx, ny, nz = cx + dx, cy + dy, cz + dz
-                        if 0 <= nx < W and 0 <= ny < H and 0 <= nz < L:
-                            if filled[nx, ny, nz] and labels[nx, ny, nz] == -1:
-                                labels[nx, ny, nz] = current
-                                stack.append((nx, ny, nz))
-                current += 1
-    return labels, current
+
+    if not filled.any():
+        return labels, 0
+
+    # --- Pass 1: provisional labeling ---
+    filled_flat = filled.ravel()
+    # ``prov[i]`` = 0-based provisional id for each filled voxel in scan
+    # order. Empty cells get whatever cumsum produces there; we never read
+    # those positions below, so masking is unnecessary.
+    prov_flat = (np.cumsum(filled_flat) - 1).astype(np.int32)
+    prov = prov_flat.reshape(W, H, L)
+    # Highest provisional id + 1 == number of filled voxels.
+    n_filled = int(prov_flat[-1]) + 1 if filled_flat[-1] else int(prov_flat.max()) + 1
+
+    # --- Pass 2: enumerate all equivalence pairs along each axis ---
+    lo_parts: list[np.ndarray] = []
+    hi_parts: list[np.ndarray] = []
+    both = filled[:-1, :, :] & filled[1:, :, :]
+    if both.any():
+        a = prov[:-1, :, :][both]
+        b = prov[1:, :, :][both]
+        lo_parts.append(np.minimum(a, b))
+        hi_parts.append(np.maximum(a, b))
+    both = filled[:, :-1, :] & filled[:, 1:, :]
+    if both.any():
+        a = prov[:, :-1, :][both]
+        b = prov[:, 1:, :][both]
+        lo_parts.append(np.minimum(a, b))
+        hi_parts.append(np.maximum(a, b))
+    both = filled[:, :, :-1] & filled[:, :, 1:]
+    if both.any():
+        a = prov[:, :, :-1][both]
+        b = prov[:, :, 1:][both]
+        lo_parts.append(np.minimum(a, b))
+        hi_parts.append(np.maximum(a, b))
+
+    parent = np.arange(n_filled, dtype=np.int32)
+
+    if lo_parts:
+        lo = np.concatenate(lo_parts)
+        hi = np.concatenate(hi_parts)
+
+        # Iterative propagation. Each round:
+        #   1. Scatter ``min(parent[lo], parent[hi])`` onto both endpoints
+        #      using np.minimum.at (handles duplicate indices correctly).
+        #   2. Path-halving: parent = parent[parent] until fixed point.
+        # Terminates when parent[lo] == parent[hi] for every pair.
+        #
+        # All operations are single numpy calls over arrays of size
+        # ``n_pairs`` or ``n_filled`` — no Python per-voxel loop.
+        for _ in range(64):  # hard cap; ship grids converge in ~3-6 rounds
+            pa = parent[lo]
+            pb = parent[hi]
+            m = np.minimum(pa, pb)
+            np.minimum.at(parent, lo, m)
+            np.minimum.at(parent, hi, m)
+            # Path-halving sweep until parent is a fixed point.
+            while True:
+                nxt = parent[parent]
+                if np.array_equal(nxt, parent):
+                    break
+                parent = nxt
+            if np.array_equal(parent[lo], parent[hi]):
+                break
+
+    # --- Pass 3: dense renumbering in scan order ---
+    # Because every union lowered parent values toward the smaller
+    # endpoint, each component's root is the smallest provisional id in
+    # it — i.e. the component's first voxel in scan order. np.unique
+    # returns unique values ascending, which therefore matches scan order.
+    _roots, dense = np.unique(parent, return_inverse=True)
+    dense_scan = dense.astype(np.int32, copy=False)
+
+    labels_flat = labels.ravel()
+    filled_idx = np.flatnonzero(filled_flat)
+    labels_flat[filled_idx] = dense_scan
+
+    return labels, int(_roots.size)
 
 
 def _draw_line_hull(grid: np.ndarray, a: tuple[int, int, int], b: tuple[int, int, int]) -> None:

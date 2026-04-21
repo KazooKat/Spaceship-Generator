@@ -216,3 +216,49 @@ spot-check across four sampled ships (seeds 1000/1037/1074/1111 across all
 four palettes and all three dim presets) confirmed palette ordering
 identical and 0/58368 block mismatches when comparing the new exporter's
 output against the old one's.
+
+### `_label_components`: vectorized union-find on the filled mask
+
+Landed in `perf(shape): vectorize _label_components`. The baseline's hottest
+first-party function was the pure-Python iterative DFS in
+`shape/assembly.py:_label_components` — 6.45 ms/call on a large ship,
+~0.129 s tottime across n=20 ships (~12 % of wall). `scipy.ndimage.label`
+would be the obvious fix, but scipy isn't a current direct dependency and
+adding one just for this is out of scope, so the rewrite stays pure-numpy.
+
+The new version replaces the per-cell 3D indexing with a vectorized
+equivalence-propagation pass:
+
+1. `cumsum` on the boolean `filled` mask gives every filled voxel a unique
+   provisional id in scan order.
+2. Three pure-numpy slices (`filled[:-1] & filled[1:]` along each axis) build
+   two flat int32 arrays `(lo, hi)` listing every 6-connected neighbor pair.
+3. A short loop (≤6 rounds on ship grids) alternates `np.minimum.at(parent,
+   idx, m)` with path-halving `parent = parent[parent]` until every pair
+   agrees on a root.
+4. `np.unique(parent, return_inverse=True)` renumbers to dense 0..k-1 labels
+   in scan order (each component's root is the smallest provisional id in
+   it, so ascending unique order == scan order).
+
+Result (n=20 on the same machine, measured immediately after the export fix
+above):
+
+| function                             | before | after  | delta         |
+|--------------------------------------|--------|--------|---------------|
+| `_label_components` tottime (20 ships) | ~0.129 s | ~0.011 s | **-91 %** (~12x) |
+| `_label_components` mean percall     | ~6.45 ms | ~0.55 ms | -91 %         |
+| `shape_build` phase total            | ~0.155 s | ~0.060 s | -61 %         |
+
+Isolated microbench on a single large 64×32×18 grid with ~9 500 filled
+voxels: **12.93 ms/call → 4.92 ms/call** (≈2.6× speedup). The end-to-end
+delta is larger because small/medium ships dominate the 20-ship rotation
+and benefit even more from the elimination of per-cell Python dispatch.
+
+Behavioral guarantee: the label *partition* is provably identical to the
+original DFS (verified with a random-pair equivalence check in the same
+microbench), and label *ids* are assigned in the same x→y→z scan order, so
+`_connect_floaters` and any other caller keying on id ordering continues to
+work unchanged. Correctness is pinned by new regression tests in
+`tests/test_perf_label.py` (single component, multiple disjoint components,
+hollow shell with isolated interior voxel, empty grid, diagonal-neighbor
+non-connectivity, axis-aligned line on each axis).
