@@ -909,9 +909,17 @@ dd { margin: 0; color: var(--text-primary); font-family: var(--mono); font-varia
 }
 
 /* === RESPONSIVE ======================================================== */
+/* Mobile nav toggle: only visible below the breakpoint where the sidebar
+ * collapses into a drawer. Kept in the DOM tree always so shortcuts.js /
+ * test assertions don't depend on viewport width. */
+.mobile-only { display: none !important; }
+
 @media (max-width: 1200px) {
     #app { grid-template-columns: 280px 1fr; }
 }
+/* Tablet / small-laptop tier — explicit 768px breakpoint per UI spec. The
+ * 960px block below piggybacks on the same collapsed-drawer behavior for
+ * larger tablets. */
 @media (max-width: 960px) {
     #app {
         grid-template-columns: 1fr;
@@ -930,15 +938,177 @@ dd { margin: 0; color: var(--text-primary); font-family: var(--mono); font-varia
         flex-wrap: wrap; padding: var(--space-1) var(--space-3);
         height: auto; min-height: 32px;
     }
+    /* The hamburger becomes a real topbar control at this tier. */
+    .mobile-only { display: inline-flex !important; }
+}
+/* 768px tier: stack the bottom bar, hide the brand subtitle so the topbar
+ * fits all the icon buttons on a phone, and narrow the drawer further. */
+@media (max-width: 768px) {
+    #topbar { padding: 0 var(--space-3); gap: var(--space-2); }
+    #topbar .brand-sub { display: none; }
+    #topbar .topbar-actions { gap: 2px; }
+    #topbar .topbar-actions .btn { padding-left: var(--space-2); padding-right: var(--space-2); }
+    #topbar .topbar-actions .btn.primary span,
+    #topbar .topbar-actions .btn.secondary span { display: none; }
+    /* Status group is the least-critical info on small screens. */
+    #topbar .status-group { display: none; }
+    #sidebar, #panel-params { width: min(300px, 92vw); }
+    #bottom {
+        flex-direction: column; align-items: flex-start;
+        gap: var(--space-1); padding: var(--space-2) var(--space-3);
+    }
+    #bottom .status-line { width: 100%; overflow-x: auto; white-space: nowrap; }
+    /* Viewport progress stays visible but the gizmo / preset toolbar get
+     * a tighter footprint to give the canvas most of the screen. */
+    #axis-gizmo { width: 84px; height: 84px; }
+    .view-presets { flex-wrap: wrap; max-width: 64vw; justify-content: flex-end; }
+    /* Keyboard help modal: let it take more of the screen. */
+    .modal { max-width: 100%; padding: var(--space-4); }
+    .kbd-grid { grid-template-columns: auto 1fr; }
 }
 @media (max-width: 640px) {
-    #topbar { padding: 0 var(--space-3); }
-    #topbar .brand-sub { display: none; }
+    #topbar { padding: 0 var(--space-2); }
     .result { grid-template-columns: 1fr; }
     .hud-tl, .hud-tr, .hud-bl, .hud-br {
         padding: var(--space-2); font-size: 10px;
     }
 }
+
+/* === PALETTE SWATCHES ================================================== */
+/* Compact 5-cell color strip rendered by polish.js below the palette
+ * dropdown. Uses the approximated palette hash until a real generation
+ * fills the cache, then swaps in scraped block colors. */
+.palette-swatches {
+    display: flex; gap: 3px; margin-top: var(--space-1);
+    padding: 3px;
+    background: var(--bg-panel-inset);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    min-height: 20px;
+}
+.palette-swatches .palette-swatch {
+    flex: 1 1 0; min-width: 0; height: 14px;
+    border-radius: 2px;
+    border: 1px solid rgba(0,0,0,0.35);
+    box-shadow: 0 0 4px rgba(0,0,0,0.35) inset, 0 0 0 1px rgba(255,255,255,0.04);
+}
+/* Subtle accent stripe on the left edge so users know this is a preview
+ * and not the real block key until a generation has happened. */
+.palette-swatches[data-source="approx"] {
+    border-left: 2px solid var(--accent-amber-soft);
+}
+.palette-swatches[data-source="real"] {
+    border-left: 2px solid var(--accent-cyan-soft);
+}
+
+/* --- Copy seed row ------------------------------------------------------ */
+.control .control-row {
+    display: flex; gap: var(--space-2); flex-wrap: wrap;
+    margin-top: var(--space-1);
+}
+.control .control-row .btn {
+    padding-top: 4px; padding-bottom: 4px;
+    font-size: var(--fs-xs);
+}
+
+/* === KEYBOARD HELP MODAL =============================================== */
+/* The modal itself is styled generically above; these rules just polish
+ * the shortcut grid's readability. */
+.kbd-grid {
+    grid-template-columns: max-content 1fr;
+    gap: 4px var(--space-4);
+    font-family: var(--mono); font-size: var(--fs-sm);
+}
+.kbd-grid dt {
+    justify-self: end; color: var(--text-primary);
+}
+.kbd-grid dd {
+    color: var(--text-secondary); text-transform: none;
+    letter-spacing: 0.02em;
+}
+.kbd-grid .kbd-group-header {
+    display: inline-block; margin-top: var(--space-3);
+    font-family: var(--mono); font-size: var(--fs-xs);
+    letter-spacing: 0.22em;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 2px;
+}
+.kbd-grid > dt:has(.kbd-group-header) {
+    grid-column: 1 / -1; justify-self: stretch;
+    margin-top: var(--space-3);
+}
+.kbd-grid > dt:first-child:has(.kbd-group-header) { margin-top: 0; }
+/* Empty <dd> slots that follow group headers should disappear so the
+ * header spans the full row without leaving a blank right column. */
+.kbd-grid > dt:has(.kbd-group-header) + dd { display: none; }
+.kbd-footnote {
+    margin-top: var(--space-4); padding-top: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+    font-family: var(--mono); font-size: var(--fs-xs);
+    color: var(--text-muted); letter-spacing: 0.04em; text-transform: none;
+}
+
+/* Explicit modal header layout — the template uses <header><h2/><button/></header>
+ * but we didn't have a flex rule for it. Without this the close button sits
+ * under the title on a new line. */
+.modal > header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-3); margin-bottom: var(--space-3);
+    padding: 0 0 var(--space-2); background: transparent;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.modal > header h2 { margin: 0; padding: 0; border: 0; }
+
+/* === THEME TOGGLE ====================================================== */
+/* Dark is the default (already expressed by the :root tokens above). The
+ * "light" theme opts in via data-theme="light" on <html>, flipped by
+ * polish.js. We keep the cyan/amber accent palette but invert panel +
+ * text tokens so the sci-fi feel survives the swap. */
+html[data-theme="light"] {
+    --bg-void: #F1F4F8;
+    --bg-panel: rgba(255, 255, 255, 0.92);
+    --bg-panel-hi: rgba(232, 238, 244, 0.95);
+    --bg-panel-inset: rgba(220, 228, 236, 0.95);
+    --border-subtle: rgba(50, 80, 110, 0.18);
+    --border-strong: rgba(50, 80, 110, 0.36);
+    --text-primary: #0B1520;
+    --text-secondary: #324A62;
+    --text-muted: #6B8094;
+    --text-readout: #0A7799;
+    --accent-cyan: #0088B3;
+    --accent-cyan-soft: rgba(0, 136, 179, 0.18);
+    --accent-cyan-glow: rgba(0, 136, 179, 0.45);
+    --accent-amber: #C77A00;
+    --accent-amber-soft: rgba(199, 122, 0, 0.18);
+    --shadow-panel: 0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 18px rgba(14,30,50,0.12);
+    color-scheme: light;
+}
+/* Tune the body backgrounds + scanline overlay so they read correctly on
+ * the lighter palette. The grid becomes a lot more assertive on white,
+ * so we dial it down and fade its mask more aggressively. */
+html[data-theme="light"] body {
+    background:
+        radial-gradient(ellipse at 20% 0%, rgba(0,136,179,0.10), transparent 55%),
+        radial-gradient(ellipse at 85% 100%, rgba(199,122,0,0.06), transparent 60%),
+        var(--bg-void);
+}
+html[data-theme="light"] body::before {
+    background-image:
+        linear-gradient(rgba(50,80,110,0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(50,80,110,0.08) 1px, transparent 1px);
+    mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.35) 35%, transparent 85%);
+    -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.35) 35%, transparent 85%);
+}
+/* Scanline overlay on sidebar groups becomes too busy on light — hide. */
+html[data-theme="light"] .panel-group::before { display: none; }
+/* Viewport background gets a soft gradient instead of pure void. */
+html[data-theme="light"] #main {
+    background: radial-gradient(ellipse at 50% 50%, rgba(0,136,179,0.10), transparent 60%), var(--bg-void);
+}
+html[data-theme="light"] #viewport { background: #E6ECF2; }
+/* Gizmo / progress bars stay cyan; nothing to do. */
 
 /* === MOTION / A11Y ===================================================== */
 @media (prefers-reduced-motion: reduce) {

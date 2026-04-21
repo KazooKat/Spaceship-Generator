@@ -55,6 +55,16 @@
             <span class="brand-sub">voxel ship synth</span>
         </div>
         <nav class="topbar-actions">
+            {# Mobile nav toggle — only visible at narrow breakpoints via CSS.
+               Flips the Alpine sidebarOpen state so the parameters drawer
+               slides in from the left. #}
+            <button id="btn-toggle-sidebar" type="button"
+                    class="btn ghost icon mobile-only"
+                    @click="sidebarOpen = !sidebarOpen"
+                    :aria-pressed="sidebarOpen"
+                    aria-label="Toggle parameters">
+                <i data-lucide="menu"></i>
+            </button>
             <button id="btn-generate" type="button"
                     class="btn primary"
                     data-shortcut="g"
@@ -101,6 +111,14 @@
                     @click="helpOpen = true"
                     aria-label="Keyboard help (?)">
                 <i data-lucide="keyboard"></i>
+            </button>
+            {# Theme toggle — persists to localStorage via polish.js. The
+               button label is updated by polish.js based on the current
+               mode so screen readers announce the *action*, not the state. #}
+            <button id="btn-theme" type="button"
+                    class="btn ghost icon"
+                    aria-label="Switch to light theme">
+                <i data-lucide="moon" data-theme-icon></i>
             </button>
             <span class="status-group">
                 <span class="status-dot ready" aria-hidden="true"></span>
@@ -149,16 +167,26 @@
                             <input type="number" id="seed" name="seed"
                                    value="{{ defaults.seed }}" required>
                         </label>
-                        <button type="button" id="randomize-seed"
-                                class="btn ghost inline"
-                                data-role="randomize-seed"
-                                onclick="document.getElementById('seed').value = Math.floor(Math.random() * 2147483648);">
-                            <i data-lucide="dices"></i><span>Randomize seed</span>
-                        </button>
+                        <div class="control-row">
+                            <button type="button" id="randomize-seed"
+                                    class="btn ghost inline"
+                                    data-role="randomize-seed"
+                                    onclick="document.getElementById('seed').value = Math.floor(Math.random() * 2147483648);">
+                                <i data-lucide="dices"></i><span>Randomize seed</span>
+                            </button>
+                            {# Copy seed to clipboard. Wired by polish.js;
+                               falls back to a toast + document.execCommand
+                               on older browsers. #}
+                            <button type="button" id="btn-copy-seed"
+                                    class="btn ghost inline"
+                                    aria-label="Copy seed to clipboard">
+                                <i data-lucide="copy"></i><span>Copy seed</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="control" data-param="palette">
                         <label>Palette {{ tip("palette") }}
-                            <select name="palette">
+                            <select name="palette" id="palette">
                                 <option value="random" {% if defaults.palette == "random" %}selected{% endif %}>
                                     &#127922; random (seeded)
                                 </option>
@@ -167,6 +195,15 @@
                                 {% endfor %}
                             </select>
                         </label>
+                        {# Palette swatch preview. Rendered by polish.js from
+                           hash-derived colors; refined with real block colors
+                           scraped from .key-hex after a generation of the same
+                           palette. Live region so screen readers announce when
+                           the preview updates. #}
+                        <div id="palette-swatches"
+                             class="palette-swatches"
+                             aria-label="Palette preview colors"
+                             aria-live="polite"></div>
                     </div>
                 </div>
             </section>
@@ -479,21 +516,35 @@
                     </button>
                 </header>
                 <dl class="kbd-grid">
-                    <dt><span class="kbd">G</span></dt><dd>Generate</dd>
-                    <dt><span class="kbd">R</span></dt><dd>Randomize all</dd>
-                    <dt><span class="kbd">S</span></dt><dd>Save current as preset</dd>
-                    <dt><span class="kbd">P</span></dt><dd>Open presets</dd>
-                    <dt><span class="kbd">H</span></dt><dd>Toggle history drawer</dd>
+                    <dt><span class="kbd-group-header">ACTIONS</span></dt><dd></dd>
+                    <dt><span class="kbd">G</span></dt><dd>Generate ship</dd>
+                    <dt><span class="kbd">R</span></dt><dd>Randomize all parameters</dd>
                     <dt><span class="kbd">D</span></dt><dd>Download .litematic</dd>
-                    <dt><span class="kbd">F</span></dt><dd>Toggle fullscreen viewport</dd>
-                    <dt><span class="kbd">?</span></dt><dd>Show this help</dd>
+
+                    <dt><span class="kbd-group-header">VIEW</span></dt><dd></dd>
                     <dt><span class="kbd">1</span></dt><dd>Top view</dd>
                     <dt><span class="kbd">2</span></dt><dd>Front view</dd>
                     <dt><span class="kbd">3</span></dt><dd>Side view</dd>
                     <dt><span class="kbd">4</span></dt><dd>Perspective view</dd>
                     <dt><span class="kbd">0</span></dt><dd>Reset camera</dd>
-                    <dt><span class="kbd">Esc</span></dt><dd>Close overlays</dd>
+                    <dt><span class="kbd">F</span></dt><dd>Toggle fullscreen viewport</dd>
+
+                    <dt><span class="kbd-group-header">PANELS</span></dt><dd></dd>
+                    <dt><span class="kbd">S</span></dt><dd>Save current as preset</dd>
+                    <dt><span class="kbd">P</span></dt><dd>Open presets drawer</dd>
+                    <dt><span class="kbd">H</span></dt><dd>Toggle history drawer</dd>
+                    <dt><span class="kbd">?</span></dt><dd>Show this help</dd>
+                    <dt><span class="kbd">Esc</span></dt><dd>Close overlays / blur input</dd>
+
+                    <dt><span class="kbd-group-header">MOUSE</span></dt><dd></dd>
+                    <dt><span class="kbd">drag</span></dt><dd>Orbit camera</dd>
+                    <dt><span class="kbd">shift+drag</span></dt><dd>Pan camera</dd>
+                    <dt><span class="kbd">wheel</span></dt><dd>Zoom</dd>
                 </dl>
+                <p class="kbd-footnote">
+                    Shortcuts are ignored while typing in a field. Press
+                    <span class="kbd">Esc</span> to blur first, then hit a key.
+                </p>
             </div>
         </div>
     </template>

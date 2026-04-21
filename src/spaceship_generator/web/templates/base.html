@@ -31,6 +31,21 @@
     <script src="{{ url_for('static', filename='presets.js') }}" defer></script>
     <script src="{{ url_for('static', filename='history.js') }}" defer></script>
     <script src="{{ url_for('static', filename='hud.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='polish.js') }}" defer></script>
+
+    {# Apply the persisted theme before paint so users don't get a flash of
+       dark while the light theme is loading from localStorage. Self-contained
+       so it can't break if polish.js fails to load. #}
+    <script>
+        (function () {
+            try {
+                var t = window.localStorage.getItem("shipforge.theme");
+                if (t === "light" || t === "dark") {
+                    document.documentElement.setAttribute("data-theme", t);
+                }
+            } catch (e) { /* noop */ }
+        })();
+    </script>
 
     {# Lucide icon ESM init — placed AFTER other scripts so callers can
        re-invoke createIcons after HTMX swaps via window.__lucide. #}
