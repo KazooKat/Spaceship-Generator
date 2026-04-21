@@ -26,6 +26,7 @@ import random
 from dataclasses import dataclass
 
 from .engine_styles import EngineStyle
+from .shape import CockpitStyle
 from .structure_styles import HullStyle
 from .wing_styles import WingStyle
 
@@ -66,6 +67,7 @@ _TIER_TOLERANCE: dict[str, tuple[int, int, int]] = {
 _HULL_STYLES: tuple[HullStyle, ...] = tuple(HullStyle)
 _ENGINE_STYLES: tuple[EngineStyle, ...] = tuple(EngineStyle)
 _WING_STYLES: tuple[WingStyle, ...] = tuple(WingStyle)
+_COCKPIT_STYLES: tuple[CockpitStyle, ...] = tuple(CockpitStyle)
 
 
 @dataclass
@@ -86,6 +88,16 @@ class FleetParams:
     style_coherence:
         ``0.0`` → every ship random; ``1.0`` → every ship shares the fleet
         base hull + engine archetype. Must be in ``[0.0, 1.0]``.
+    cockpit_coherence:
+        Analogous to ``style_coherence`` but for cockpit style. Only
+        takes effect when ``weapon_count_per_ship > 0``; otherwise
+        ``cockpit_style`` stays ``None`` on every ship and legacy
+        determinism is preserved byte-for-byte. Must be in
+        ``[0.0, 1.0]``.
+    weapon_count_per_ship:
+        Number of weapons planned per ship. ``0`` (the default) keeps
+        the fleet weapon-free and preserves legacy byte-for-byte output.
+        Must be ``>= 0``.
     seed:
         Integer seed. Same seed + same params = same fleet list.
     """
@@ -94,6 +106,8 @@ class FleetParams:
     palette: str
     size_tier: str = "mixed"
     style_coherence: float = 0.7
+    cockpit_coherence: float = 0.7
+    weapon_count_per_ship: int = 0
     seed: int = 0
 
 
@@ -103,6 +117,12 @@ class GeneratedShip:
 
     Pass this to :func:`spaceship_generator.generator.generate` to actually
     build the ship. ``dims`` is ``(width_max, height_max, length)``.
+
+    ``cockpit_style`` is ``None`` whenever the parent
+    :class:`FleetParams` had ``weapon_count_per_ship == 0`` (the default);
+    in that mode the fleet planner is not asked to reason about cockpits
+    and legacy output is preserved byte-for-byte. ``weapon_count`` mirrors
+    ``FleetParams.weapon_count_per_ship`` and is ``0`` by default.
     """
 
     seed: int
@@ -112,6 +132,8 @@ class GeneratedShip:
     wing_style: WingStyle | None
     greeble_density: float
     palette: str
+    cockpit_style: CockpitStyle | None = None
+    weapon_count: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -130,6 +152,14 @@ def _validate(params: FleetParams) -> None:
     if not 0.0 <= float(params.style_coherence) <= 1.0:
         raise ValueError(
             f"style_coherence must be in [0.0, 1.0]; got {params.style_coherence!r}"
+        )
+    if not 0.0 <= float(params.cockpit_coherence) <= 1.0:
+        raise ValueError(
+            f"cockpit_coherence must be in [0.0, 1.0]; got {params.cockpit_coherence!r}"
+        )
+    if params.weapon_count_per_ship < 0:
+        raise ValueError(
+            f"weapon_count_per_ship must be >= 0; got {params.weapon_count_per_ship!r}"
         )
     if not isinstance(params.palette, str) or not params.palette:
         raise ValueError("palette must be a non-empty string")
@@ -225,6 +255,23 @@ def _wing_for_ship(rng: random.Random) -> WingStyle:
     return rng.choice(_WING_STYLES)
 
 
+def _per_ship_cockpit(
+    rng: random.Random,
+    coherence: float,
+    base_cockpit: CockpitStyle,
+) -> CockpitStyle:
+    """Return a cockpit style for one ship, honouring ``coherence``.
+
+    Mirrors :func:`_per_ship_styles`: with probability ``coherence`` the
+    ship sticks to ``base_cockpit``, otherwise it resamples uniformly
+    from the full :class:`CockpitStyle` enum. Consumes exactly one
+    random draw when sticking to the base and two when deviating.
+    """
+    if rng.random() < coherence:
+        return base_cockpit
+    return rng.choice(_COCKPIT_STYLES)
+
+
 def _greeble_for_ship(rng: random.Random) -> float:
     """Per-ship greeble density in [0.0, 0.25]."""
     # Round to 3 decimals so dataclass equality/hashing is stable across
@@ -252,6 +299,14 @@ def generate_fleet(params: FleetParams) -> list[GeneratedShip]:
     rng = random.Random(params.seed)
     base_hull, base_engine = _base_styles(rng)
     coherence = float(params.style_coherence)
+    cockpit_coherence = float(params.cockpit_coherence)
+    weapons_enabled = params.weapon_count_per_ship > 0
+    # Only touch the RNG for cockpit selection when weapons are enabled.
+    # Keeping the default (weapons off) path RNG-identical preserves
+    # byte-for-byte determinism against every pre-existing fleet.
+    base_cockpit: CockpitStyle | None = (
+        rng.choice(_COCKPIT_STYLES) if weapons_enabled else None
+    )
 
     ships: list[GeneratedShip] = []
     for _i in range(params.count):
@@ -265,6 +320,13 @@ def generate_fleet(params: FleetParams) -> list[GeneratedShip]:
         hull, engine = _per_ship_styles(rng, coherence, base_hull, base_engine)
         wing = _wing_for_ship(rng)
         greeble = _greeble_for_ship(rng)
+        if weapons_enabled:
+            assert base_cockpit is not None  # for type-checkers
+            cockpit: CockpitStyle | None = _per_ship_cockpit(
+                rng, cockpit_coherence, base_cockpit
+            )
+        else:
+            cockpit = None
 
         ships.append(
             GeneratedShip(
@@ -275,6 +337,8 @@ def generate_fleet(params: FleetParams) -> list[GeneratedShip]:
                 wing_style=wing,
                 greeble_density=greeble,
                 palette=params.palette,
+                cockpit_style=cockpit,
+                weapon_count=params.weapon_count_per_ship,
             )
         )
     return ships

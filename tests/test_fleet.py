@@ -25,7 +25,7 @@ from spaceship_generator.fleet import (
     generate_fleet,
 )
 from spaceship_generator.generator import generate
-from spaceship_generator.shape import ShapeParams
+from spaceship_generator.shape import CockpitStyle, ShapeParams
 from spaceship_generator.structure_styles import HullStyle
 from spaceship_generator.wing_styles import WingStyle
 
@@ -257,6 +257,124 @@ def test_per_ship_seeds_are_distinct():
 # ---------------------------------------------------------------------------
 # Integration — one planned ship actually builds via generate().
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Cockpit + weapons extensions
+# ---------------------------------------------------------------------------
+
+
+def test_default_weapon_count_preserves_legacy_fleet_byte_for_byte():
+    """``weapon_count_per_ship == 0`` (default) must not disturb the RNG
+    stream. The pre-existing 7 fields of every :class:`GeneratedShip`
+    must match the legacy snapshot exactly, and the new fields must sit
+    at their no-op values (``cockpit_style=None``, ``weapon_count=0``).
+    """
+    # Golden snapshot captured from the pre-extension implementation for
+    # ``FleetParams(count=4, palette='sci_fi_industrial', seed=12345)``.
+    expected = [
+        (1761311798, (38, 21, 71), HullStyle.WHALE, EngineStyle.SINGLE_CORE,
+         WingStyle.SWEPT, 0.093, "sci_fi_industrial"),
+        (1877275096, (29, 12, 48), HullStyle.DAGGER, EngineStyle.SINGLE_CORE,
+         WingStyle.SPLIT, 0.023, "sci_fi_industrial"),
+        (2101613385, (29, 12, 41), HullStyle.DAGGER, EngineStyle.SINGLE_CORE,
+         WingStyle.DELTA, 0.081, "sci_fi_industrial"),
+        (985348261,  (16, 11, 21), HullStyle.DAGGER, EngineStyle.SINGLE_CORE,
+         WingStyle.SWEPT, 0.193, "sci_fi_industrial"),
+    ]
+    ships = generate_fleet(
+        FleetParams(count=4, palette="sci_fi_industrial", seed=12345)
+    )
+    assert len(ships) == len(expected)
+    for ship, legacy in zip(ships, expected):
+        assert (
+            ship.seed,
+            ship.dims,
+            ship.hull_style,
+            ship.engine_style,
+            ship.wing_style,
+            ship.greeble_density,
+            ship.palette,
+        ) == legacy
+        # New fields are no-ops when weapons are off.
+        assert ship.cockpit_style is None
+        assert ship.weapon_count == 0
+
+
+def test_weapon_count_propagates_to_every_ship():
+    ships = generate_fleet(
+        FleetParams(
+            count=6,
+            palette="sci_fi_industrial",
+            seed=1,
+            weapon_count_per_ship=3,
+        )
+    )
+    assert all(s.weapon_count == 3 for s in ships)
+    # Cockpit selection is active once weapons are on, so each ship must
+    # carry a real CockpitStyle rather than None.
+    assert all(isinstance(s.cockpit_style, CockpitStyle) for s in ships)
+
+
+def test_full_cockpit_coherence_forces_matched_cockpit():
+    ships = generate_fleet(
+        FleetParams(
+            count=10,
+            palette="sci_fi_industrial",
+            seed=777,
+            weapon_count_per_ship=2,
+            cockpit_coherence=1.0,
+        )
+    )
+    cockpits = {s.cockpit_style for s in ships}
+    assert len(cockpits) == 1
+    assert isinstance(next(iter(cockpits)), CockpitStyle)
+
+
+def test_zero_cockpit_coherence_yields_cockpit_variety():
+    # Seed chosen so twelve independent cockpit draws contain at least
+    # two distinct :class:`CockpitStyle` members.
+    ships = generate_fleet(
+        FleetParams(
+            count=12,
+            palette="sci_fi_industrial",
+            seed=12345,
+            weapon_count_per_ship=1,
+            cockpit_coherence=0.0,
+        )
+    )
+    cockpits = {s.cockpit_style for s in ships}
+    assert len(cockpits) >= 2
+
+
+def test_generated_ship_extended_fields_are_frozen():
+    """Adding cockpit + weapon fields must not break the frozen guarantee."""
+    ship = GeneratedShip(
+        seed=1,
+        dims=(10, 8, 20),
+        hull_style=HullStyle.ARROW,
+        engine_style=EngineStyle.SINGLE_CORE,
+        wing_style=WingStyle.STRAIGHT,
+        greeble_density=0.1,
+        palette="sci_fi_industrial",
+        cockpit_style=CockpitStyle.BUBBLE,
+        weapon_count=2,
+    )
+    with pytest.raises(FrozenInstanceError):
+        ship.cockpit_style = CockpitStyle.POINTED  # type: ignore[misc]
+    with pytest.raises(FrozenInstanceError):
+        ship.weapon_count = 4  # type: ignore[misc]
+
+
+def test_negative_weapon_count_raises():
+    with pytest.raises(ValueError):
+        generate_fleet(
+            FleetParams(
+                count=2,
+                palette="sci_fi_industrial",
+                weapon_count_per_ship=-1,
+            )
+        )
 
 
 def test_first_ship_builds_via_generate(tmp_path):
