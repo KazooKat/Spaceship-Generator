@@ -4,6 +4,12 @@ Each :class:`StructureStyle` tweaks the body profile, engine placement,
 and wing placement knobs so the same seed and other params produce a
 visibly different ship archetype. The default :attr:`StructureStyle.FRIGATE`
 preserves the original generator behavior exactly for backward compat.
+
+:class:`HullStyle` is a separate, finer-grained dial that shapes only the
+hull silhouette (profile along Z + X/Y scaling). It is a purely-geometric
+dial: no engine, wing, or cockpit effects. Call :func:`apply_hull_style`
+to stamp a style directly onto an empty grid — useful for previewing
+hull silhouettes without running the full generator pipeline.
 """
 
 from __future__ import annotations
@@ -11,6 +17,10 @@ from __future__ import annotations
 import math
 from enum import Enum
 from typing import TYPE_CHECKING, Callable
+
+import numpy as np
+
+from .palette import Role
 
 if TYPE_CHECKING:  # pragma: no cover - typing only, avoids circular import
     from .shape import CockpitStyle
@@ -219,3 +229,154 @@ def default_cockpit_for(
     """
     # The user's explicit choice always wins. No override.
     return requested
+
+
+# ---------------------------------------------------------------------------
+# HullStyle — hull-only silhouette archetypes
+# ---------------------------------------------------------------------------
+
+
+class HullStyle(str, Enum):
+    """Silhouette archetype for the hull alone.
+
+    Unlike :class:`StructureStyle`, this dial affects only the hull
+    profile + X/Y scaling. It does not touch engines, wings, or cockpit
+    hooks. Intended for preview and for a future generator-level opt-in.
+
+    * :attr:`ARROW` — long pointed front; sharp nose, chunky rear.
+    * :attr:`SAUCER` — flat disc; wide in X, squashed in Y.
+    * :attr:`WHALE` — fat rounded body; maximum volume mid-ship.
+    * :attr:`DAGGER` — narrow slim blade; tapered at both ends, thin X.
+    * :attr:`BLOCKY_FREIGHTER` — boxy utility; near-constant X and Y.
+    """
+
+    ARROW = "arrow"
+    SAUCER = "saucer"
+    WHALE = "whale"
+    DAGGER = "dagger"
+    BLOCKY_FREIGHTER = "blocky_freighter"
+
+
+def _profile_arrow(t: float) -> float:
+    """Long pointed front. Chunky rear (t~0), sharp nose (t~1)."""
+    # Linear ramp from ~0.95 at rear down to near-zero at the nose, then
+    # a soft smooth-step at the very rear so the aft isn't a hard wall.
+    rear = max(0.0, min(1.0, t / 0.15))
+    body = 1.0 - 0.9 * t  # 1.0 at rear, 0.1 at nose
+    return max(0.0, min(1.0, rear * body))
+
+
+def _profile_saucer(t: float) -> float:
+    """Flat disc. Circle in the XZ plane (Y handled by ry scale)."""
+    # Half-ellipse centered at t=0.5; near-flat plateau with soft edges.
+    d = (t - 0.5) * 2.0  # -1 rear, +1 nose
+    inside = max(0.0, 1.0 - d * d)
+    # Flatten the top so it reads as a disc rather than a rugby ball.
+    return min(1.0, math.sqrt(inside) * 1.15)
+
+
+def _profile_whale(t: float) -> float:
+    """Fat rounded body. Peak volume at mid-ship, gently tapering ends."""
+    # Wide gaussian so the middle 70% stays near-max.
+    peak = 0.5
+    sigma = 0.45
+    f = math.exp(-((t - peak) ** 2) / (2 * sigma * sigma))
+    # Lift the floor so even the ends stay fairly thick.
+    return max(0.0, min(1.0, 0.25 + 0.75 * f))
+
+
+def _profile_dagger(t: float) -> float:
+    """Narrow slim blade. Tapered at both ends, peak slightly forward."""
+    peak = 0.55
+    sigma = 0.18
+    f = math.exp(-((t - peak) ** 2) / (2 * sigma * sigma))
+    # Extra squeeze near both endpoints for a knife silhouette.
+    edge = min(t, 1.0 - t) * 2.0  # 0 at ends, 1 at mid
+    f *= 0.35 + 0.65 * edge
+    return max(0.0, min(1.0, f))
+
+
+def _profile_blocky_freighter(t: float) -> float:
+    """Boxy utility. Near-constant 1.0 across nearly the full length."""
+    # Sharper rise/fall than the dreadnought plateau so the silhouette
+    # reads as a crate rather than a softly-rounded capital ship.
+    def _clamp01(v: float) -> float:
+        return max(0.0, min(1.0, v))
+
+    rise = _clamp01((t - 0.02) / 0.06)
+    fall = _clamp01((0.98 - t) / 0.06)
+    return min(rise, fall)
+
+
+_HULL_PROFILE_FNS: dict[HullStyle, Callable[[float], float]] = {
+    HullStyle.ARROW: _profile_arrow,
+    HullStyle.SAUCER: _profile_saucer,
+    HullStyle.WHALE: _profile_whale,
+    HullStyle.DAGGER: _profile_dagger,
+    HullStyle.BLOCKY_FREIGHTER: _profile_blocky_freighter,
+}
+
+
+_HULL_RX_RY_SCALES: dict[HullStyle, tuple[float, float]] = {
+    # ARROW: chunky rear width, moderate height.
+    HullStyle.ARROW: (1.1, 0.9),
+    # SAUCER: wide disc, very squashed Y.
+    HullStyle.SAUCER: (1.35, 0.35),
+    # WHALE: fat both directions.
+    HullStyle.WHALE: (1.2, 1.15),
+    # DAGGER: narrow X, moderate Y so the blade reads as tall-ish.
+    HullStyle.DAGGER: (0.55, 0.95),
+    # BLOCKY_FREIGHTER: wide + tall for a crate silhouette.
+    HullStyle.BLOCKY_FREIGHTER: (1.15, 1.1),
+}
+
+
+def hull_profile_fn(style: HullStyle) -> Callable[[float], float]:
+    """Return the taper profile function for ``style``."""
+    return _HULL_PROFILE_FNS[style]
+
+
+def hull_style_rx_ry(style: HullStyle) -> tuple[float, float]:
+    """Return ``(rx_scale, ry_scale)`` multipliers for ``style``."""
+    return _HULL_RX_RY_SCALES[style]
+
+
+def apply_hull_style(grid: np.ndarray, style: HullStyle) -> None:
+    """Stamp :class:`Role.HULL` voxels onto ``grid`` for the chosen ``style``.
+
+    ``grid`` must be a ``(W, H, L)`` integer array (typically int8 filled
+    with :attr:`Role.EMPTY`). Writes happen in-place. This is deterministic
+    given ``(grid.shape, style)`` — there is no RNG dependence.
+
+    The generator owns the full pipeline (cockpit, engines, wings, etc.);
+    this function is the minimal hull-only stamper the library exposes so
+    callers can preview a hull silhouette without spinning up the rest.
+    """
+    if not isinstance(style, HullStyle):
+        raise ValueError(
+            f"apply_hull_style expects a HullStyle; got {type(style).__name__}"
+        )
+    if grid.ndim != 3:
+        raise ValueError(
+            f"apply_hull_style expects a 3-D grid; got ndim={grid.ndim}"
+        )
+
+    W, H, L = grid.shape
+    cx, cy = (W - 1) / 2.0, (H - 1) / 2.0
+
+    profile_f = hull_profile_fn(style)
+    rx_scale, ry_scale = hull_style_rx_ry(style)
+
+    for z in range(L):
+        t = z / max(L - 1, 1)
+        profile = profile_f(t)
+        rx = max(0.5, (W * 0.5 - 0.5) * profile * rx_scale)
+        # Match the 0.7 "flatter-than-wide" baseline used by `_place_hull`
+        # in shape.py so silhouettes look consistent with the generator.
+        ry = max(0.5, (H * 0.5 - 0.5) * profile * 0.7 * ry_scale)
+        for x in range(W):
+            for y in range(H):
+                dx = (x - cx) / rx
+                dy = (y - cy) / ry
+                if dx * dx + dy * dy <= 1.0:
+                    grid[x, y, z] = Role.HULL
