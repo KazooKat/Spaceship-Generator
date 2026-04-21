@@ -137,10 +137,10 @@ def test_export_block_equivalence_across_runs(tmp_path: Path, palette):
     assert [str(b) for b in region_a.palette] == [str(b) for b in region_b.palette]
 
     # Every voxel must resolve to the same block id + properties.
-    w, h, l = abs(region_a.width), abs(region_a.height), abs(region_a.length)
+    w, h, length = abs(region_a.width), abs(region_a.height), abs(region_a.length)
     for x in range(w):
         for y in range(h):
-            for z in range(l):
+            for z in range(length):
                 assert str(region_a[x, y, z]) == str(region_b[x, y, z]), (
                     f"block mismatch at ({x},{y},{z})"
                 )
