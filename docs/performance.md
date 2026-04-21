@@ -4,6 +4,87 @@ This document records a baseline run of `scripts/bench_generator.py` and lists
 the top observed bottlenecks with one-line hypotheses. It is a read-only
 report; no source files were changed as part of writing it.
 
+## 0.2.0 baseline
+
+Captured after the Wave 2 perf landings (vectorized `_label_components`,
+cached `BlockState` pre-seeded in the litemapy palette) and subsequent
+feature waves. Same machine / same workload as the original 0.1.0-era
+baseline below (n=20, Python 3.14.3, numpy 2.4.4, Windows 11, dims cycled
+small/med/large, palettes cycled `sci_fi_industrial`/`stealth_black`/
+`nordic_scout`/`sleek_modern`).
+
+Raw output from `.venv/Scripts/python scripts/bench_generator.py --n 20
+--save /tmp/bench_after_wave4.json`:
+
+```
+phase               total_s     mean_s     pct   hottest
+------------------------------------------------------------------------------
+shape_build          0.0649     0.0032    9.3%   hull.py:12:_place_hull
+role_assign          0.0056     0.0003    0.8%   texture.py:128:_y_band_mask
+palette_lookup       0.0013     0.0001    0.2%   palette.py:129:from_dict
+export               0.3965     0.0198   56.9%   schematic.py:342:to_nbt
+other                0.2286     0.0114   32.8%   ~:0:<built-in method builtins.len>
+------------------------------------------------------------------------------
+WALL TOTAL           0.6965     0.0348 (n=20 ships)
+```
+
+### Speedup vs 0.1.0 baseline
+
+Comparison against the original `0.9672 s / 20` baseline recorded further
+down this doc. Negative `delta_%` = faster; `speedup = 0.1.0_s / 0.2.0_s`.
+
+| phase           | 0.1.0 total_s | 0.2.0 total_s | delta_s   | delta_%  | speedup |
+|-----------------|--------------:|--------------:|----------:|---------:|--------:|
+| shape_build     |       0.1647  |       0.0649  |  -0.0998  |  -60.6%  |  2.54x  |
+| role_assign     |       0.0035  |       0.0056  |  +0.0021  |  +60.0%  |  0.63x  |
+| palette_lookup  |       0.0011  |       0.0013  |  +0.0002  |  +18.2%  |  0.85x  |
+| export          |       0.5320  |       0.3965  |  -0.1355  |  -25.5%  |  1.34x  |
+| other           |       0.2661  |       0.2286  |  -0.0375  |  -14.1%  |  1.16x  |
+| **WALL TOTAL**  |   **0.9672**  |   **0.6965**  | **-0.2707** | **-28.0%** | **1.39x** |
+
+Per-ship mean: **48.4 ms → 34.8 ms** (~13.6 ms/ship saved).
+
+### Where the wins came from
+
+- **`shape_build` −60.6 % (2.54x)** — dominated by Wave 2 commit
+  `dea1ffc perf(shape): vectorize _label_components` (~91 % faster on that
+  function alone, ~12x on tottime). `_label_components` dropped out of the
+  `shape_build` hottest slot; the new hottest is `hull.py:_place_hull` at
+  ~27 ms total (still the unvectorized triple loop called out in
+  "Suggested optimizations" #3 — the obvious next target).
+- **`export` −25.5 % (1.34x)** — Wave 2 commit `aace72c perf(export): cache
+  BlockState by role` pre-seeds the litemapy palette and does one
+  vectorized paletted-index write per ship instead of ~15 k per-voxel
+  `Region.__setitem__` calls. `BlockState.__eq__` and `list.index`
+  dropped out of the top-10 entirely. Remaining export cost is almost
+  pure litemapy NBT serialization (`schematic.py:to_nbt` + `storage.py`
+  long-array packing), which is out of scope for the generator.
+- **`other` −14.1 %** — indirect benefit of the above: fewer builtins
+  (`len`, `abs`, `isinstance`) called from inside litemapy's write loop.
+- `role_assign` and `palette_lookup` are both sub-millisecond per ship
+  before and after. The small regressions there (+2 ms and +0.2 ms
+  totals across 20 ships) are noise relative to run-to-run variance and
+  to the roughly doubled texture/role surface area added by Wave 3/4
+  feature work; they are not optimization regressions worth chasing.
+
+### Remaining top hot spots (0.2.0)
+
+```
+ncalls   tottime  filename:lineno(function)
+    20    0.189   litemapy/schematic.py:342(to_nbt)
+304512    0.160   litemapy/storage.py:63(__setitem__)
+318232    0.055   {built-in method builtins.len}
+615368    0.039   {built-in method builtins.abs}
+    20    0.027   spaceship_generator/shape/hull.py:12(_place_hull)
+    20    0.022   litemapy/storage.py:35(_to_long_list)
+304512    0.015   litemapy/storage.py:83(__len__)
+    20    0.012   spaceship_generator/shape/assembly.py:20(_label_components)
+```
+
+Four of the top five are inside litemapy's NBT serializer; the only
+first-party remaining hot function is `_place_hull`. Total profiled
+function calls: ~1.79 M (down from ~4.46 M at 0.1.0).
+
 ## Running the bench
 
 From the repo root:
