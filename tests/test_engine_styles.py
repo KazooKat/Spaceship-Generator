@@ -21,9 +21,13 @@ import pytest
 
 from spaceship_generator.engine_styles import (
     EngineStyle,
+    build_bio_organic,
     build_engines,
     build_ion_array,
+    build_magnetic_rail,
+    build_plasma_pulse,
     build_quad_cluster,
+    build_retro_rocket_cluster,
     build_ring,
     build_single_core,
     build_twin_nacelle,
@@ -42,6 +46,10 @@ def test_engine_style_values_stable():
         "quad_cluster",
         "ring",
         "ion_array",
+        "plasma_pulse",
+        "magnetic_rail",
+        "bio_organic",
+        "retro_rocket_cluster",
     }
 
 
@@ -270,3 +278,107 @@ def test_build_engines_rejects_unknown_style(grid):
             size=(2, 3, 4),
             rng=_rng(0),
         )
+
+
+# --- New style structural tests --------------------------------------------
+
+
+def test_plasma_pulse_alternates_disk_and_annulus(grid):
+    """Even-depth slabs should be disks (include the centerline); odd-depth
+    slabs should be annuli (exclude the centerline).  We test this by
+    checking cells exactly at (cx, cy) in even vs odd Z layers."""
+    cx, cy = grid.shape[0] // 2, grid.shape[1] // 2
+    placements = build_plasma_pulse(
+        grid, (cx, cy, 0), (3, 6, 0), _rng(0)
+    )
+    # Collect ENGINE roles at center column by z offset.
+    engine_at_center = {
+        z: True
+        for x, y, z, role in placements
+        if x == cx and y == cy and role == Role.ENGINE
+    }
+    # z=0 (even) must be filled; z=1 (odd) must NOT be filled at center.
+    assert 0 in engine_at_center, "plasma_pulse z=0 (disk slab) missing center cell"
+    assert 1 not in engine_at_center, (
+        "plasma_pulse z=1 (annulus slab) should not fill center cell"
+    )
+
+
+def test_plasma_pulse_has_glow_at_rear_cap(grid):
+    cx, cy = grid.shape[0] // 2, grid.shape[1] // 2
+    placements = build_plasma_pulse(grid, (cx, cy, 0), (3, 4, 0), _rng(0))
+    glow_cells = [(x, y, z) for x, y, z, role in placements if role == Role.ENGINE_GLOW]
+    assert glow_cells, "plasma_pulse produced no ENGINE_GLOW cells"
+    # All glow cells should be at z=0 (rear cap).
+    for _x, _y, z in glow_cells:
+        assert z == 0, f"plasma_pulse glow cell at z={z}, expected z=0"
+
+
+def test_magnetic_rail_populates_both_y_rails(grid):
+    """MAGNETIC_RAIL must produce ENGINE cells on both sides of cy."""
+    cx, cy = grid.shape[0] // 2, grid.shape[1] // 2
+    placements = build_magnetic_rail(grid, (cx, cy, 0), (3, 4, 3), _rng(0))
+    above = [p for p in placements if p[1] > cy and p[3] == Role.ENGINE]
+    below = [p for p in placements if p[1] < cy and p[3] == Role.ENGINE]
+    assert above, "magnetic_rail has no ENGINE cells above cy"
+    assert below, "magnetic_rail has no ENGINE cells below cy"
+
+
+def test_magnetic_rail_glow_at_z0(grid):
+    cx, cy = grid.shape[0] // 2, grid.shape[1] // 2
+    placements = build_magnetic_rail(grid, (cx, cy, 0), (2, 4, 3), _rng(0))
+    glow = [(x, y, z) for x, y, z, role in placements if role == Role.ENGINE_GLOW]
+    assert glow, "magnetic_rail produced no ENGINE_GLOW cells"
+    for _x, _y, z in glow:
+        assert z == 0, f"magnetic_rail glow at z={z}, expected z=0"
+
+
+def test_bio_organic_varies_with_seed(grid):
+    """BIO_ORGANIC relies on rng — different seeds must produce different
+    placements (the blob positions/sizes will differ)."""
+    pos = (grid.shape[0] // 2, grid.shape[1] // 2, 0)
+    sz = (3, 5, 4)
+    a = build_bio_organic(grid, pos, sz, _rng(10))
+    b = build_bio_organic(grid, pos, sz, _rng(20))
+    assert a != b, "bio_organic ignored rng: two different seeds gave identical output"
+
+
+def test_bio_organic_deterministic(grid):
+    pos = (grid.shape[0] // 2, grid.shape[1] // 2, 0)
+    sz = (3, 5, 4)
+    a = build_bio_organic(grid, pos, sz, _rng(42))
+    b = build_bio_organic(grid, pos, sz, _rng(42))
+    assert a == b, "bio_organic is non-deterministic under same seed"
+
+
+def test_bio_organic_has_glow(grid):
+    cx, cy = grid.shape[0] // 2, grid.shape[1] // 2
+    placements = build_bio_organic(grid, (cx, cy, 0), (2, 4, 3), _rng(5))
+    glow = [p for p in placements if p[3] == Role.ENGINE_GLOW]
+    assert glow, "bio_organic produced no ENGINE_GLOW cells"
+
+
+def test_retro_rocket_cluster_triangle_positions(grid):
+    """Three nozzles in a triangle: one above cy and two flanking below."""
+    cx, cy = grid.shape[0] // 2, grid.shape[1] // 2
+    placements = build_retro_rocket_cluster(grid, (cx, cy, 0), (2, 3, 3), _rng(0))
+    engine_only = [(x, y, z) for x, y, z, role in placements if role == Role.ENGINE]
+    ys = {y for _x, y, _z in engine_only}
+    # Must have cells both above and below cy.
+    assert any(y > cy for y in ys), "retro_rocket_cluster missing top nozzle (y > cy)"
+    assert any(y < cy for y in ys), "retro_rocket_cluster missing bottom nozzles (y < cy)"
+
+
+def test_retro_rocket_cluster_three_glow_z0(grid):
+    """Each of the three nozzles gets a glow cap at z=0."""
+    cx, cy = grid.shape[0] // 2, grid.shape[1] // 2
+    placements = build_retro_rocket_cluster(grid, (cx, cy, 0), (2, 3, 3), _rng(0))
+    glow_z0 = [(x, y) for x, y, z, role in placements if role == Role.ENGINE_GLOW and z == 0]
+    # Deduplicate positions (disk emits multiple cells; glow cap is a disk too).
+    unique_glow_centers: set[tuple[int, int]] = set()
+    for x, y in glow_z0:
+        unique_glow_centers.add((x, y))
+    # Three distinct nozzle centers should appear in the glow layer.
+    assert len(unique_glow_centers) >= 3, (
+        f"expected glow cells from 3 nozzles, got {len(unique_glow_centers)} unique positions"
+    )
