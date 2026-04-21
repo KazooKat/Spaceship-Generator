@@ -1,5 +1,7 @@
 # Spaceship Generator Gallery
 
+> Gallery regenerated with AA + specular + azimuth_deg defaults in 0.2.0.
+
 Rendered showcase of 6 hand-picked palettes across 4 seeds. Each thumbnail is
 an 800 px isometric preview of the voxel grid that would otherwise be exported
 to `.litematic`.
