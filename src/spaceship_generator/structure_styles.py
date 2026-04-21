@@ -256,6 +256,11 @@ class HullStyle(StrEnum):
     WHALE = "whale"
     DAGGER = "dagger"
     BLOCKY_FREIGHTER = "blocky_freighter"
+    ORGANIC_BIO = "organic_bio"
+    HEXAGONAL_LATTICE = "hexagonal_lattice"
+    ASYMMETRIC_SCAVENGER = "asymmetric_scavenger"
+    MODULAR_BLOCK = "modular_block"
+    SLEEK_RACING = "sleek_racing"
 
 
 def _profile_arrow(t: float) -> float:
@@ -309,12 +314,114 @@ def _profile_blocky_freighter(t: float) -> float:
     return min(rise, fall)
 
 
+def _profile_organic_bio(t: float) -> float:
+    """Irregular bulging body. Mimics a grown/living hull with an uneven swell.
+
+    Uses a blend of two offset gaussians to produce an asymmetric, lopsided
+    silhouette that reads as organic rather than machined.
+    """
+    # Primary swell — slightly forward of centre.
+    lobe_a = math.exp(-((t - 0.55) ** 2) / (2 * 0.2 ** 2))
+    # Secondary bulge — toward the rear, creating a double-hump feel.
+    lobe_b = 0.55 * math.exp(-((t - 0.25) ** 2) / (2 * 0.12 ** 2))
+    # Hard endpoint clamps so the hull doesn't float off the grid.
+    ends = min(t, 1.0 - t) * 5.0  # ramps up from 0 at t=0/1
+    envelope = max(0.0, min(1.0, ends))
+    return max(0.0, min(1.0, (lobe_a + lobe_b) * envelope))
+
+
+def _profile_hexagonal_lattice(t: float) -> float:
+    """Segmented hull with periodic dips simulating hexagonal panel seams.
+
+    A gentle sine wave modulates a near-plateau, so every ~1/6 of the
+    length a shallow groove marks a "panel boundary". The overall outline
+    stays tall but shows visible banding when viewed side-on.
+    """
+    def _clamp01(v: float) -> float:
+        return max(0.0, min(1.0, v))
+
+    # Base plateau (same approach as dreadnought but slightly lower).
+    base = min(_clamp01((t - 0.04) / 0.1), _clamp01((0.96 - t) / 0.1)) * 0.92
+    # Sinusoidal modulation — 6 full periods across the length.
+    ripple = 0.08 * math.sin(t * 6.0 * math.pi) ** 2
+    return max(0.0, min(1.0, base - ripple + 0.06))
+
+
+def _profile_asymmetric_scavenger(t: float) -> float:
+    """Off-centre peak with a flat, underslung rear — a cobbled-together look.
+
+    The profile climbs steeply from the rear (salvaged engine block) then
+    peaks well forward (nose module), creating an unbalanced silhouette
+    typical of improvised scavenger craft.
+    """
+    # Strong forward peak.
+    peak = 0.75
+    sigma = 0.28
+    f = math.exp(-((t - peak) ** 2) / (2 * sigma ** 2))
+    # Rear is kept at a fixed low floor (bolt-on engine section).
+    floor = 0.30 * max(0.0, min(1.0, (0.45 - t) / 0.45))
+    return max(0.0, min(1.0, f + floor))
+
+
+def _profile_modular_block(t: float) -> float:
+    """Stepped/terraced profile. Three distinct block modules along the Z axis.
+
+    Rather than a smooth curve, the profile jumps between three flat
+    plateaus: a wide cargo bay (rear), a mid-section connector, and a
+    narrow forward command module. The hard steps make modules legible.
+    """
+    if t < 0.04 or t > 0.96:
+        # Very thin transition ramps at the absolute ends.
+        ramp = min(t / 0.04, (1.0 - t) / 0.04)
+        return max(0.0, min(1.0, ramp * 0.45))
+    if t < 0.38:
+        # Rear cargo bay — widest block.
+        return 1.0
+    if t < 0.44:
+        # Step down — connector channel.
+        blend = (t - 0.38) / 0.06  # 0→1 over the step
+        return 1.0 - 0.35 * blend
+    if t < 0.70:
+        # Mid-section module.
+        return 0.65
+    if t < 0.76:
+        # Step down — second connector.
+        blend = (t - 0.70) / 0.06
+        return 0.65 - 0.20 * blend
+    # Forward command module — narrowest.
+    return 0.45
+
+
+def _profile_sleek_racing(t: float) -> float:
+    """Needle-nose racer. Extremely long and thin with a sharp tapered front.
+
+    The body stays slim throughout and collapses to a fine point at the
+    nose (t→1). The rear is also tapered but less aggressively to leave
+    room for an engine nozzle.
+    """
+    # Very tight gaussian centred slightly toward the rear of mid-ship so
+    # the ship reads as longer in the nose direction.
+    peak = 0.42
+    sigma = 0.30
+    gauss = math.exp(-((t - peak) ** 2) / (2 * sigma ** 2))
+    # Aggressive nose taper: multiply by (1-t)^1.5 to sharpen the point.
+    nose_cut = (1.0 - t) ** 1.5
+    # Mild rear taper so the engine section isn't a blunt wall.
+    rear_cut = max(0.0, min(1.0, t / 0.12))
+    return max(0.0, min(1.0, gauss * nose_cut * rear_cut * 1.6))
+
+
 _HULL_PROFILE_FNS: dict[HullStyle, Callable[[float], float]] = {
     HullStyle.ARROW: _profile_arrow,
     HullStyle.SAUCER: _profile_saucer,
     HullStyle.WHALE: _profile_whale,
     HullStyle.DAGGER: _profile_dagger,
     HullStyle.BLOCKY_FREIGHTER: _profile_blocky_freighter,
+    HullStyle.ORGANIC_BIO: _profile_organic_bio,
+    HullStyle.HEXAGONAL_LATTICE: _profile_hexagonal_lattice,
+    HullStyle.ASYMMETRIC_SCAVENGER: _profile_asymmetric_scavenger,
+    HullStyle.MODULAR_BLOCK: _profile_modular_block,
+    HullStyle.SLEEK_RACING: _profile_sleek_racing,
 }
 
 
@@ -329,6 +436,17 @@ _HULL_RX_RY_SCALES: dict[HullStyle, tuple[float, float]] = {
     HullStyle.DAGGER: (0.55, 0.95),
     # BLOCKY_FREIGHTER: wide + tall for a crate silhouette.
     HullStyle.BLOCKY_FREIGHTER: (1.15, 1.1),
+    # ORGANIC_BIO: slightly wide and tall — organic hulls feel rounded and puffy.
+    HullStyle.ORGANIC_BIO: (1.05, 1.1),
+    # HEXAGONAL_LATTICE: standard proportions; the interest is in the profile ripple.
+    HullStyle.HEXAGONAL_LATTICE: (1.0, 0.9),
+    # ASYMMETRIC_SCAVENGER: moderate width, slightly compressed height for a
+    # cobbled-together low-profile feel.
+    HullStyle.ASYMMETRIC_SCAVENGER: (1.0, 0.8),
+    # MODULAR_BLOCK: wide and squat to emphasise the stepped modules.
+    HullStyle.MODULAR_BLOCK: (1.1, 0.85),
+    # SLEEK_RACING: narrow X to give the needle silhouette.
+    HullStyle.SLEEK_RACING: (0.5, 0.75),
 }
 
 

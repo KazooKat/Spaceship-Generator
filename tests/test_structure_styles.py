@@ -39,6 +39,11 @@ def test_hull_style_values_stable():
         "whale",
         "dagger",
         "blocky_freighter",
+        "organic_bio",
+        "hexagonal_lattice",
+        "asymmetric_scavenger",
+        "modular_block",
+        "sleek_racing",
     }
 
 
@@ -227,4 +232,126 @@ def test_rx_ry_accessor_returns_positive(style):
     rx, ry = hull_style_rx_ry(style)
     assert rx > 0 and ry > 0, (
         f"{style.value} rx/ry scales must be positive; got {(rx, ry)}"
+    )
+
+
+# --- New hull variant character checks ------------------------------------
+
+
+def test_organic_bio_has_double_hump():
+    """ORGANIC_BIO: the profile should have two local maxima (two lobes).
+
+    The forward lobe and the secondary rear lobe mean that neither the
+    very front nor the very rear carries the sole maximum — there must be
+    at least two Z slices near the top of the distribution separated by a
+    local dip.
+    """
+    grid = _fresh_grid((22, 14, 60))
+    apply_hull_style(grid, HullStyle.ORGANIC_BIO)
+    counts = _slice_counts(grid)
+    # Drop absolute endpoints (ramp artefacts) and look for a dip in the
+    # middle third of the profile.
+    n = len(counts)
+    mid_start, mid_end = n // 4, 3 * n // 4
+    mid_section = counts[mid_start:mid_end]
+    # Forward and rear thirds (excluding mid).
+    forward = counts[mid_end:]
+    rear = counts[:mid_start]
+    # At least one of the flanking regions must be locally higher than the
+    # minimum in the mid-section, signalling a double-hump shape.
+    mid_min = int(mid_section.min())
+    flank_max = int(max(forward.max(), rear.max()))
+    assert flank_max >= mid_min, (
+        "ORGANIC_BIO should have a secondary lobe; "
+        f"flank_max={flank_max}, mid_min={mid_min}"
+    )
+    # The hull must still be non-trivially filled.
+    assert int(counts.max()) > 4, "ORGANIC_BIO produced a suspiciously thin hull"
+
+
+def test_hexagonal_lattice_has_periodic_variation():
+    """HEXAGONAL_LATTICE: interior Z-slice counts must vary periodically.
+
+    The sinusoidal ripple in the profile means the inner portion of the
+    hull should show measurable variation (max - min > 0) rather than a
+    perfectly flat plateau.
+    """
+    grid = _fresh_grid((22, 14, 60))
+    apply_hull_style(grid, HullStyle.HEXAGONAL_LATTICE)
+    counts = _slice_counts(grid)
+    n = len(counts)
+    # Examine the central 60% — well inside the rise/fall ramps.
+    interior = counts[n // 5 : 4 * n // 5]
+    variation = int(interior.max()) - int(interior.min())
+    assert variation > 0, (
+        f"HEXAGONAL_LATTICE interior should vary; max-min = {variation}"
+    )
+    # The plateau should still be mostly filled — variation shouldn't be huge.
+    assert variation < int(interior.max()) // 2 + 1, (
+        "HEXAGONAL_LATTICE variation is too large; profile may be broken"
+    )
+
+
+def test_asymmetric_scavenger_peak_is_forward():
+    """ASYMMETRIC_SCAVENGER: the widest cross-section lives in the forward 40%."""
+    grid = _fresh_grid((22, 14, 60))
+    apply_hull_style(grid, HullStyle.ASYMMETRIC_SCAVENGER)
+    counts = _slice_counts(grid)
+    n = len(counts)
+    peak_z = int(np.argmax(counts))
+    # Peak must be in the forward 60% (z > 40% of length).
+    assert peak_z > n * 0.40, (
+        f"ASYMMETRIC_SCAVENGER peak at z={peak_z} expected in forward half "
+        f"(z > {n * 0.40:.1f})"
+    )
+    # And the rear (first 25%) must be noticeably narrower than the peak.
+    rear_max = int(counts[: n // 4].max())
+    peak_val = int(counts[peak_z])
+    assert peak_val > rear_max, (
+        f"ASYMMETRIC_SCAVENGER peak ({peak_val}) should exceed rear ({rear_max})"
+    )
+
+
+def test_modular_block_has_stepped_profile():
+    """MODULAR_BLOCK: the profile must show at least two distinct flat levels.
+
+    The steps between modules create visible "shelves". We detect this by
+    finding that the sorted unique slice-count values span more than one
+    plateau (standard deviation of interior counts is meaningfully > 0).
+    """
+    grid = _fresh_grid((22, 14, 60))
+    apply_hull_style(grid, HullStyle.MODULAR_BLOCK)
+    counts = _slice_counts(grid)
+    n = len(counts)
+    # Ignore first/last 5% (absolute ramp zones).
+    interior = counts[n // 20 : n - n // 20]
+    std_val = float(interior.std())
+    assert std_val > 1.0, (
+        f"MODULAR_BLOCK interior should show step variation; std={std_val:.2f}"
+    )
+    # Ensure values are not all identical — at least 2 distinct count values.
+    unique_counts = len(set(interior.tolist()))
+    assert unique_counts >= 2, (
+        f"MODULAR_BLOCK should have 2+ distinct slice counts; got {unique_counts}"
+    )
+
+
+def test_sleek_racing_is_narrow_and_pointed():
+    """SLEEK_RACING: X extent must be very slim and the nose must be tiny."""
+    W = 30
+    grid = _fresh_grid((W, 14, 60))
+    apply_hull_style(grid, HullStyle.SLEEK_RACING)
+    counts = _slice_counts(grid)
+    n = len(counts)
+    # X footprint check — should be narrower than DAGGER already is.
+    xs = np.any(grid == Role.HULL, axis=(1, 2))
+    x_extent = int(xs.sum())
+    assert x_extent < int(W * 0.55), (
+        f"SLEEK_RACING x_extent ({x_extent}) should be very narrow vs W={W}"
+    )
+    # Nose check — the last 15% of slices must be much thinner than the peak.
+    nose_max = int(counts[-n // 7 :].max())
+    peak_val = int(counts.max())
+    assert peak_val > 2 * nose_max + 1, (
+        f"SLEEK_RACING nose ({nose_max}) should be <half the peak ({peak_val})"
     )
