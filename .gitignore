@@ -32,10 +32,13 @@ htmlcov/
 Thumbs.db
 
 .swarm/
+.claude-flow/
 ruvector.db
 
 # Ad-hoc smoke-test scratch files
 *.tmp
+*.tmp.json
+/tmp_*/
 
 # Project artifacts
 out/

@@ -7,17 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Wave-1 content expansion and infrastructure landings.
+
 ### Added
-- _Nothing yet._
+- **Hull styles**: ARROW, SAUCER, WHALE, DAGGER, BLOCKY_FREIGHTER silhouettes (`e70d2e0`).
+- **Engine styles**: `EngineStyle` enum with 5 variants (`08dfe15`).
+- **Greeble styles**: 6 greeble types plus `scatter_greebles` helper (`efe67cc`).
+- **Palettes**: `steampunk_brass`, `biopunk_fungal`, `cyberpunk_neon` built-ins plus palette author guide (`8acbe19`).
+- **Web UI polish**: palette swatches, seed copy button, shortcuts help overlay, responsive layout, theme toggle (`81ee2b1`).
+- **Benchmarking**: `bench_generator` script with baseline performance report (`3c7b839`).
+- **Property tests**: hypothesis-based property tests; line coverage raised from 86% to 97% (`2d53980`).
+- **CI/CD**: GitHub Actions workflows for CI and release, plus release-process documentation (`726f79b`).
 
 ### Changed
-- _Nothing yet._
+- **Shape module** split into submodules, each under the 500-line ceiling (`75f9d27`).
+- **Web app** split from monolithic `app.py` into Flask blueprints, each under 500 lines (`ce1e7fd`).
 
 ### Fixed
-- _Nothing yet._
+- _Nothing in wave-1 was a pure fix — see 0.1.0 history for earlier fixes._
 
-### Removed
-- _Nothing yet._
+### Notes
+- *Commit `efe67cc` uses a palette-style message but actually contains the `greeble_styles` module — content-only, not re-pushed.*
 
 ---
 
