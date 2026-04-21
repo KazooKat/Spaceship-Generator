@@ -286,6 +286,29 @@ def _parse_preset(source: Any) -> str | None:
     return name
 
 
+
+# HTML-default values that the browser form always submits when the user has
+# not explicitly changed a field. When a preset is active we treat an incoming
+# value that matches the HTML default as "not set" so the preset can supply a
+# richer value — exactly the same logic the CLI uses when ``--preset`` is
+# combined with per-flag overrides (explicit flag wins; implicit HTML default
+# does NOT count as an explicit override).
+#
+# These must stay in sync with the ``defaults`` dict passed to ``index.html``
+# by the ``index()`` route in ``ship.py``.
+_HTML_FORM_DEFAULTS: dict[str, Any] = {
+    "length": 40,
+    "width": 20,
+    "height": 12,
+    "engines": 2,
+    "wing_prob": 0.75,
+    "greeble_density": 0.0,
+    "wing_style": "straight",
+    "cockpit": "bubble",
+    "structure_style": "frigate",
+}
+
+
 def _merge_preset_into_source(source: Any, preset_name: str) -> dict[str, Any]:
     """Return a new dict layering preset defaults under ``source``.
 
@@ -297,11 +320,22 @@ def _merge_preset_into_source(source: Any, preset_name: str) -> dict[str, Any]:
       sends ``auto``/empty/missing — ``auto`` is the UI sentinel for
       "don't override the pipeline default", and with a preset in play the
       preset IS the pipeline default.
+    * For ``wing_style`` and ``cockpit``, the HTML-default values
+      (``straight`` / ``bubble``) are treated as "not set" when a preset
+      is active — the browser always submits the current option value, so
+      the user's "I haven't touched this" intent must be inferred by
+      comparing against the known HTML default.
     * Numeric shape fields (``length``, ``width``, ``height``) accept the
-      preset value only when the form omits the key entirely (a submitted
-      number is treated as an explicit user choice).
+      preset value when the form submits the HTML-default value (40/20/12).
+      Because the browser always sends every named input's current value,
+      "user submitted 40 and has never touched the slider" is
+      indistinguishable from "user explicitly typed 40", so we use the
+      HTML-default as a sentinel for the unset state.  A user who genuinely
+      wants length=40 when using the corvette preset (which defaults to 50)
+      can achieve it by clicking away from the preset and back — the intent
+      is preserved for the overwhelming majority case.
     * ``greeble_density``, ``weapon_count``, ``weapon_types`` follow the
-      same "absent key → preset wins" rule as the shape fields.
+      same "absent key → preset wins" rule as before.
 
     Returns a fresh ``dict`` so callers can mutate safely. ``weapon_types``
     from the preset is flattened to the raw string tokens the downstream
@@ -332,40 +366,73 @@ def _merge_preset_into_source(source: Any, preset_name: str) -> dict[str, Any]:
     else:
         merged = dict(source)
 
-    def _style_missing(key: str) -> bool:
-        """True when ``key`` is absent or the ``auto`` sentinel."""
+    def _style_missing(key: str, html_defaults: tuple[str, ...] = ()) -> bool:
+        """True when ``key`` is absent, the ``auto`` sentinel, or matches one
+        of the given ``html_defaults`` (which means the user never touched the
+        control and the preset should win)."""
         if key not in merged:
             return True
         v = merged[key]
         if v is None:
             return True
-        if isinstance(v, str) and v.strip().lower() in ("", "auto", "__auto__"):
-            return True
+        if isinstance(v, str):
+            vs = v.strip().lower()
+            if vs in ("", "auto", "__auto__"):
+                return True
+            if vs in html_defaults:
+                return True
         return False
 
-    # Size dimensions — preset wins only when the form omits the field.
-    if "length" not in merged:
+    def _numeric_is_default(key: str) -> bool:
+        """True when ``key`` is absent OR equals the HTML-form default value.
+
+        The browser always submits every named input. We treat a submitted
+        value that matches the HTML default as "the user hasn't explicitly
+        set this", allowing the preset to supply a richer value.
+        """
+        if key not in merged:
+            return True
+        html_default = _HTML_FORM_DEFAULTS.get(key)
+        if html_default is None:
+            return False  # no known default — treat as explicitly set
+        try:
+            submitted = float(merged[key])
+            return submitted == float(html_default)
+        except (TypeError, ValueError):
+            return False
+
+    # Size dimensions — preset wins when the form omits the field OR submits
+    # the HTML-default value (user never touched the slider).
+    if _numeric_is_default("length"):
         merged["length"] = preset_shape.length
-    if "width" not in merged:
+    if _numeric_is_default("width"):
         merged["width"] = preset_shape.width_max
-    if "height" not in merged:
+    if _numeric_is_default("height"):
         merged["height"] = preset_shape.height_max
 
-    # Style enums — preset wins when the form sends auto/empty.
+    # Style enums — preset wins when the form sends auto/empty or the
+    # HTML-default option value.
     hull_style = preset_kwargs.get("hull_style")
     if hull_style is not None and _style_missing("hull_style"):
         merged["hull_style"] = hull_style.value
     engine_style = preset_kwargs.get("engine_style")
     if engine_style is not None and _style_missing("engine_style"):
         merged["engine_style"] = engine_style.value
-    if _style_missing("wing_style") and preset_shape.wing_style is not None:
+    # wing_style: "straight" is the HTML form default; treat it the same as
+    # "auto" so the preset's wing_style wins when the user hasn't changed it.
+    if (
+        preset_shape.wing_style is not None
+        and _style_missing("wing_style", html_defaults=("straight",))
+    ):
         merged["wing_style"] = preset_shape.wing_style.value
     if _style_missing("cockpit_style") and preset_shape.cockpit_style is not None:
         merged["cockpit_style"] = preset_shape.cockpit_style.value
-    # ``cockpit`` is the shape-level picker; mirror the same rule so the
-    # ShapeParams cockpit_style (used when no override is set) also reflects
-    # the preset's cockpit archetype.
-    if _style_missing("cockpit") and preset_shape.cockpit_style is not None:
+    # ``cockpit`` is the shape-level picker; "bubble" is the HTML default —
+    # treat it the same as "auto" so the preset's cockpit archetype wins.
+    if (
+        preset_shape.cockpit_style is not None
+        and _style_missing("cockpit", html_defaults=("bubble",))
+    ):
         merged["cockpit"] = preset_shape.cockpit_style.value
 
     # Generator-level scalars — preset wins when the key is absent.

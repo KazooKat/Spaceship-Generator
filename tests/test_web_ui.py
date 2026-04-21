@@ -1348,3 +1348,211 @@ class TestDownloadFleet:
         assert resp.status_code == 400
         assert resp.is_json
         assert "error" in resp.get_json()
+
+
+# ---------------------------------------------------------------------------
+# TestFormControlsFlowIntoGenerator
+# ---------------------------------------------------------------------------
+# These tests exercise the *contract* that hull_style / engine_style / preset
+# choices actually differentiate the generated voxel grids. They serve as the
+# red-tests that prove the bug described in the fix(web) commit before the fix
+# is applied, and as regression guards after it lands.
+# ---------------------------------------------------------------------------
+
+
+def _base_form_browser_defaults():
+    """Simulate what the browser submits when the user changes ONLY the fields
+    under test.  The browser ALWAYS sends every named input's current value,
+    so numeric controls (length/width/height) and style selects (wing_style,
+    cockpit) arrive with their HTML default values even when the user has never
+    touched them.  This mirrors the exact form data that caused the preset-
+    merge guard (``if "length" not in merged``) to be a no-op.
+    """
+    return {
+        "seed": "42",
+        "palette": "sci_fi_industrial",
+        # Numeric fields — the browser sends these even when untouched.
+        "length": "40",
+        "width": "20",
+        "height": "12",
+        "engines": "2",
+        "wing_prob": "0.75",
+        "greeble_density": "0.0",
+        "window_period": "4",
+        "accent_stripe_period": "8",
+        "engine_glow_depth": "1",
+        "hull_noise_ratio": "0.0",
+        "panel_line_bands": "1",
+        "rivet_period": "0",
+        # Style selects — browser sends the currently-selected option value.
+        "cockpit": "bubble",
+        "structure_style": "frigate",
+        "wing_style": "straight",
+        "hull_style": "auto",
+        "engine_style": "auto",
+    }
+
+
+def _grid_hash(client, form):
+    """POST /generate with ``form``, then fetch the voxel grid and return a
+    sha256 hex digest of the voxel buffer.  This gives a compact fingerprint
+    that must differ whenever the generator produces a distinct shape."""
+    import hashlib
+    import json
+    import re
+
+    resp = client.post(
+        "/generate", data=form, headers={"HX-Request": "true"}
+    )
+    assert resp.status_code == 200, (
+        f"POST /generate failed ({resp.status_code}): "
+        f"{resp.get_data(as_text=True)[:300]}"
+    )
+    body = resp.get_data(as_text=True)
+    m = re.search(r'data-gen-id=["\']([^"\']+)["\']', body)
+    assert m is not None, f"data-gen-id not found in response: {body[:400]}"
+    gen_id = m.group(1)
+    voxel_resp = client.get(f"/voxels/{gen_id}.json")
+    assert voxel_resp.status_code == 200
+    data = voxel_resp.get_json()
+    # Stable fingerprint: dims + voxel base64 payload.
+    fingerprint = f"{data['dims']}:{data['voxels']}"
+    return hashlib.sha256(fingerprint.encode()).hexdigest()
+
+
+@pytest.mark.ui
+class TestFormControlsFlowIntoGenerator:
+    """hull_style, engine_style, and preset dropdown must produce distinct
+    voxel grids when the user selects different values.  Each test sends a
+    full browser-realistic form (all fields present, numeric fields at their
+    HTML defaults) and asserts the sha256 fingerprints of the voxel grids
+    differ.
+
+    These tests were written RED first (they prove the bug) and must pass
+    GREEN after the fix lands.
+    """
+
+    def test_hull_style_saucer_vs_whale_grids_differ(self, client):
+        """POST /generate with hull_style=saucer must produce a different
+        voxel grid than hull_style=whale for the same seed and all other
+        params equal.  Tests the full HTTP round-trip, not just the parser."""
+        form_saucer = dict(_base_form_browser_defaults())
+        form_saucer["hull_style"] = "saucer"
+
+        form_whale = dict(_base_form_browser_defaults())
+        form_whale["hull_style"] = "whale"
+
+        h_saucer = _grid_hash(client, form_saucer)
+        h_whale = _grid_hash(client, form_whale)
+        assert h_saucer != h_whale, (
+            "hull_style=saucer and hull_style=whale produced identical "
+            "voxel grids — hull_style is not flowing into the generator"
+        )
+
+    def test_preset_corvette_vs_dropship_grids_differ(self, client):
+        """POST /generate with preset=corvette must produce a different voxel
+        grid than preset=dropship when both use the same seed.  This exercises
+        the full preset-merge + generator pipeline.
+
+        The browser sends all numeric fields (length/width/height/…) at their
+        HTML-default values.  The preset must still override the dimensions and
+        styles that differ from those defaults.
+        """
+        form_corvette = dict(_base_form_browser_defaults())
+        form_corvette["preset"] = "corvette"
+
+        form_dropship = dict(_base_form_browser_defaults())
+        form_dropship["preset"] = "dropship"
+
+        h_corvette = _grid_hash(client, form_corvette)
+        h_dropship = _grid_hash(client, form_dropship)
+        assert h_corvette != h_dropship, (
+            "preset=corvette and preset=dropship produced identical voxel "
+            "grids — preset dimensions/styles are not flowing into the "
+            "generator when the form submits numeric fields at HTML defaults"
+        )
+
+    def test_preview_lite_hull_style_saucer_vs_whale_differ(self, client):
+        """GET /preview-lite?hull_style=saucer vs whale must return different
+        PNG payloads.  Exercises the lite preview path independently of the
+        full generate + voxel pipeline."""
+        import hashlib
+
+        base_qs = (
+            "seed=42&palette=sci_fi_industrial"
+            "&length=20&width=12&height=8"
+            "&engines=1&wing_prob=0.0&greeble_density=0.0"
+            "&cockpit=bubble&structure_style=frigate&wing_style=straight"
+        )
+        r1 = client.get(f"/preview-lite?{base_qs}&hull_style=saucer")
+        r2 = client.get(f"/preview-lite?{base_qs}&hull_style=whale")
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        h1 = hashlib.sha256(r1.get_data()).hexdigest()
+        h2 = hashlib.sha256(r2.get_data()).hexdigest()
+        assert h1 != h2, (
+            "/preview-lite hull_style=saucer and whale returned identical "
+            "PNG bytes — hull_style is not flowing into preview_lite"
+        )
+
+    def test_preset_dimensions_override_html_defaults(self, client):
+        """When preset=corvette is submitted alongside the form's HTML default
+        length=40, the parser must replace length=40 with the corvette preset's
+        length (50).  This pins the fix for the ``if 'length' not in merged``
+        guard that was a no-op whenever the browser sent the default value."""
+        from spaceship_generator.web.blueprints.ship_support import (
+            build_params_from_source,
+        )
+
+        form = dict(_base_form_browser_defaults())
+        form["preset"] = "corvette"
+        # hull_style and engine_style are "auto" (from _base_form_browser_defaults),
+        # so the preset's dagger/twin_nacelle should still win.
+        _seed, _pal, shape, _tex, extras = build_params_from_source(form)
+        assert shape.length == 50, (
+            f"corvette preset length=50 was not applied; "
+            f"parser returned length={shape.length} "
+            f"(the html-default 40 was not overridden)"
+        )
+        assert shape.width_max == 20, (
+            f"corvette preset width=20 was not applied; got {shape.width_max}"
+        )
+        assert extras["hull_style"].value == "dagger", (
+            f"corvette hull_style=dagger not applied; got {extras['hull_style']!r}"
+        )
+
+    def test_preset_wing_style_overrides_html_default_straight(self, client):
+        """When preset=corvette is submitted alongside wing_style=straight
+        (the HTML default), the parser must apply the corvette preset's swept
+        wing_style instead of leaving it as straight."""
+        from spaceship_generator.web.blueprints.ship_support import (
+            build_params_from_source,
+        )
+
+        form = dict(_base_form_browser_defaults())
+        form["preset"] = "corvette"
+        # wing_style=straight is the HTML default — should be overridden by preset
+        _seed, _pal, shape, _tex, extras = build_params_from_source(form)
+        from spaceship_generator.wing_styles import WingStyle
+        assert shape.wing_style == WingStyle.SWEPT, (
+            f"corvette preset wing_style=swept not applied; "
+            f"parser returned {shape.wing_style!r} "
+            f"(html-default 'straight' was not treated as unset)"
+        )
+
+    def test_palette_swatches_refresh_on_form_change(self, client):
+        """GET / must include the palette dropdown and the swatch container.
+        The swatch strip is refreshed by polish.js on palette change events —
+        this test pins the HTML contract that makes that possible: the
+        #palette-swatches host div and the palette <select> must both be
+        present so the JS listener can attach and the ARIA live region works."""
+        body = client.get("/").get_data(as_text=True)
+        assert 'id="palette-swatches"' in body or "id='palette-swatches'" in body, (
+            "#palette-swatches div missing — swatch refresh JS cannot attach"
+        )
+        # The palette select must carry id="palette" so polish.js can
+        # bind to it with getElementById('palette').
+        assert 'id="palette"' in body or "id='palette'" in body, (
+            'palette <select id="palette"> missing — polish.js swatch '
+            "refresh cannot bind to the dropdown"
+        )

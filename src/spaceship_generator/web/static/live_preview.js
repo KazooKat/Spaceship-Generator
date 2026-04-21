@@ -76,6 +76,12 @@
                 var ou = URL.createObjectURL(blob);
                 img.dataset.objUrl = ou;
                 img.src = ou;
+                // Refresh palette swatches after each preview load so the strip
+                // reflects any cached real colors (populated by polish.js after
+                // a full generate) without waiting for the user to click Generate.
+                if (window.shipPolish && typeof window.shipPolish.renderSwatches === "function") {
+                    try { window.shipPolish.renderSwatches(); } catch (e) { /* noop */ }
+                }
             })
             .catch(function () { /* silent — debounced spam is normal */ })
             .then(function () { setSpinner(false); inFlight = null; });
