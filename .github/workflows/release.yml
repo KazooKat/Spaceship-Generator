@@ -1,0 +1,123 @@
+name: Release
+
+# Triggered when a semver tag like v1.2.3 is pushed.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build sdist + wheel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so setuptools_scm / changelog tools can see tags.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install build backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Check distribution metadata
+        run: |
+          python -m pip install twine
+          python -m twine check dist/*
+
+      - name: Upload dist/ artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-pypi:
+    name: Publish to PyPI (Trusted Publishing / OIDC)
+    needs: [build]
+    runs-on: ubuntu-latest
+    # -------------------------------------------------------------------
+    # PyPI Trusted Publishing (OIDC) — one-time setup required:
+    #
+    #   1. On PyPI, go to: https://pypi.org/manage/account/publishing/
+    #   2. Add a "pending publisher" for this project with:
+    #        - Owner:         KazooKat
+    #        - Repository:    Spaceship-Generator
+    #        - Workflow name: release.yml
+    #        - Environment:   pypi   (must match the `environment:` below)
+    #   3. After the first successful publish, the pending publisher is
+    #      converted to a regular trusted publisher and no API token is
+    #      ever needed in this repo.
+    #
+    # Docs: https://docs.pypi.org/trusted-publishers/
+    # -------------------------------------------------------------------
+    environment:
+      name: pypi
+      url: https://pypi.org/p/spaceship-generator
+    permissions:
+      # id-token: write is required for PyPI trusted publishing (OIDC).
+      id-token: write
+    steps:
+      - name: Download dist/ artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist
+
+      - name: Publish to PyPI
+        # Official PyPA publish action — uses the OIDC token from the
+        # workflow run, no username/password or API token required.
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # with:
+        #   repository-url: https://test.pypi.org/legacy/   # uncomment for TestPyPI
+
+  github-release:
+    name: Create GitHub Release
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to create a release and upload assets.
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download dist/ artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist
+
+      - name: Create GitHub Release with auto-generated notes
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            dist/*.tar.gz
+            dist/*.whl
