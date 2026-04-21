@@ -1,0 +1,26 @@
+name: ancient_ruin
+description: Derelict relic-ship. Weathered stone hull, overgrown moss accents, eerie soul glow.
+
+blocks:
+  HULL:          minecraft:stone_bricks
+  HULL_DARK:     minecraft:cracked_stone_bricks
+  WINDOW:        minecraft:cyan_stained_glass
+  ENGINE:        minecraft:mossy_stone_bricks
+  ENGINE_GLOW:   minecraft:soul_lantern
+  COCKPIT_GLASS: minecraft:cyan_stained_glass
+  WING:          minecraft:chiseled_stone_bricks
+  GREEBLE:       minecraft:cobbled_deepslate
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:tuff
+
+preview_colors:
+  HULL:          "#8c8a80"
+  HULL_DARK:     "#5e5a52"
+  WINDOW:        "#308888"
+  ENGINE:        "#607058"
+  ENGINE_GLOW:   "#40c8b8"
+  COCKPIT_GLASS: "#205050"
+  WING:          "#7a7870"
+  GREEBLE:       "#686460"
+  LIGHT:         "#38c0a8"
+  INTERIOR:      "#6e6c68"

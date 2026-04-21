@@ -1,0 +1,26 @@
+name: quantum_chrome
+description: Mirror-finish interceptor. Quartz hull, prismatic windows, sea-lantern iridescence.
+
+blocks:
+  HULL:          minecraft:quartz_block
+  HULL_DARK:     minecraft:smooth_quartz
+  WINDOW:        minecraft:prismarine
+  ENGINE:        minecraft:iron_block
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:light_blue_stained_glass
+  WING:          minecraft:cut_copper
+  GREEBLE:       minecraft:polished_andesite
+  LIGHT:         minecraft:redstone_lamp[lit=true]
+  INTERIOR:      minecraft:smooth_stone
+
+preview_colors:
+  HULL:          "#eeece8"
+  HULL_DARK:     "#d8d4cc"
+  WINDOW:        "#6ab8a8"
+  ENGINE:        "#d8d8d8"
+  ENGINE_GLOW:   "#b8f0f0"
+  COCKPIT_GLASS: "#90c8e8"
+  WING:          "#c8a880"
+  GREEBLE:       "#b0b0b0"
+  LIGHT:         "#ffd870"
+  INTERIOR:      "#c0bec0"

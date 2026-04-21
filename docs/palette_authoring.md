@@ -73,6 +73,40 @@ The preview colors don't have to be photorealistic — they're stylized swatches
 
 When in doubt, eyeball the shipped palettes (`sci_fi_industrial.yaml`, `amethyst_crystal.yaml`, `crimson_nether.yaml`) — they span a wide range of hue/contrast combos.
 
+Additional reference palettes added in the themed batch:
+
+| File | Theme | Distinguishing technique |
+|------|-------|--------------------------|
+| `void_walker.yaml` | Deep-space dark | Near-black obsidian hull; `crying_obsidian` greebles for purple flecks; `end_rod` glow reads as cold white |
+| `lava_forge.yaml` | Volcanic | `magma_block` ENGINE + `shroomlight` glow; warm amber `ENGINE_GLOW`/`LIGHT` contrast sharply against near-black hull |
+| `forest_camouflage.yaml` | Woodland recon | Earthy greens/browns; `ochre_froglight` ENGINE_GLOW adds warm accent without being neon |
+| `quantum_chrome.yaml` | Iridescent silver | White quartz hull vs pale `smooth_quartz` HULL_DARK keeps a subtle sheen; `prismarine` WINDOW adds the iridescent teal pop |
+| `ancient_ruin.yaml` | Weathered stone | Cracked/mossy stone variants; `soul_lantern` dual-use for ENGINE_GLOW and LIGHT gives a haunting teal cast |
+
+## Schema tips and common patterns
+
+### Reusing a block across roles
+
+The schema does **not** require unique blocks per role. If your theme calls for it, the same block ID may appear in multiple roles (e.g. `ancient_ruin.yaml` uses `minecraft:soul_lantern` for both `ENGINE_GLOW` and `LIGHT`). The validator does not warn on this.
+
+### Dual-use emissive blocks
+
+Blocks like `sea_lantern`, `shroomlight`, `soul_lantern`, `ochre_froglight`, `verdant_froglight`, and `pearlescent_froglight` are all light-emitting and look good for `ENGINE_GLOW`, `LIGHT`, or even `ENGINE`. Pick based on color temperature:
+
+| Block | Approximate color | Good for |
+|-------|-------------------|----------|
+| `sea_lantern` | Cool cyan-white | sci-fi `LIGHT`, chrome `ENGINE_GLOW` |
+| `shroomlight` | Warm amber | volcanic, nether `ENGINE_GLOW` |
+| `soul_lantern` | Teal/mint | horror, void, ruin themes |
+| `ochre_froglight` | Golden yellow | woodland, earthy `ENGINE_GLOW` |
+| `pearlescent_froglight` | Soft purple | arcane, crystal themes |
+| `verdant_froglight` | Soft green | biopunk, alien themes |
+| `glowstone` | Warm white | classic sci-fi, gold themes |
+
+### Block-state strings
+
+Append `[prop=val]` only when the game requires it for the visual you want. Most blocks don't need it. The one common exception is `minecraft:redstone_lamp[lit=true]` — without `[lit=true]` the lamp renders unlit.
+
 ## Minimal example
 
 ```yaml

@@ -1,0 +1,26 @@
+name: void_walker
+description: Deep-space surveyor. Obsidian hull, blue ice viewports, amethyst glow — built for the void.
+
+blocks:
+  HULL:          minecraft:obsidian
+  HULL_DARK:     minecraft:black_concrete
+  WINDOW:        minecraft:blue_ice
+  ENGINE:        minecraft:deepslate
+  ENGINE_GLOW:   minecraft:end_rod
+  COCKPIT_GLASS: minecraft:blue_stained_glass
+  WING:          minecraft:polished_deepslate
+  GREEBLE:       minecraft:crying_obsidian
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:black_concrete
+
+preview_colors:
+  HULL:          "#1a0e28"
+  HULL_DARK:     "#0a0a0a"
+  WINDOW:        "#7ab8e8"
+  ENGINE:        "#3a3848"
+  ENGINE_GLOW:   "#e8eeff"
+  COCKPIT_GLASS: "#1c3a6e"
+  WING:          "#2e2c3c"
+  GREEBLE:       "#4a2870"
+  LIGHT:         "#4890c0"
+  INTERIOR:      "#080810"

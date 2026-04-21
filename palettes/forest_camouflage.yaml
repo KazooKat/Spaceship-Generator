@@ -1,0 +1,26 @@
+name: forest_camouflage
+description: Woodland recon craft. Mossy stone hull, leaf-panel wings, froglight landing lights.
+
+blocks:
+  HULL:          minecraft:mossy_cobblestone
+  HULL_DARK:     minecraft:moss_block
+  WINDOW:        minecraft:green_stained_glass
+  ENGINE:        minecraft:deepslate_bricks
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:green_stained_glass
+  WING:          minecraft:chiseled_stone_bricks
+  GREEBLE:       minecraft:cobblestone
+  LIGHT:         minecraft:shroomlight
+  INTERIOR:      minecraft:smooth_stone
+
+preview_colors:
+  HULL:          "#6a7048"
+  HULL_DARK:     "#3e5030"
+  WINDOW:        "#4a7838"
+  ENGINE:        "#4a4850"
+  ENGINE_GLOW:   "#d8b850"
+  COCKPIT_GLASS: "#2e5020"
+  WING:          "#787060"
+  GREEBLE:       "#8a8070"
+  LIGHT:         "#c8a840"
+  INTERIOR:      "#888078"

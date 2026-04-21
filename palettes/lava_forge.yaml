@@ -1,0 +1,26 @@
+name: lava_forge
+description: Volcanic dreadnought. Blackstone hull with magma veins, shroomlight thruster glow.
+
+blocks:
+  HULL:          minecraft:polished_blackstone
+  HULL_DARK:     minecraft:blackstone
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:orange_stained_glass
+  WING:          minecraft:nether_bricks
+  GREEBLE:       minecraft:cracked_nether_bricks
+  LIGHT:         minecraft:jack_o_lantern
+  INTERIOR:      minecraft:smooth_basalt
+
+preview_colors:
+  HULL:          "#282030"
+  HULL_DARK:     "#161218"
+  WINDOW:        "#d06020"
+  ENGINE:        "#8a3010"
+  ENGINE_GLOW:   "#ffa040"
+  COCKPIT_GLASS: "#b04818"
+  WING:          "#2a1c1c"
+  GREEBLE:       "#3c2420"
+  LIGHT:         "#f08030"
+  INTERIOR:      "#3a3840"
