@@ -281,12 +281,12 @@ def _coerce_shape(shape: "np.ndarray | Sequence[int]") -> tuple[int, int, int]:
             )
         return (int(shape.shape[0]), int(shape.shape[1]), int(shape.shape[2]))
     try:
-        w, h, l = shape  # type: ignore[misc]
+        w, h, length = shape  # type: ignore[misc]
     except (TypeError, ValueError) as exc:
         raise ValueError(
             "shape must be a 3D numpy array or a (W, H, L) tuple"
         ) from exc
-    return (int(w), int(h), int(l))
+    return (int(w), int(h), int(length))
 
 
 def scatter_greebles(

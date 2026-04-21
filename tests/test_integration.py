@@ -21,9 +21,7 @@ yet so this module can be authored in parallel with the other fixers.
 from __future__ import annotations
 
 import base64
-import json
 import subprocess
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -32,7 +30,6 @@ import pytest
 from spaceship_generator.generator import generate
 from spaceship_generator.palette import Role
 from spaceship_generator.shape import CockpitStyle, ShapeParams, StructureStyle
-from spaceship_generator.texture import TextureParams
 from spaceship_generator.web.app import create_app
 
 

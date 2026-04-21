@@ -107,7 +107,7 @@ def test_assign_roles_with_engine_and_wing():
     lights = np.argwhere(out == Role.LIGHT)
     assert len(lights) > 0
     outer_x = {0, 9}
-    assert all(int(l[0]) in outer_x for l in lights)
+    assert all(int(loc[0]) in outer_x for loc in lights)
 
 
 def test_assign_roles_rejects_non_3d():
@@ -212,7 +212,6 @@ def test_belly_lights_do_not_overwrite_protected_roles():
 def test_nose_tip_light_enabled_paints_forward_light():
     """nose_tip_light=True adds a LIGHT at/near z == L-1."""
     grid = _slab_grid()
-    L = grid.shape[2]
     out = assign_roles(
         grid,
         TextureParams(belly_light_period=0, nose_tip_light=True),

@@ -23,7 +23,6 @@ import math
 import os
 import threading
 import time
-from typing import Callable
 
 from flask import Flask, current_app, jsonify, render_template, request
 
