@@ -8,9 +8,11 @@ import sys
 import time
 from pathlib import Path
 
+from .engine_styles import EngineStyle
 from .generator import GenerationResult, generate
 from .palette import list_palettes
 from .shape import CockpitStyle, ShapeParams, StructureStyle
+from .structure_styles import HullStyle
 from .wing_styles import WingStyle
 from .texture import TextureParams
 
@@ -87,6 +89,26 @@ def _parse_seeds(value: str) -> list[int]:
     return seeds
 
 
+def _parse_unit_float(value: str) -> float:
+    """Parse a float in the closed interval ``[0.0, 1.0]``.
+
+    Used by ``--greeble-density`` so that out-of-range values are rejected
+    at argparse time (exit code 2) rather than surfacing later as a
+    :class:`ValueError` inside the generator.
+    """
+    try:
+        f = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"must be a float in [0.0, 1.0], got {value!r}"
+        ) from exc
+    if not 0.0 <= f <= 1.0:
+        raise argparse.ArgumentTypeError(
+            f"must be in [0.0, 1.0], got {f}"
+        )
+    return f
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="spaceship-generator",
@@ -101,6 +123,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Palette name to use (default: sci_fi_industrial).")
     p.add_argument("--list-palettes", action="store_true",
                    help="List available palettes and exit.")
+    p.add_argument("--list-styles", action="store_true",
+                   help="List available hull/engine/wing styles and exit.")
 
     # Shape params
     p.add_argument("--length", type=int, default=40, help="Ship length in blocks (Z axis).")
@@ -109,8 +133,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--engines", type=int, default=2, help="Number of engines (0..6).")
     p.add_argument("--wing-prob", type=float, default=0.75,
                    help="Probability of wings (0..1).")
-    p.add_argument("--greeble-density", type=float, default=0.05,
-                   help="Density of surface greebles (0..0.5).")
+    # ``--greeble-density`` accepts values in [0.0, 1.0]. When omitted the
+    # default is ``None`` so we can tell "user didn't touch this" apart from
+    # "user typed 0.0". ``None`` preserves legacy behavior: the in-shape
+    # scatter keeps its historical ``ShapeParams`` default (0.05) and the
+    # post-build generator-level scatter stays off.
+    p.add_argument("--greeble-density", type=_parse_unit_float, default=None,
+                   help="Density of surface greebles in [0.0, 1.0]. "
+                        "When omitted, legacy defaults apply.")
     p.add_argument("--cockpit", choices=[c.value for c in CockpitStyle],
                    default=CockpitStyle.BUBBLE.value, help="Cockpit style.")
     p.add_argument(
@@ -124,6 +154,22 @@ def build_parser() -> argparse.ArgumentParser:
         choices=[w.value for w in WingStyle],
         default=WingStyle.STRAIGHT.value,
         help="Wing silhouette (straight, swept, delta, tapered, gull, split).",
+    )
+    p.add_argument(
+        "--hull-style",
+        choices=[h.value for h in HullStyle],
+        default=None,
+        help="Hull silhouette archetype "
+             "(arrow, saucer, whale, dagger, blocky_freighter). "
+             "When omitted, the legacy generator hull is used.",
+    )
+    p.add_argument(
+        "--engine-style",
+        choices=[e.value for e in EngineStyle],
+        default=None,
+        help="Engine archetype "
+             "(single_core, twin_nacelle, quad_cluster, ring, ion_array). "
+             "When omitted, the legacy engine placer is used.",
     )
 
     # Texture params
@@ -177,13 +223,21 @@ def _run_one(
     filename: str | None,
 ) -> GenerationResult:
     """Run a single generate() call using ``args`` for the shared parameters."""
+    # ``args.greeble_density`` is ``None`` when the user didn't pass the
+    # flag. In that case we keep the legacy ShapeParams default (0.05) and
+    # leave the generator-level scatter at 0.0 so behavior is unchanged.
+    shape_greeble = (
+        args.greeble_density
+        if args.greeble_density is not None
+        else ShapeParams.__dataclass_fields__["greeble_density"].default
+    )
     shape_params = ShapeParams(
         length=args.length,
         width_max=args.width,
         height_max=args.height,
         engine_count=args.engines,
         wing_prob=args.wing_prob,
-        greeble_density=args.greeble_density,
+        greeble_density=min(shape_greeble, 0.5),  # ShapeParams caps at 0.5
         cockpit_style=CockpitStyle(args.cockpit),
         structure_style=StructureStyle(args.structure_style),
         wing_style=WingStyle(args.wing_style),
@@ -198,8 +252,13 @@ def _run_one(
         engine_glow_ring=args.engine_glow_ring,
     )
 
-    result = generate(
-        seed,
+    # New-style params — may not yet be wired on the generator side in which
+    # case we gracefully fall back to the legacy signature.
+    hull_style = HullStyle(args.hull_style) if args.hull_style else None
+    engine_style = EngineStyle(args.engine_style) if args.engine_style else None
+    gen_greeble = args.greeble_density if args.greeble_density is not None else 0.0
+
+    base_kwargs = dict(
         palette=args.palette,
         shape_params=shape_params,
         texture_params=texture_params,
@@ -210,6 +269,25 @@ def _run_one(
         with_preview=bool(args.preview),
         preview_size=args.preview_size,
     )
+    try:
+        result = generate(
+            seed,
+            hull_style=hull_style,
+            engine_style=engine_style,
+            greeble_density=gen_greeble,
+            **base_kwargs,
+        )
+    except TypeError:
+        # Generator's new-style params aren't wired yet — warn and retry
+        # with the legacy-only signature so the CLI stays usable in
+        # lockstep-less rollouts.
+        if hull_style is not None or engine_style is not None or gen_greeble:
+            print(
+                "Warning: --hull-style/--engine-style/--greeble-density not "
+                "supported by this generator; ignoring.",
+                file=sys.stderr,
+            )
+        result = generate(seed, **base_kwargs)
 
     if args.preview:
         preview_path = result.litematic_path.with_suffix(".png")
@@ -251,6 +329,18 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         for n in names:
             print(n)
+        return 0
+
+    if args.list_styles:
+        print("Hull styles:")
+        for h in HullStyle:
+            print(f"  {h.value}")
+        print("Engine styles:")
+        for e in EngineStyle:
+            print(f"  {e.value}")
+        print("Wing styles:")
+        for w in WingStyle:
+            print(f"  {w.value}")
         return 0
 
     # Determine the seed list.
