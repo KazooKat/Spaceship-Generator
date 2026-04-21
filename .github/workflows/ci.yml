@@ -44,5 +44,13 @@ jobs:
       - name: Lint (ruff)
         run: ruff check .
 
-      - name: Test (pytest)
-        run: pytest -q
+      - name: Test (pytest with coverage)
+        run: pytest --cov=spaceship_generator --cov-report=xml --cov-report=term --cov-fail-under=90
+
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage.xml
+          if-no-files-found: warn
