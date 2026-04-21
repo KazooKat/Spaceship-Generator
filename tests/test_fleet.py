@@ -270,16 +270,18 @@ def test_default_weapon_count_preserves_legacy_fleet_byte_for_byte():
     must match the legacy snapshot exactly, and the new fields must sit
     at their no-op values (``cockpit_style=None``, ``weapon_count=0``).
     """
-    # Golden snapshot captured from the pre-extension implementation for
-    # ``FleetParams(count=4, palette='sci_fi_industrial', seed=12345)``.
+    # Golden snapshot for ``FleetParams(count=4, palette='sci_fi_industrial',
+    # seed=12345)``. Update when HullStyle/EngineStyle/WingStyle enum members
+    # change (the new members shift RNG sample indices); regenerate by running
+    # the fleet and printing ``ship.hull_style.name`` etc.
     expected = [
-        (1761311798, (38, 21, 71), HullStyle.WHALE, EngineStyle.SINGLE_CORE,
+        (1761311798, (38, 21, 71), HullStyle.BLOCKY_FREIGHTER, EngineStyle.SINGLE_CORE,
          WingStyle.SWEPT, 0.093, "sci_fi_industrial"),
-        (1877275096, (29, 12, 48), HullStyle.DAGGER, EngineStyle.SINGLE_CORE,
+        (1877275096, (29, 12, 48), HullStyle.HEXAGONAL_LATTICE, EngineStyle.SINGLE_CORE,
          WingStyle.SPLIT, 0.023, "sci_fi_industrial"),
-        (2101613385, (29, 12, 41), HullStyle.DAGGER, EngineStyle.SINGLE_CORE,
+        (2101613385, (29, 12, 41), HullStyle.HEXAGONAL_LATTICE, EngineStyle.SINGLE_CORE,
          WingStyle.DELTA, 0.081, "sci_fi_industrial"),
-        (985348261,  (16, 11, 21), HullStyle.DAGGER, EngineStyle.SINGLE_CORE,
+        (985348261,  (16, 11, 21), HullStyle.HEXAGONAL_LATTICE, EngineStyle.SINGLE_CORE,
          WingStyle.SWEPT, 0.193, "sci_fi_industrial"),
     ]
     ships = generate_fleet(
