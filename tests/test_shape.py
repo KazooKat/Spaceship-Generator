@@ -347,6 +347,112 @@ def test_cockpit_pointed_reaches_nose_and_tapers():
     assert p_glass[:, 2].max() >= b_glass[:, 2].max()
 
 
+def _new_cockpit_styles() -> list[CockpitStyle]:
+    return [
+        CockpitStyle.CANOPY_DOME,
+        CockpitStyle.WRAP_BRIDGE,
+        CockpitStyle.OFFSET_TURRET,
+    ]
+
+
+@pytest.mark.parametrize("style", _new_cockpit_styles())
+def test_new_cockpit_variant_is_deterministic(style):
+    """New cockpit variants are pure functions of (seed, params): repeat runs match byte-for-byte."""
+    a = _shape_without_randoms(2024, style)
+    b = _shape_without_randoms(2024, style)
+    assert np.array_equal(a, b)
+
+
+@pytest.mark.parametrize("style", _new_cockpit_styles())
+def test_new_cockpit_variant_places_glass(style):
+    """Each new variant must produce at least one COCKPIT_GLASS (window) voxel."""
+    grid = _shape_without_randoms(5, style)
+    glass = np.argwhere(grid == Role.COCKPIT_GLASS)
+    assert len(glass) > 0, f"{style} produced zero glass voxels"
+
+
+@pytest.mark.parametrize("style", _new_cockpit_styles())
+def test_new_cockpit_variant_stays_in_bounds(style):
+    """Every non-empty voxel in the new variants must lie inside the grid."""
+    grid = _shape_without_randoms(13, style)
+    W, H, L = grid.shape
+    nonempty = np.argwhere(grid != Role.EMPTY)
+    assert len(nonempty) > 0
+    assert nonempty[:, 0].min() >= 0 and nonempty[:, 0].max() < W
+    assert nonempty[:, 1].min() >= 0 and nonempty[:, 1].max() < H
+    assert nonempty[:, 2].min() >= 0 and nonempty[:, 2].max() < L
+
+
+@pytest.mark.parametrize("style", _new_cockpit_styles())
+def test_new_cockpit_variant_does_not_reduce_hull_count(style):
+    """Cockpit stage must not destroy hull structure: the post-cockpit HULL count
+    must be >= the pre-cockpit HULL count (monotonic-increasing)."""
+    # We can't easily inspect mid-pipeline state via generate_shape, so compare
+    # a hull-only grid against the hull+cockpit grid by running the cockpit
+    # stage directly on a fresh copy.
+    from spaceship_generator.shape.cockpit import _place_cockpit
+    from spaceship_generator.shape.hull import _place_hull
+
+    p = ShapeParams(
+        length=24, width_max=12, height_max=10,
+        cockpit_style=style, greeble_density=0.0,
+        wing_prob=0.0, engine_count=0,
+    )
+    rng = np.random.default_rng(99)
+    grid = np.zeros((p.width_max, p.height_max, p.length), dtype=np.int8)
+    _place_hull(grid, rng, p)
+    hull_before = int((grid == Role.HULL).sum())
+    assert hull_before > 0  # sanity: hull exists before cockpit
+    _place_cockpit(grid, rng, p)
+    hull_after = int((grid == Role.HULL).sum())
+    # New variants ADD hull cells (dome collar / bridge frame / turret walls),
+    # and never erase existing hull — so count is strictly non-decreasing.
+    assert hull_after >= hull_before, (
+        f"{style} reduced HULL count: {hull_before} -> {hull_after}"
+    )
+
+
+def test_new_cockpit_variants_produce_distinguishable_grids():
+    """The three new variants must produce distinct ships on the same seed."""
+    seed = 77
+    dome = _shape_without_randoms(seed, CockpitStyle.CANOPY_DOME)
+    bridge = _shape_without_randoms(seed, CockpitStyle.WRAP_BRIDGE)
+    turret = _shape_without_randoms(seed, CockpitStyle.OFFSET_TURRET)
+
+    assert not np.array_equal(dome, bridge)
+    assert not np.array_equal(dome, turret)
+    assert not np.array_equal(bridge, turret)
+
+    # Their COCKPIT_GLASS footprints must also differ pairwise.
+    def glass_set(g: np.ndarray) -> set[tuple[int, int, int]]:
+        return {tuple(pos) for pos in np.argwhere(g == Role.COCKPIT_GLASS)}
+
+    gd, gb, gt = glass_set(dome), glass_set(bridge), glass_set(turret)
+    assert gd and gb and gt
+    assert gd != gb and gd != gt and gb != gt
+
+
+def test_offset_turret_glass_is_above_hull_not_centerline():
+    """OFFSET_TURRET's raised glass must sit above typical hull height; it is
+    a protrusion, not a flush strip like INTEGRATED."""
+    grid = _shape_without_randoms(31, CockpitStyle.OFFSET_TURRET)
+    H = grid.shape[1]
+    glass = np.argwhere(grid == Role.COCKPIT_GLASS)
+    assert len(glass) > 0
+    # Raised turret: at least one glass voxel is strictly in the upper half.
+    assert glass[:, 1].max() >= H // 2
+
+
+def test_wrap_bridge_window_extends_far_forward():
+    """WRAP_BRIDGE's window strip should reach close to the nose (last row)."""
+    grid = _shape_without_randoms(41, CockpitStyle.WRAP_BRIDGE)
+    L = grid.shape[2]
+    glass = np.argwhere(grid == Role.COCKPIT_GLASS)
+    assert len(glass) > 0
+    # The bridge spans the forward third, so glass must land at or past ~L-2.
+    assert glass[:, 2].max() >= L - 2
+
+
 def test_wing_length_guard_on_short_ship():
     """Very short ships should still produce a valid (non-truncated) wing when wings are forced on."""
     # length=8 is the minimum allowed. With wing_prob=1.0 we guarantee wings run.

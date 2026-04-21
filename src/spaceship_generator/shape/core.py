@@ -28,6 +28,9 @@ class CockpitStyle(str, Enum):
     BUBBLE = "bubble"
     POINTED = "pointed"
     INTEGRATED = "integrated"
+    CANOPY_DOME = "canopy_dome"
+    WRAP_BRIDGE = "wrap_bridge"
+    OFFSET_TURRET = "offset_turret"
 
 
 @dataclass
