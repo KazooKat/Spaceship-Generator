@@ -23,8 +23,7 @@ Design notes
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from typing import Sequence
+from dataclasses import dataclass
 
 from .engine_styles import EngineStyle
 from .structure_styles import HullStyle
