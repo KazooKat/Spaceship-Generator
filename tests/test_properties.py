@@ -23,14 +23,18 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
+from spaceship_generator.engine_styles import EngineStyle
+from spaceship_generator.fleet import FleetParams, generate_fleet
 from spaceship_generator.generator import generate
-from spaceship_generator.palette import Role
+from spaceship_generator.palette import Palette, Role, load_palette, palettes_dir
+from spaceship_generator.presets import SHIP_PRESETS, apply_preset
 from spaceship_generator.shape import (
     CockpitStyle,
     ShapeParams,
     StructureStyle,
     generate_shape,
 )
+from spaceship_generator.structure_styles import HullStyle
 from spaceship_generator.wing_styles import WingStyle
 
 # Keep grids modest so the property suite stays fast on CI.
@@ -315,3 +319,247 @@ def test_snapshot_seed_is_stable(seed):
     assert np.array_equal(first, second)
     # And the grid must be non-empty.
     assert (first != Role.EMPTY).sum() > 0
+
+
+# ==========================================================================
+# Style-space edge cases (Wave 2).
+#
+# These ten tests probe the corners of the expanded style-space — full
+# HullStyle × EngineStyle and StructureStyle × HullStyle matrices, weapon
+# and greeble scaling, fleet cardinality, preset coverage, and a handful
+# of pure-library determinism checks (cockpit, large seed, palette hash).
+# Anything end-to-end runs inside ``settings(deadline=None, max_examples=20)``
+# because full-pipeline generation can blow past the default 3 s deadline
+# on CI.
+# ==========================================================================
+
+_hull_styles = st.sampled_from(list(HullStyle))
+_engine_styles = st.sampled_from(list(EngineStyle))
+
+_HEAVY_SETTINGS = settings(
+    deadline=None,
+    max_examples=20,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)
+
+
+@given(seed=_seeds, hull=_hull_styles, engine=_engine_styles)
+@_HEAVY_SETTINGS
+def test_property_hull_x_engine_matrix_produces_valid_grid(
+    tmp_path_factory, seed, hull, engine
+):
+    """(HullStyle × EngineStyle) → non-empty grid with all voxels in bounds."""
+    out_dir = tmp_path_factory.mktemp("hxe")
+    params = ShapeParams(length=24, width_max=12, height_max=8)
+    res = generate(
+        seed,
+        shape_params=params,
+        hull_style=hull,
+        engine_style=engine,
+        out_dir=out_dir,
+    )
+    W, H, L = res.role_grid.shape
+    assert (W, H, L) == (12, 8, 24)
+    assert res.block_count > 0
+    filled = np.argwhere(res.role_grid != Role.EMPTY)
+    # Every filled voxel sits inside the declared (W, H, L) bounds.
+    assert filled.size > 0
+    assert filled[:, 0].min() >= 0 and filled[:, 0].max() < W
+    assert filled[:, 1].min() >= 0 and filled[:, 1].max() < H
+    assert filled[:, 2].min() >= 0 and filled[:, 2].max() < L
+
+
+@given(
+    seed=_seeds,
+    weapon_count=st.integers(min_value=0, max_value=8),
+)
+@_HEAVY_SETTINGS
+def test_property_weapon_count_scales_weapon_specific_roles(
+    tmp_path_factory, seed, weapon_count
+):
+    """weapon_count in [0, 8]: weapon-specific roles are monotonic vs the baseline.
+
+    Every weapon builder writes into ``LIGHT`` and ``HULL_DARK`` (turret caps,
+    missile/plasma glow dots, dark pedestals), so the combined
+    ``LIGHT + HULL_DARK`` count is a reliable weapon-activity signal. We do
+    NOT assert on ``HULL`` since weapon builders place HULL cells too — so
+    HULL scales with weapon_count as well. block_count likewise grows.
+    """
+    out_dir = tmp_path_factory.mktemp("wc")
+    params = ShapeParams(length=24, width_max=12, height_max=8)
+    baseline = generate(
+        seed, shape_params=params, weapon_count=0, out_dir=out_dir,
+        filename="base.litematic",
+    )
+    variant = generate(
+        seed, shape_params=params, weapon_count=weapon_count, out_dir=out_dir,
+        filename="var.litematic",
+    )
+    base_weapon_cells = int(
+        (baseline.role_grid == Role.LIGHT).sum()
+        + (baseline.role_grid == Role.HULL_DARK).sum()
+    )
+    var_weapon_cells = int(
+        (variant.role_grid == Role.LIGHT).sum()
+        + (variant.role_grid == Role.HULL_DARK).sum()
+    )
+    # With count=0 the two runs are byte-equal; with count>0 the weapon
+    # writer can only *add* LIGHT/HULL_DARK (it writes into Role.EMPTY).
+    assert var_weapon_cells >= base_weapon_cells
+    assert variant.block_count >= baseline.block_count
+    if weapon_count == 0:
+        assert np.array_equal(variant.role_grid, baseline.role_grid)
+
+
+@given(seed=_seeds)
+@_HEAVY_SETTINGS
+def test_property_greeble_density_monotonic_in_block_count(tmp_path_factory, seed):
+    """For a fixed seed, block_count is monotonic-non-decreasing in density.
+
+    ``scatter_greebles`` writes into empty cells only, so higher density
+    can only *add* voxels. We sample three densities from the legal
+    [0, 1] range exposed by ``generate`` and lock in ``bc_high >= bc_low``.
+    """
+    out_dir = tmp_path_factory.mktemp("gd")
+    params = ShapeParams(length=24, width_max=12, height_max=8)
+    low = generate(
+        seed, shape_params=params, greeble_density=0.0, out_dir=out_dir,
+        filename="lo.litematic",
+    )
+    mid = generate(
+        seed, shape_params=params, greeble_density=0.5, out_dir=out_dir,
+        filename="md.litematic",
+    )
+    high = generate(
+        seed, shape_params=params, greeble_density=1.0, out_dir=out_dir,
+        filename="hi.litematic",
+    )
+    assert low.block_count <= mid.block_count <= high.block_count
+
+
+@given(
+    count=st.integers(min_value=1, max_value=20),
+    coherence=st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
+    seed=_seeds,
+)
+@_HEAVY_SETTINGS
+def test_property_fleet_produces_count_ships_with_distinct_seeds(
+    count, coherence, seed
+):
+    """FleetParams(count=1..20, coherence in [0, 1]) → exactly count ships.
+
+    Per-ship seeds are deterministically drawn from the fleet RNG; the
+    seed space (0..2^31-1) is vast enough that a count-20 fleet hitting
+    a collision is statistically impossible. We assert both cardinality
+    and seed uniqueness.
+    """
+    fp = FleetParams(
+        count=count,
+        palette="sci_fi_industrial",
+        style_coherence=coherence,
+        seed=seed,
+    )
+    ships = generate_fleet(fp)
+    assert len(ships) == count
+    assert len({s.seed for s in ships}) == count
+
+
+@pytest.mark.parametrize("preset_name", sorted(SHIP_PRESETS))
+def test_property_preset_generates_non_empty_ship(tmp_path, preset_name):
+    """Every preset in SHIP_PRESETS: apply → generate → block_count > 0.
+
+    Parametrized (rather than hypothesized) so each preset gets its own
+    pytest node for targeted failure reports. apply_preset returns a
+    fresh dict per call so the parametrize collector is safe.
+    """
+    kwargs = apply_preset(preset_name)
+    res = generate(1337, out_dir=tmp_path, **kwargs)
+    assert res.block_count > 0
+    assert res.litematic_path.exists()
+    # Shape must match the preset's declared (width, height, length).
+    width, height, length = SHIP_PRESETS[preset_name]["size"]
+    assert res.shape == (width, height, length)
+
+
+def test_property_shape_minimums_produce_valid_ship():
+    """Minimum legal dims (W=4, H=4, L=8) still produce a symmetric, filled ship.
+
+    Exercised over a small fixed seed set rather than via Hypothesis so the
+    assertion locks a boundary rather than a probabilistic property.
+    """
+    p = ShapeParams(length=8, width_max=4, height_max=4)
+    for seed in (0, 1, 2, 42, 9001):
+        grid = generate_shape(seed, p)
+        assert grid.shape == (4, 4, 8)
+        assert np.array_equal(grid, grid[::-1, :, :])
+        assert (grid != Role.EMPTY).sum() > 0
+
+
+@given(seed=_seeds, cockpit=_cockpit_styles)
+@_SHAPE_SETTINGS
+def test_property_cockpit_style_deterministic_per_seed(seed, cockpit):
+    """Same (seed, cockpit_style) → byte-identical grid across repeat calls."""
+    p = ShapeParams(
+        length=20, width_max=10, height_max=6, cockpit_style=cockpit,
+    )
+    a = generate_shape(seed, p)
+    b = generate_shape(seed, p)
+    assert np.array_equal(a, b)
+
+
+@given(seed=st.integers(min_value=2**30, max_value=2**31 - 1))
+@_SHAPE_SETTINGS
+def test_property_large_seed_still_deterministic(seed):
+    """Seeds close to int32 max produce deterministic, valid grids."""
+    p = ShapeParams(length=24, width_max=12, height_max=8)
+    a = generate_shape(seed, p)
+    b = generate_shape(seed, p)
+    assert np.array_equal(a, b)
+    # And the grid still obeys bilateral symmetry and has filled cells.
+    assert np.array_equal(a, a[::-1, :, :])
+    assert (a != Role.EMPTY).sum() > 0
+
+
+@given(
+    seed=_seeds,
+    structure=st.sampled_from(list(StructureStyle)),
+    hull=_hull_styles,
+)
+@_HEAVY_SETTINGS
+def test_property_structure_x_hull_cross_product_no_crash(seed, structure, hull):
+    """Every (StructureStyle, HullStyle) pair generates a valid grid without crashing.
+
+    This is the cross-product smoke test the individual style tests don't
+    cover: structure_style drives taper + engine overrides while hull_style
+    rewrites the base hull. The two dials *must* compose.
+    """
+    p = ShapeParams(
+        length=24, width_max=12, height_max=8, structure_style=structure,
+    )
+    grid = generate_shape(seed, p, hull_style=hull)
+    assert grid.shape == (12, 8, 24)
+    # All cells must still be legal Role values.
+    valid = {int(r) for r in Role}
+    assert {int(v) for v in np.unique(grid).tolist()}.issubset(valid)
+
+
+@pytest.mark.parametrize(
+    "palette_name",
+    ["sci_fi_industrial", "sleek_modern", "cyberpunk_neon", "neon_arcade"],
+)
+def test_property_palette_parse_is_stable(palette_name):
+    """Parsing the same palette YAML twice yields equal Palette objects.
+
+    :class:`Palette` is a frozen dataclass, so ``==`` compares name + blocks
+    + preview_colors. The round-trip check guards against accidental
+    dependence on load-time state (e.g. mutation of a shared cache).
+    """
+    path = palettes_dir() / f"{palette_name}.yaml"
+    a = Palette.load(path)
+    b = Palette.load(path)
+    assert a == b
+    # Loading via the higher-level helper must agree too.
+    c = load_palette(palette_name)
+    assert a == c
+    # Name round-trips verbatim.
+    assert a.name == b.name
