@@ -75,6 +75,8 @@ def render_preview(
     *,
     size: tuple[int, int] = (800, 800),
     view: tuple[float, float] = (22.0, -62.0),
+    azimuth_deg: float | None = None,
+    elevation_deg: float | None = None,
     color_override: dict | None = None,
     antialias: bool = True,
     specular: bool = True,
@@ -99,11 +101,28 @@ def render_preview(
         solid backdrop composited behind the render. Use the sentinel
         ``"transparent"`` to emit an RGBA PNG with no backdrop. Default is the
         dark console color ``"#0d0f12"``.
+
+    Camera control:
+      ``view``: legacy ``(elevation, azimuth)`` tuple, still honored as the
+        baseline when the new kwargs are ``None``. Default ``(22.0, -62.0)``
+        preserves the established isometric look.
+      ``elevation_deg`` / ``azimuth_deg``: optional overrides (in degrees) for
+        matplotlib's ``ax.view_init``. When ``None`` (the default), the
+        corresponding component of ``view`` is used — so the default call
+        produces byte-identical output to previous versions. Must be finite
+        when provided.
     """
     if role_grid.ndim != 3:
         raise ValueError(f"role_grid must be 3D, got shape {role_grid.shape}")
     if not np.isfinite(view[0]) or not np.isfinite(view[1]):
         raise ValueError("view angles must be finite")
+    if elevation_deg is not None and not np.isfinite(elevation_deg):
+        raise ValueError("elevation_deg must be finite")
+    if azimuth_deg is not None and not np.isfinite(azimuth_deg):
+        raise ValueError("azimuth_deg must be finite")
+
+    elev = view[0] if elevation_deg is None else float(elevation_deg)
+    azim = view[1] if azimuth_deg is None else float(azimuth_deg)
 
     transparent_bg = background == "transparent"
     if not transparent_bg:
@@ -149,7 +168,7 @@ def render_preview(
 
         # Preserve real aspect ratio (X × Z (length) × Y (height)).
         ax.set_box_aspect((W, L, H))
-        ax.view_init(elev=view[0], azim=view[1])
+        ax.view_init(elev=elev, azim=azim)
         ax.set_axis_off()
         fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
 

@@ -207,3 +207,45 @@ def test_default_within_2pct_of_legacy_baseline(role_grid, palette):
     ).max(axis=-1)
     pct_large_diff = float((rgb_diff > 32).mean()) * 100.0
     assert pct_large_diff < 2.0
+
+
+# ----- azimuth_deg / elevation_deg camera-control kwargs -------------------
+
+
+def test_azimuth_elevation_defaults_are_byte_identical(role_grid, palette):
+    """Omitting the new kwargs must produce bytes identical to a call that
+    predates them — guaranteeing backcompat for snapshot/determinism tests."""
+    baseline = render_preview(role_grid, palette, size=(250, 250))
+    with_none_kwargs = render_preview(
+        role_grid,
+        palette,
+        size=(250, 250),
+        azimuth_deg=None,
+        elevation_deg=None,
+    )
+    assert baseline == with_none_kwargs
+
+
+def test_azimuth_deg_changes_output(role_grid, palette):
+    default = render_preview(role_grid, palette, size=(250, 250))
+    rotated = render_preview(role_grid, palette, size=(250, 250), azimuth_deg=45.0)
+    assert default != rotated
+    assert rotated.startswith(PNG_MAGIC)
+
+
+def test_elevation_deg_changes_output(role_grid, palette):
+    default = render_preview(role_grid, palette, size=(250, 250))
+    tilted = render_preview(role_grid, palette, size=(250, 250), elevation_deg=-10.0)
+    assert default != tilted
+    assert tilted.startswith(PNG_MAGIC)
+
+
+def test_azimuth_elevation_reject_nonfinite(role_grid, palette):
+    with pytest.raises(ValueError):
+        render_preview(role_grid, palette, size=(100, 100), azimuth_deg=float("nan"))
+    with pytest.raises(ValueError):
+        render_preview(role_grid, palette, size=(100, 100), azimuth_deg=float("inf"))
+    with pytest.raises(ValueError):
+        render_preview(role_grid, palette, size=(100, 100), elevation_deg=float("nan"))
+    with pytest.raises(ValueError):
+        render_preview(role_grid, palette, size=(100, 100), elevation_deg=float("-inf"))
