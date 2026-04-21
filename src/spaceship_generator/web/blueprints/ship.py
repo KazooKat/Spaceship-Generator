@@ -26,13 +26,13 @@ from flask import (
     url_for,
 )
 
+from ... import presets
 from ...block_colors import block_alpha, is_translucent
 from ...engine_styles import EngineStyle, build_engines
 from ...fleet import SIZE_TIERS, FleetParams, generate_fleet
 from ...generator import generate
 from ...greeble_styles import scatter_greebles
 from ...palette import Role, list_palettes, load_palette
-from ... import presets
 from ...shape import CockpitStyle, ShapeParams, StructureStyle, generate_shape
 from ...structure_styles import HullStyle
 from ...texture import assign_roles

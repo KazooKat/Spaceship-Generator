@@ -651,7 +651,7 @@ def _print_stats(result: GenerationResult) -> None:
     values, counts = np.unique(grid, return_counts=True)
     # ``np.unique`` returns ndarray scalars — cast to plain ints so we can
     # feed them to ``Role(...)`` without surprises.
-    counts_by_role: dict[int, int] = {int(v): int(c) for v, c in zip(values, counts)}
+    counts_by_role: dict[int, int] = {int(v): int(c) for v, c in zip(values, counts, strict=True)}
 
     total_cells = int(grid.size)
     empty_count = counts_by_role.get(int(Role.EMPTY), 0)

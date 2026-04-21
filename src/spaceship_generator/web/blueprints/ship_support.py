@@ -23,6 +23,7 @@ from typing import Any
 
 from flask import Flask, current_app, render_template, url_for
 
+from ... import presets as _presets
 from ...block_colors import (
     approximate_block_color,
     block_texture_png,
@@ -31,7 +32,6 @@ from ...block_colors import (
 from ...engine_styles import EngineStyle
 from ...generator import GenerationResult
 from ...palette import Palette, Role, list_palettes, load_palette
-from ... import presets as _presets
 from ...shape import CockpitStyle, ShapeParams, StructureStyle
 from ...structure_styles import HullStyle
 from ...texture import TextureParams

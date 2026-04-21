@@ -286,7 +286,7 @@ def test_default_weapon_count_preserves_legacy_fleet_byte_for_byte():
         FleetParams(count=4, palette="sci_fi_industrial", seed=12345)
     )
     assert len(ships) == len(expected)
-    for ship, legacy in zip(ships, expected):
+    for ship, legacy in zip(ships, expected, strict=True):
         assert (
             ship.seed,
             ship.dims,
