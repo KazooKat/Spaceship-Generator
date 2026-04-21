@@ -434,6 +434,25 @@
            app.js's bindTopbar + bindNumCtls do, and the duplicate click
            handler made every Generate / Random press POST /generate twice.
            Single source of truth now lives in app.js. #}
+
+        {# ── Live preview ─────────────────────────────────────────
+           Small 1/4-resolution preview that auto-refreshes as the user
+           drags sliders / switches style pickers. Off by default — the
+           checkbox state is persisted in localStorage by live_preview.js
+           so it survives page reloads. The spinner reuses the existing
+           .progress-bar styling from style.css. ─────────────────── #}
+        <div id="live-preview" class="panel-group">
+            <label class="checkbox" for="live-preview-toggle">
+                <input type="checkbox" id="live-preview-toggle">
+                Live preview
+            </label>
+            <div id="live-preview-spinner" class="progress-bar" aria-hidden="true">
+                <div class="progress-bar__track"></div>
+            </div>
+            <img id="live-preview-img" alt="Live spaceship preview"
+                 style="max-width:100%;display:block;">
+            <p class="sub">live preview uses 1/4-resolution for speed</p>
+        </div>
     </aside>
 
     {# ──────────────────────────────────────────────────────────────
@@ -632,6 +651,10 @@
     </template>
 
 </div>
+
+{# Debounced live-preview fetcher. Loaded defer + after base.html's core
+   scripts so it runs once the form DOM exists. #}
+<script src="{{ url_for('static', filename='live_preview.js') }}" defer></script>
 
 {# After HTMX swaps in new content, re-init Lucide icons inside the swapped
    subtree so data-lucide placeholders in the partial get real SVGs. This is

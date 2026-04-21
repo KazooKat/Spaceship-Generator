@@ -707,3 +707,93 @@ class TestStylePickers:
             assert h.value in data["hull_styles"]
         for e in EngineStyle:
             assert e.value in data["engine_styles"]
+
+
+# --- TestPreviewLite --------------------------------------------------------
+
+
+@pytest.mark.ui
+class TestPreviewLite:
+    """``GET /preview-lite`` — debounced live-preview PNG endpoint.
+
+    The live-preview sidebar toggle hits this route on every debounced
+    form change. Contract assertions here pin the small footprint that the
+    client-side code relies on: PNG mimetype, Cache-Control header, bad
+    input → 400 (not a 500), and rate-limiter still applies (no bypass).
+    """
+
+    def test_preview_lite_returns_png_200(self, client):
+        resp = client.get(
+            "/preview-lite?seed=42&palette=sci_fi_industrial"
+        )
+        assert resp.status_code == 200, (
+            f"expected 200 PNG, got {resp.status_code}"
+        )
+        assert resp.mimetype == "image/png", (
+            f"expected image/png mimetype, got {resp.mimetype!r}"
+        )
+        # Real PNG magic header — we rendered a non-empty image.
+        body = resp.get_data()
+        assert body[:8] == b"\x89PNG\r\n\x1a\n", "response is not a valid PNG"
+        assert len(body) > 0, "PNG body empty"
+
+    def test_preview_lite_missing_required_param_returns_400(self, client):
+        # ``palette`` has a safe default; to force 400, feed an invalid enum.
+        resp = client.get(
+            "/preview-lite?seed=1&palette=sci_fi_industrial"
+            "&structure_style=not_a_real_structure"
+        )
+        assert resp.status_code == 400, (
+            f"expected 400 on invalid structure_style, got {resp.status_code}"
+        )
+
+    def test_preview_lite_has_cache_control_header(self, client):
+        resp = client.get(
+            "/preview-lite?seed=7&palette=sci_fi_industrial"
+        )
+        assert resp.status_code == 200
+        cc = resp.headers.get("Cache-Control", "")
+        # Both ``public`` and a max-age directive must be present.
+        assert "public" in cc and "max-age=30" in cc, (
+            f"expected Cache-Control 'public, max-age=30', got {cc!r}"
+        )
+
+    def test_index_contains_live_preview_toggle(self, client):
+        body = client.get("/").get_data(as_text=True)
+        assert _has_any(body, *_id_attr("live-preview-toggle")), (
+            "index.html missing #live-preview-toggle checkbox"
+        )
+        assert _has_any(body, *_id_attr("live-preview-img")), (
+            "index.html missing #live-preview-img output img"
+        )
+        # Caption about reduced resolution, shown to set expectations.
+        assert "1/4-resolution" in body, (
+            "index.html missing live-preview resolution caption"
+        )
+        # Script include from the task spec.
+        assert "live_preview.js" in body, (
+            "index.html missing live_preview.js script include"
+        )
+
+    def test_preview_lite_rate_limiter_still_applies(self, tmp_path, monkeypatch):
+        """Spam 31 requests with a non-loopback X-Forwarded-For header →
+        the 31st must 429 (limit defaults to 30/min). Loopback is exempt
+        so we inject the fake upstream IP via XFF so the limiter counts."""
+        # Build a fresh app; reset default (30/min) so exactly one request
+        # past the limit trips the limiter.
+        monkeypatch.delenv("SHIPFORGE_RATE_LIMIT", raising=False)
+        monkeypatch.delenv("SHIPFORGE_RATE_WINDOW", raising=False)
+        app = create_app()
+        app.config["TESTING"] = True
+        monkeypatch.setattr(app, "instance_path", str(tmp_path))
+        url = "/preview-lite?seed=1&palette=sci_fi_industrial"
+        # Minimal ship dims so 30 renders complete fast enough under test.
+        url += "&length=8&width=4&height=4&engines=0&wing_prob=0.0"
+        headers = {"X-Forwarded-For": "203.0.113.42"}
+        with app.test_client() as c:
+            statuses: list[int] = []
+            for _ in range(31):
+                statuses.append(c.get(url, headers=headers).status_code)
+        assert statuses.count(429) >= 1, (
+            f"expected at least one 429 after 31 spam requests; statuses={statuses}"
+        )

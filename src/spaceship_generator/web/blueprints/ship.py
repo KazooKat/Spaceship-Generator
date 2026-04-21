@@ -25,11 +25,13 @@ from flask import (
 )
 
 from ...block_colors import block_alpha, is_translucent
-from ...engine_styles import EngineStyle
+from ...engine_styles import EngineStyle, build_engines
 from ...generator import generate
+from ...greeble_styles import scatter_greebles
 from ...palette import Role, list_palettes, load_palette
-from ...shape import CockpitStyle, StructureStyle
+from ...shape import CockpitStyle, StructureStyle, generate_shape
 from ...structure_styles import HullStyle
+from ...texture import assign_roles
 from ...wing_styles import WingStyle
 from .ratelimit import check_rate_limit
 from .ship_support import (
@@ -217,6 +219,98 @@ def preview(gen_id: str):
         color_override=approximate_role_colors(pal),
     )
     return send_file(io.BytesIO(png), mimetype="image/png")
+
+
+@ship_bp.route("/preview-lite", endpoint="preview_lite")
+def preview_lite():
+    """Return a small, quick-render PNG preview for the given params.
+
+    Used by the debounced live-preview toggle in the sidebar — as the user
+    drags sliders / switches enums, the client refetches this endpoint with
+    the current form query string and updates an <img> src. Compared with
+    ``POST /generate``, this route:
+
+    * Reads params from ``request.args`` (so it's a cheap GET — cacheable).
+    * Skips the .litematic export entirely (big I/O + serialization win).
+    * Runs only the shape → role grid → matplotlib preview pipeline, at a
+      reduced size (≤300px) so renders stay snappy even on a hot slider.
+    * Attaches ``Cache-Control: public, max-age=30`` so identical queries
+      (same seed + same params) don't re-render for half a minute.
+
+    Rate-limited via the shared per-IP limiter so spamming the endpoint
+    can't pin the server — see ``check_rate_limit``.
+    """
+    limited = check_rate_limit(as_json=False)
+    if limited is not None:
+        return limited
+    try:
+        seed, palette_name, shape_params, texture_params, extras = (
+            build_params_from_source(request.args)
+        )
+    except (ValueError, KeyError) as exc:
+        # Bad param value (ValueError from parsers) or a required key that
+        # downstream code can't cope with. Either way it's a 400.
+        return (str(exc), 400)
+
+    try:
+        pal = load_palette(palette_name)
+    except (FileNotFoundError, ValueError) as exc:
+        return (str(exc), 400)
+
+    # Mirror the relevant pieces of ``generate`` without the export step.
+    # This stays structurally parallel to ``scripts/gen_gallery.py`` so
+    # behavior matches the gallery tool.
+    hull_style = extras.get("hull_style")
+    engine_style = extras.get("engine_style")
+    gen_greeble_density = float(extras.get("greeble_density") or 0.0)
+
+    shape_grid = generate_shape(seed, shape_params, hull_style=hull_style)
+
+    if engine_style is not None:
+        W, H, L = shape_grid.shape
+        engine_mask = (shape_grid == Role.ENGINE) | (shape_grid == Role.ENGINE_GLOW)
+        shape_grid[engine_mask] = Role.EMPTY
+        engine_rng = np.random.default_rng(seed ^ 0xE5)
+        base_radius = max(1, min(W, H) // 10)
+        engine_length = max(2, L // 8)
+        spread = max(2, W // 4)
+        cy_engine = max(base_radius + 1, H // 2 - 1)
+        for x, y, z, role in build_engines(
+            shape_grid,
+            engine_style,
+            position=(W // 2, cy_engine, 0),
+            size=(base_radius, engine_length, spread),
+            rng=engine_rng,
+        ):
+            if 0 <= x < W and 0 <= y < H and 0 <= z < L:
+                shape_grid[x, y, z] = role
+
+    if gen_greeble_density > 0.0:
+        W, H, L = shape_grid.shape
+        greeble_rng = np.random.default_rng(seed ^ 0x6E)
+        for x, y, z, role in scatter_greebles(
+            shape_grid, greeble_rng, gen_greeble_density
+        ):
+            if 0 <= x < W and 0 <= y < H and 0 <= z < L:
+                if shape_grid[x, y, z] == Role.EMPTY:
+                    shape_grid[x, y, z] = role
+
+    role_grid = assign_roles(shape_grid, texture_params)
+
+    # Matplotlib preview at reduced resolution. 256 sits under the ≤300px cap
+    # and renders in a fraction of the full-size preview time, which is what
+    # makes the debounced live-refresh tolerable.
+    from ...preview import render_preview
+    png = render_preview(
+        role_grid,
+        pal,
+        size=(256, 256),
+        color_override=approximate_role_colors(pal),
+    )
+
+    resp = send_file(io.BytesIO(png), mimetype="image/png")
+    resp.headers["Cache-Control"] = "public, max-age=30"
+    return resp
 
 
 @ship_bp.route("/voxels/<gen_id>.json", endpoint="voxels")
