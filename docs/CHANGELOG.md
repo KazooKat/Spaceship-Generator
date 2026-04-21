@@ -7,24 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Wave-1 content expansion and infrastructure landings.
+## [0.2.0] - 2026-04-21
+
+Wave-1 and wave-2 content expansion, performance, and infrastructure landings.
 
 ### Added
 - **Hull styles**: ARROW, SAUCER, WHALE, DAGGER, BLOCKY_FREIGHTER silhouettes (`e70d2e0`).
 - **Engine styles**: `EngineStyle` enum with 5 variants (`08dfe15`).
+- **Wing styles**: `WingStyle` enum with 5 silhouettes — swept, delta, tapered, gull, split (`5a7ef95`).
+- **Cockpit styles**: CANOPY_DOME, WRAP_BRIDGE, OFFSET_TURRET variants (`e93bbb0`).
 - **Greeble styles**: 6 greeble types plus `scatter_greebles` helper (`efe67cc`).
+- **Weapon styles**: `weapon_styles` library with 5 types plus scatter helper (`6e98599`).
+- **Fleet generator**: coherent multi-ship planning (`0d0d69f`).
 - **Palettes**: `steampunk_brass`, `biopunk_fungal`, `cyberpunk_neon` built-ins plus palette author guide (`8acbe19`).
+- **Palette linter**: validator script plus tests (`caa451c`).
+- **Generator integration**: HullStyle + EngineStyle + `scatter_greebles` wired into the pipeline (`daa0313`).
+- **CLI flags**: `--hull-style`, `--engine-style`, `--wing-style`, `--greeble-density`, `--list-styles` (`34f7134`); weapon-count and fleet-generation flags (`0f4af3c`).
 - **Web UI polish**: palette swatches, seed copy button, shortcuts help overlay, responsive layout, theme toggle (`81ee2b1`).
-- **Benchmarking**: `bench_generator` script with baseline performance report (`3c7b839`).
+- **Web style pickers**: hull, engine, wing pickers plus greeble-density slider (`65c17ed`).
+- **Web live preview**: `/preview-lite` endpoint with debounced live preview toggle (`d69af03`).
+- **Preview quality**: supersampling antialias, specular highlights, transparent background (`c348db7`).
+- **Smoke tests**: end-to-end smoke script plus `ci-subset` pytest wrapper (`59e6aa4`).
 - **Property tests**: hypothesis-based property tests; line coverage raised from 86% to 97% (`2d53980`).
+- **Benchmarking**: `bench_generator` script with baseline performance report (`3c7b839`); perf-bench PR-comment workflow plus compare script (`ae5744d`).
+- **Docker**: Dockerfile, `.dockerignore`, and `docs/docker.md` (`52cd49a`).
+- **Docs**: project FAQ (`d2679cc`); gallery generator script plus rendered showcase (`d96b365`); README refresh with new palettes, styles, CI badge, dev section (`48120da`).
 - **CI/CD**: GitHub Actions workflows for CI and release, plus release-process documentation (`726f79b`).
 
 ### Changed
 - **Shape module** split into submodules, each under the 500-line ceiling (`75f9d27`).
 - **Web app** split from monolithic `app.py` into Flask blueprints, each under 500 lines (`ce1e7fd`).
+- **Texture**: robust palette fallbacks plus tests for all 18 palettes (`3c9ff7b`).
+
+### Performance
+- **Shape**: vectorized `_label_components` — ~91% faster (`dea1ffc`).
+- **Export**: cached `BlockState` by role — ~52% faster (`aace72c`).
 
 ### Fixed
-- _Nothing in wave-1 was a pure fix — see 0.1.0 history for earlier fixes._
+- _Nothing in 0.2.0 was a pure user-facing fix — see 0.1.0 history for earlier fixes._
 
 ### Notes
 - *Commit `efe67cc` uses a palette-style message but actually contains the `greeble_styles` module — content-only, not re-pushed.*
@@ -62,5 +82,6 @@ conventional-commit type.
 ### Chore
 - Initial project scaffold.
 
-[Unreleased]: https://github.com/KazooKat/Spaceship-Generator/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/KazooKat/Spaceship-Generator/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/KazooKat/Spaceship-Generator/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/KazooKat/Spaceship-Generator/releases/tag/v0.1.0
