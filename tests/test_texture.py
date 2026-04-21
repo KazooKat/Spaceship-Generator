@@ -5,7 +5,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from spaceship_generator.palette import Role
+from spaceship_generator.palette import (
+    REQUIRED_ROLES,
+    Role,
+    list_palettes,
+    load_palette,
+    palettes_dir,
+)
 from spaceship_generator.shape import ShapeParams, generate_shape
 from spaceship_generator.texture import TextureParams, assign_roles
 
@@ -560,3 +566,231 @@ def test_engine_glow_ring_adds_hull_dark_around_glow():
     assert np.array_equal(ringed, ringed[::-1, :, :])
     # Ring never overwrites the GLOW core itself.
     assert (ringed == Role.ENGINE_GLOW).sum() >= (base == Role.ENGINE_GLOW).sum()
+
+
+# ---------------------------------------------------------------------------
+# Palette-coupling tests
+#
+# texture.py does not consume Palette objects directly — it only writes Role
+# enum values. But the roles it emits must be fully mappable by every shipped
+# palette, and it must also tolerate being consumed by smaller, partially-
+# defined palette-like dicts that some callers might construct ad-hoc (e.g.
+# tests, preview tools).
+# ---------------------------------------------------------------------------
+
+
+def _all_palette_names() -> list[str]:
+    """Every palette name found in ``<repo>/palettes``."""
+    names = list_palettes()
+    # When ``include_errors=False`` we always get a plain ``list[str]``.
+    assert isinstance(names, list) and all(isinstance(n, str) for n in names)
+    return sorted(names)
+
+
+@pytest.mark.parametrize("palette_name", _all_palette_names())
+def test_texture_pass_runs_for_every_shipped_palette(palette_name):
+    """Textured output's roles must all map to block states in every palette.
+
+    This guards against a regression where texture.py starts emitting a role
+    that some palette (e.g. steampunk_brass, biopunk_fungal, cyberpunk_neon)
+    hasn't defined a block for.
+    """
+    # Load palette from disk — this also asserts that the YAML is valid and
+    # has all required roles, via ``Palette.from_dict``.
+    palette = load_palette(palette_name)
+
+    # Realistic procedural grid, then run full texture pass with everything on.
+    grid = generate_shape(
+        42, ShapeParams(length=30, width_max=16, height_max=10, greeble_density=0.05)
+    )
+    out = assign_roles(
+        grid,
+        TextureParams(
+            belly_light_period=5,
+            hull_noise_ratio=0.2,
+            panel_line_bands=3,
+            rivet_period=3,
+            engine_glow_ring=True,
+            nose_tip_light=True,
+        ),
+    )
+
+    # Every non-EMPTY role produced by texture.py must be resolvable via the
+    # palette — this is the actual coupling contract between the two modules.
+    produced = {Role(int(v)) for v in np.unique(out) if int(v) != Role.EMPTY}
+    for role in produced:
+        # Must not raise (returns a BlockState) and must have a preview color.
+        palette.block_state(role)
+        color = palette.preview_color(role)
+        assert len(color) == 4, f"{palette_name}: preview color for {role} malformed"
+
+
+def test_texture_roles_are_subset_of_required_roles():
+    """Every role texture.py can output must also be a REQUIRED_ROLES member.
+
+    This is the symmetric half of the palette-coupling test: it fails fast if
+    a new role is added to texture.py but not to REQUIRED_ROLES (so every
+    palette becomes instantly obsolete without a matching palette-side update).
+    """
+    grid = generate_shape(
+        7, ShapeParams(length=40, width_max=20, height_max=12, greeble_density=0.05)
+    )
+    out = assign_roles(
+        grid,
+        TextureParams(
+            belly_light_period=5,
+            hull_noise_ratio=0.3,
+            panel_line_bands=3,
+            rivet_period=3,
+            engine_glow_ring=True,
+            nose_tip_light=True,
+        ),
+    )
+    produced_names = {Role(int(v)).name for v in np.unique(out) if int(v) != Role.EMPTY}
+    missing = produced_names - set(REQUIRED_ROLES)
+    assert not missing, (
+        f"texture.py emitted roles not listed in REQUIRED_ROLES: {missing}"
+    )
+
+
+def test_textured_grid_survives_partial_palette_dict_with_fallback():
+    """A minimal palette-like dict that only defines HULL should still cover
+    every textured cell when the caller provides a fallback lookup.
+
+    This exercises the robustness of *consumers* of texture.py's output: if a
+    caller builds a tiny dict-based palette and forgets to register e.g.
+    ENGINE_GLOW, a ``role_or_fallback`` helper using ``dict.get(role, fallback)``
+    must still resolve every produced role without raising KeyError.
+    """
+    grid = generate_shape(
+        11, ShapeParams(length=24, width_max=14, height_max=10, greeble_density=0.05)
+    )
+    out = assign_roles(
+        grid,
+        TextureParams(
+            belly_light_period=4,
+            hull_noise_ratio=0.2,
+            rivet_period=3,
+            engine_glow_ring=True,
+        ),
+    )
+
+    # Simulate a partial palette: only HULL is defined, everything else must
+    # fall back. (HULL_DARK → HULL, ENGINE_GLOW → ENGINE → HULL, WINDOW → HULL…)
+    partial: dict[Role, str] = {Role.HULL: "minecraft:stone"}
+    # Fallback chain: role → nearest-ancestor role. This is exactly the kind
+    # of fallback texture.py's output must remain compatible with.
+    fallback_chain = {
+        Role.HULL_DARK: Role.HULL,
+        Role.WINDOW: Role.HULL,
+        Role.ENGINE: Role.HULL,
+        Role.ENGINE_GLOW: Role.ENGINE,
+        Role.COCKPIT_GLASS: Role.HULL,
+        Role.WING: Role.HULL,
+        Role.GREEBLE: Role.HULL,
+        Role.LIGHT: Role.HULL,
+        Role.INTERIOR: Role.HULL,
+    }
+
+    def resolve(role: Role) -> str:
+        cur = role
+        seen: set[Role] = set()
+        while cur not in partial:
+            if cur in seen:
+                raise RuntimeError(f"cycle resolving {role}")
+            seen.add(cur)
+            cur = fallback_chain[cur]
+        return partial[cur]
+
+    # Every role the textured grid produces must resolve to *some* block id
+    # via the fallback chain — no unmapped cells.
+    produced = {Role(int(v)) for v in np.unique(out) if int(v) != Role.EMPTY}
+    assert produced, "expected textured grid to produce at least one role"
+    for role in produced:
+        assert resolve(role) == "minecraft:stone", (
+            f"{role} did not fall back through chain to HULL"
+        )
+
+
+def test_textured_grid_exercises_every_required_role_when_palette_defines_them_all():
+    """With every feature enabled and a rich procedural grid, texture.py
+    produces every required role — so a palette that defines every optional
+    role gets every one of them used.
+
+    (Validates that we do not silently skip any role; if a future refactor
+    breaks wing-lights / engine-glow / window placement this will catch it.)
+    """
+    # Load any shipped palette — they all define every REQUIRED_ROLES entry.
+    palette = load_palette("sci_fi_industrial")
+
+    grid = generate_shape(
+        3, ShapeParams(length=40, width_max=20, height_max=12, greeble_density=0.08)
+    )
+    out = assign_roles(
+        grid,
+        TextureParams(
+            belly_light_period=5,
+            hull_noise_ratio=0.25,
+            panel_line_bands=3,
+            rivet_period=3,
+            engine_glow_ring=True,
+            nose_tip_light=True,
+        ),
+    )
+
+    produced = {Role(int(v)) for v in np.unique(out) if int(v) != Role.EMPTY}
+    # All feature-role outputs should be present for a rich grid like this.
+    expected = {
+        Role.HULL,
+        Role.HULL_DARK,
+        Role.WINDOW,
+        Role.ENGINE,
+        Role.ENGINE_GLOW,
+        Role.COCKPIT_GLASS,
+        Role.WING,
+        Role.GREEBLE,
+        Role.LIGHT,
+        Role.INTERIOR,
+    }
+    missing = expected - produced
+    assert not missing, f"rich textured grid missing expected roles: {missing}"
+    # And every one of those roles maps cleanly via the palette.
+    for role in produced:
+        palette.block_state(role)
+
+
+def test_assign_roles_deterministic_across_seeds():
+    """Same seed + same params = identical output, for several seeds.
+
+    Stronger than the single-seed deterministic test above: if anywhere in
+    the pipeline we accidentally use ``random`` / un-seeded state, at least
+    one of these will diverge.
+    """
+    params = TextureParams(
+        belly_light_period=4,
+        hull_noise_ratio=0.3,
+        panel_line_bands=3,
+        rivet_period=3,
+        engine_glow_ring=True,
+        nose_tip_light=True,
+    )
+    for seed in (0, 1, 42, 999, 2026):
+        grid = generate_shape(
+            seed, ShapeParams(length=30, width_max=16, height_max=10, greeble_density=0.05)
+        )
+        a = assign_roles(grid, params)
+        b = assign_roles(grid, params)
+        assert np.array_equal(a, b), f"non-deterministic output for seed={seed}"
+
+
+def test_palettes_dir_discovered_on_disk():
+    """Smoke check that the palettes directory exists and contains palettes.
+
+    Not strictly a texture.py test, but it guards the parametrized palette
+    sweep above: if ``palettes_dir()`` ever returns an empty directory, the
+    parametrize would silently produce zero test cases.
+    """
+    d = palettes_dir()
+    assert d.exists(), f"palettes dir not found: {d}"
+    names = _all_palette_names()
+    assert len(names) >= 18, f"expected ≥18 palettes shipped, found {len(names)}: {names}"

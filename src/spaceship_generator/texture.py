@@ -106,6 +106,39 @@ def assign_roles(
 # ---------------------------------------------------------------------------
 
 
+def _side_facing_mask(grid: np.ndarray) -> np.ndarray:
+    """Cells with at least one ±X neighbor EMPTY (or out of bounds).
+
+    Shared by windows, hull noise, and rivets — all "paint only where the
+    hull faces sideways" passes.
+    """
+    left_empty = np.ones(grid.shape, dtype=bool)
+    right_empty = np.ones(grid.shape, dtype=bool)
+    left_empty[1:, :, :] = grid[:-1, :, :] == Role.EMPTY
+    right_empty[:-1, :, :] = grid[1:, :, :] == Role.EMPTY
+    return left_empty | right_empty
+
+
+def _z_phase_mask(shape: tuple[int, int, int], period: int, phase: int = 0) -> np.ndarray:
+    """Broadcasted ``(z % period) == phase`` boolean mask of shape ``shape``."""
+    L = shape[2]
+    z_indices = np.arange(L).reshape(1, 1, L)
+    return np.broadcast_to((z_indices % period) == phase, shape)
+
+
+def _y_band_mask(shape: tuple[int, int, int], y: int) -> np.ndarray:
+    """Single-voxel-thick boolean band at the given ``y`` row."""
+    band = np.zeros(shape, dtype=bool)
+    band[:, y:y + 1, :] = True
+    return band
+
+
+def _forbidden_mask(grid: np.ndarray, roles: tuple[Role, ...]) -> np.ndarray:
+    """Boolean mask of cells whose role is in ``roles``."""
+    values = np.array([r.value for r in roles], dtype=grid.dtype)
+    return np.isin(grid, values)
+
+
 def _fill_interior(grid: np.ndarray, surface: np.ndarray) -> None:
     """Convert non-surface HULL cells to INTERIOR."""
     interior = (grid == Role.HULL) & (~surface)
@@ -116,29 +149,17 @@ def _paint_windows(
     grid: np.ndarray, surface: np.ndarray, params: TextureParams
 ) -> None:
     """Place windows on side-facing HULL surface cells in the upper hull band."""
-    W, H, L = grid.shape
+    H = grid.shape[1]
     cy = (H - 1) / 2.0
     period = max(2, params.window_period_cells)
     # Offset so windows don't land exactly on the nose tip (z == 0 phase).
     phase = period // 2
 
-    # Cells that are HULL and on the surface.
     hull_surf = (grid == Role.HULL) & surface
-    # Only upper band (above mid-height).
     y_indices = np.arange(H).reshape(1, H, 1)
     upper_band = np.broadcast_to(y_indices > cy, grid.shape)
-
-    # Side-facing: at least one ±X neighbor is empty (or out of bounds).
-    left_empty = np.ones_like(hull_surf)
-    right_empty = np.ones_like(hull_surf)
-    left_empty[1:, :, :] = grid[:-1, :, :] == Role.EMPTY
-    right_empty[:-1, :, :] = grid[1:, :, :] == Role.EMPTY
-    side_facing = left_empty | right_empty
-
-    # Z-phase mask — fully vectorised.
-    z_indices = np.arange(L).reshape(1, 1, L)
-    z_phase = (z_indices % period) == phase
-    z_phase = np.broadcast_to(z_phase, grid.shape)
+    side_facing = _side_facing_mask(grid)
+    z_phase = _z_phase_mask(grid.shape, period, phase)
 
     mask = hull_surf & upper_band & side_facing & z_phase
     grid[mask] = Role.WINDOW
@@ -148,17 +169,13 @@ def _paint_accent_stripe(
     grid: np.ndarray, surface: np.ndarray, params: TextureParams
 ) -> None:
     """HULL_DARK stripe around mid-height at regular Z intervals."""
-    W, H, L = grid.shape
+    H = grid.shape[1]
     cy = (H - 1) // 2
     period = max(2, params.accent_stripe_period)
 
     hull_surf = (grid == Role.HULL) & surface
-    y_band = np.zeros_like(hull_surf)
-    # One-voxel-thick band at mid-height.
-    y_band[:, cy:cy + 1, :] = True
-
-    z_indices = np.arange(L).reshape(1, 1, L)
-    z_phase = np.broadcast_to((z_indices % period) == 0, grid.shape)
+    y_band = _y_band_mask(grid.shape, cy)
+    z_phase = _z_phase_mask(grid.shape, period)
 
     grid[hull_surf & y_band & z_phase] = Role.HULL_DARK
 
@@ -176,14 +193,13 @@ def _paint_panel_bands(
     if bands == 1:
         return
 
-    W, H, L = grid.shape
+    H = grid.shape[1]
     cy = (H - 1) // 2
     period = max(2, params.accent_stripe_period)
     offset = max(1, H // 4)
 
     hull_surf = (grid == Role.HULL) & surface
-    z_indices = np.arange(L).reshape(1, 1, L)
-    z_phase = np.broadcast_to((z_indices % period) == 0, grid.shape)
+    z_phase = _z_phase_mask(grid.shape, period)
 
     extra_ys: list[int] = []
     if bands >= 2:
@@ -196,9 +212,7 @@ def _paint_panel_bands(
             extra_ys.append(y_dn)
 
     for y in extra_ys:
-        y_band = np.zeros_like(hull_surf)
-        y_band[:, y:y + 1, :] = True
-        grid[hull_surf & y_band & z_phase] = Role.HULL_DARK
+        grid[hull_surf & _y_band_mask(grid.shape, y) & z_phase] = Role.HULL_DARK
 
 
 def _coord_hash_mod1000(W: int, H: int, L: int) -> np.ndarray:
@@ -233,13 +247,7 @@ def _paint_hull_noise(
     W, H, L = grid.shape
     # Only HULL (not HULL_DARK) cells on the surface are eligible.
     hull_surf = (grid == Role.HULL) & surface
-
-    # Side-facing only (mirrors window rule → doesn't darken roofs/bellies).
-    left_empty = np.ones_like(hull_surf)
-    right_empty = np.ones_like(hull_surf)
-    left_empty[1:, :, :] = grid[:-1, :, :] == Role.EMPTY
-    right_empty[:-1, :, :] = grid[1:, :, :] == Role.EMPTY
-    side_facing = left_empty | right_empty
+    side_facing = _side_facing_mask(grid)
 
     thr = int(ratio * 1000)
     hashes = _coord_hash_mod1000(W, H, L)
@@ -248,10 +256,7 @@ def _paint_hull_noise(
     # Never re-role INTERIOR / LIGHT / GREEBLE / WING / ENGINE(_GLOW) / WINDOW /
     # COCKPIT_GLASS / EMPTY cells (belt-and-braces; hull_surf already excludes
     # most of these but explicit makes the invariant testable).
-    forbidden = np.isin(
-        grid,
-        np.array([r.value for r in _HULL_NOISE_FORBIDDEN], dtype=grid.dtype),
-    )
+    forbidden = _forbidden_mask(grid, _HULL_NOISE_FORBIDDEN)
     mask = hull_surf & side_facing & hash_mask & ~forbidden
     grid[mask] = Role.HULL_DARK
 
@@ -271,36 +276,21 @@ def _paint_rivets(
     # Note: period == 1 means "rivets everywhere" (dense speckle), not
     # "disabled" — only period <= 0 disables. (Docstring says "0 disables".)
 
-    W, H, L = grid.shape
+    W, H, _L = grid.shape
     cy = (H - 1) / 2.0
 
-    # Eligible surface: HULL only (we don't re-dot HULL_DARK bands).
     hull_surf = (grid == Role.HULL) & surface
-
-    # Upper band (above mid-height) to avoid cluttering the belly.
     y_indices = np.arange(H).reshape(1, H, 1)
     upper_band = np.broadcast_to(y_indices > cy, grid.shape)
-
-    # Side-facing (any ±X neighbor empty).
-    left_empty = np.ones_like(hull_surf)
-    right_empty = np.ones_like(hull_surf)
-    left_empty[1:, :, :] = grid[:-1, :, :] == Role.EMPTY
-    right_empty[:-1, :, :] = grid[1:, :, :] == Role.EMPTY
-    side_facing = left_empty | right_empty
+    side_facing = _side_facing_mask(grid)
 
     # Symmetric X-period: the mirror index has the same period test.
     xs = np.arange(W).reshape(W, 1, 1)
     mx = np.minimum(xs, (W - 1) - xs)
-    zs = np.arange(L).reshape(1, 1, L)
     x_phase = np.broadcast_to((mx % period) == 0, grid.shape)
-    z_phase = np.broadcast_to((zs % period) == 0, grid.shape)
+    z_phase = _z_phase_mask(grid.shape, period)
 
-    # Never re-role protected/greeble/wing/etc. cells even if the period and
-    # side-facing tests happen to land on one.
-    forbidden = np.isin(
-        grid,
-        np.array([r.value for r in _HULL_NOISE_FORBIDDEN], dtype=grid.dtype),
-    )
+    forbidden = _forbidden_mask(grid, _HULL_NOISE_FORBIDDEN)
     mask = hull_surf & upper_band & side_facing & x_phase & z_phase & ~forbidden
     grid[mask] = Role.HULL_DARK
 
@@ -401,18 +391,14 @@ def _paint_belly_lights(
     if period <= 0:
         return
 
-    W, H, L = grid.shape
-
     # Eligible: hull-like surface cell (HULL or HULL_DARK) on surface.
     eligible = surface & ((grid == Role.HULL) | (grid == Role.HULL_DARK))
 
     # Bottom-facing: the −Y neighbor is EMPTY or out of bounds.
-    below_empty = np.ones_like(eligible)  # y == 0 → out of bounds → empty
-    below_empty[:, 1:, :] = grid[:, :-1, :] == Role.EMPTY
-    bottom_facing = below_empty
+    bottom_facing = np.ones_like(eligible)  # y == 0 → out of bounds → empty
+    bottom_facing[:, 1:, :] = grid[:, :-1, :] == Role.EMPTY
 
-    z_indices = np.arange(L).reshape(1, 1, L)
-    z_phase = np.broadcast_to((z_indices % period) == 0, grid.shape)
+    z_phase = _z_phase_mask(grid.shape, period)
 
     mask = eligible & bottom_facing & z_phase
     grid[mask] = Role.LIGHT
