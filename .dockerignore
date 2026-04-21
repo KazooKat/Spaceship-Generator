@@ -1,0 +1,51 @@
+# Virtual envs / caches
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.coverage
+htmlcov/
+
+# VCS and CI
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# Tooling / agent state
+.claude/
+.claude-flow/
+.swarm/
+ruvector.db
+node_modules/
+
+# Editor junk
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local-only project artifacts we never want baked into the image
+out/
+tmp/
+/tmp_*/
+*.tmp
+*.tmp.json
+*.litematic
+*.log
+
+# Docs are not needed at runtime (they'd just inflate the image)
+docs/gallery/
+docs/**/*.png
+
+# Don't copy the Dockerfile itself into the build context layers
+Dockerfile
+.dockerignore
