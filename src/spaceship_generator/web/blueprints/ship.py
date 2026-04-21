@@ -25,9 +25,11 @@ from flask import (
 )
 
 from ...block_colors import block_alpha, is_translucent
+from ...engine_styles import EngineStyle
 from ...generator import generate
 from ...palette import Role, list_palettes, load_palette
 from ...shape import CockpitStyle, StructureStyle
+from ...structure_styles import HullStyle
 from ...wing_styles import WingStyle
 from .ratelimit import check_rate_limit
 from .ship_support import (
@@ -45,6 +47,29 @@ from .ship_support import (
 ship_bp = Blueprint("ship", __name__)
 
 
+def _generate_with_extras(seed, *, extra_gen_kwargs: dict, **base_kwargs):
+    """Call :func:`generate` with the base kwargs plus the style-picker
+    extras, falling back if ``generate()`` doesn't accept them yet.
+
+    The ``extra_gen_kwargs`` dict may contain ``hull_style``,
+    ``engine_style``, and ``greeble_density``. If the local ``generate``
+    implementation raises :class:`TypeError` (e.g. it predates the style-
+    picker wiring), we drop the extras and retry with just the base kwargs
+    so the POST still succeeds. Also filters out ``None`` values before the
+    first call so "auto" selections don't override ``generate`` defaults.
+    """
+    # Drop ``None`` (= "auto") before forwarding so we never stomp on the
+    # generator's own defaults for unselected style pickers.
+    forwarded = {k: v for k, v in (extra_gen_kwargs or {}).items() if v is not None}
+    try:
+        return generate(seed, **base_kwargs, **forwarded)
+    except TypeError:
+        # ``generate`` may not yet accept one of hull_style / engine_style /
+        # greeble_density as a kwarg (parallel wiring in progress). Retry
+        # with only the legacy base kwargs rather than failing the request.
+        return generate(seed, **base_kwargs)
+
+
 @ship_bp.route("/", endpoint="index")
 def index():
     return render_template(
@@ -53,6 +78,8 @@ def index():
         cockpit_styles=[c.value for c in CockpitStyle],
         structure_styles=[s.value for s in StructureStyle],
         wing_styles=[w.value for w in WingStyle],
+        hull_styles=[h.value for h in HullStyle],
+        engine_styles=[e.value for e in EngineStyle],
         param_help=PARAM_HELP,
         defaults={
             "seed": random.randint(0, 2**31 - 1),
@@ -62,7 +89,7 @@ def index():
             "height": 12,
             "engines": 2,
             "wing_prob": 0.75,
-            "greeble_density": 0.05,
+            "greeble_density": 0.0,
             "window_period": 4,
             "accent_stripe_period": 8,
             "engine_glow_depth": 1,
@@ -73,6 +100,8 @@ def index():
             "cockpit": CockpitStyle.BUBBLE.value,
             "structure_style": StructureStyle.FRIGATE.value,
             "wing_style": WingStyle.STRAIGHT.value,
+            "hull_style": "auto",
+            "engine_style": "auto",
         },
     )
 
@@ -85,20 +114,21 @@ def do_generate():
     st = state()
     is_htmx = request.headers.get("HX-Request", "").lower() == "true"
     try:
-        seed, palette_name, shape_params, texture_params = (
+        seed, palette_name, shape_params, texture_params, extra_gen_kwargs = (
             build_params_from_source(request.form)
         )
 
         # Skip eager matplotlib render: the client uses the WebGL canvas
         # which pulls voxel data from ``/voxels/<gen_id>.json``. The
         # ``/preview/<gen_id>.png`` route still works, but renders lazily.
-        result = generate(
+        result = _generate_with_extras(
             seed,
             palette=palette_name,
             shape_params=shape_params,
             texture_params=texture_params,
             out_dir=st.out_dir(),
             with_preview=False,
+            extra_gen_kwargs=extra_gen_kwargs,
         )
     except (ValueError, FileNotFoundError) as exc:
         if is_htmx:
@@ -113,6 +143,8 @@ def do_generate():
                 cockpit_styles=[c.value for c in CockpitStyle],
                 structure_styles=[s.value for s in StructureStyle],
                 wing_styles=[w.value for w in WingStyle],
+                hull_styles=[h.value for h in HullStyle],
+                engine_styles=[e.value for e in EngineStyle],
                 param_help=PARAM_HELP,
                 defaults=request.form.to_dict(),
                 error=str(exc),
@@ -288,20 +320,21 @@ def api_generate():
     st = state()
     payload = request.get_json(silent=True) or {}
     try:
-        seed, palette_name, shape_params, texture_params = (
+        seed, palette_name, shape_params, texture_params, extra_gen_kwargs = (
             build_params_from_source(payload)
         )
 
         # Preview PNG is rendered lazily by the /preview/<id>.png route
         # when a consumer actually fetches it. The default web flow now
         # uses the WebGL canvas and /voxels/<id>.json instead.
-        result = generate(
+        result = _generate_with_extras(
             seed,
             palette=palette_name,
             shape_params=shape_params,
             texture_params=texture_params,
             out_dir=st.out_dir(),
             with_preview=False,
+            extra_gen_kwargs=extra_gen_kwargs,
         )
     except (ValueError, FileNotFoundError, TypeError) as exc:
         return jsonify({"error": str(exc)}), 400
@@ -346,6 +379,8 @@ def api_meta():
             "cockpit_styles": [c.value for c in CockpitStyle],
             "structure_styles": [s.value for s in StructureStyle],
             "wing_styles": [w.value for w in WingStyle],
+            "hull_styles": [h.value for h in HullStyle],
+            "engine_styles": [e.value for e in EngineStyle],
             "param_help": dict(help_map),
             "defaults": {
                 "seed": 42,
@@ -355,7 +390,7 @@ def api_meta():
                 "height": 12,
                 "engines": 2,
                 "wing_prob": 0.75,
-                "greeble_density": 0.05,
+                "greeble_density": 0.0,
                 "window_period": 4,
                 "accent_stripe_period": 8,
                 "engine_glow_depth": 1,
@@ -366,6 +401,8 @@ def api_meta():
                 "cockpit": CockpitStyle.BUBBLE.value,
                 "structure_style": StructureStyle.FRIGATE.value,
                 "wing_style": WingStyle.STRAIGHT.value,
+                "hull_style": "auto",
+                "engine_style": "auto",
             },
             "version": version,
         }

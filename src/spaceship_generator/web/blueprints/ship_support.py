@@ -28,8 +28,10 @@ from ...block_colors import (
     hex_to_rgba,
 )
 from ...generator import GenerationResult
+from ...engine_styles import EngineStyle
 from ...palette import Palette, Role, list_palettes, load_palette
 from ...shape import CockpitStyle, ShapeParams, StructureStyle
+from ...structure_styles import HullStyle
 from ...texture import TextureParams
 from ...wing_styles import WingStyle
 
@@ -230,10 +232,53 @@ def _finite_float(source: Any, key: str, default: float) -> float:
     return v
 
 
+def _parse_optional_enum(
+    source: Any, key: str, enum_cls: type
+) -> Any:
+    """Parse a form/JSON field that accepts ``"auto"`` / empty as ``None``.
+
+    Otherwise construct the enum from the raw value. Raises
+    :class:`ValueError` on unknown enum values so the caller surfaces 400.
+    """
+    raw = source.get(key)
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        raw_str = raw.strip().lower()
+        if raw_str in ("", "auto", "__auto__"):
+            return None
+        try:
+            return enum_cls(raw_str)
+        except ValueError as exc:
+            valid = [m.value for m in enum_cls]
+            raise ValueError(
+                f"{key} must be 'auto' or one of {valid}; got {raw!r}"
+            ) from exc
+    # Non-string (already an enum instance, or something wrapping it).
+    if isinstance(raw, enum_cls):
+        return raw
+    try:
+        return enum_cls(raw)
+    except ValueError as exc:
+        valid = [m.value for m in enum_cls]
+        raise ValueError(
+            f"{key} must be 'auto' or one of {valid}; got {raw!r}"
+        ) from exc
+
+
 def build_params_from_source(
     source: Any,
-) -> tuple[int, str, ShapeParams, TextureParams]:
+) -> tuple[int, str, ShapeParams, TextureParams, dict[str, Any]]:
     """Parse params from a dict-like source (form or JSON).
+
+    Returns a 5-tuple ``(seed, palette_name, shape_params, texture_params,
+    extra_gen_kwargs)`` where ``extra_gen_kwargs`` carries top-level
+    :func:`spaceship_generator.generator.generate` kwargs that don't fit
+    inside :class:`ShapeParams` / :class:`TextureParams` (currently
+    ``hull_style``, ``engine_style``, ``greeble_density``). Callers should
+    pass ``extra_gen_kwargs`` through a ``try/except TypeError`` fallback so
+    older ``generate`` implementations that don't accept those kwargs still
+    work.
 
     Raises ValueError on bad input (caught by callers).
     """
@@ -271,13 +316,25 @@ def build_params_from_source(
             f"{[s.value for s in WingStyle]}; got {raw_wing!r}"
         ) from exc
 
+    # Parse the top-level generator greeble-density slider (0-1). Clamp to
+    # [0, 1] so accidentally-out-of-range form input doesn't 400 — the UI's
+    # slider is [0, 1] step 0.05, and callers that hand-roll JSON can still
+    # feed wild numbers. The shape-level ``ShapeParams.greeble_density`` is
+    # a distinct dial (legacy hull-top greeble placement, capped at 0.5);
+    # we reuse the same field value but clamp separately for each.
+    gen_greeble_density_raw = _finite_float(source, "greeble_density", 0.0)
+    gen_greeble_density = clamp(gen_greeble_density_raw, 0.0, 1.0)
+    # ShapeParams validates greeble_density ≤ 0.5. Pass the clamped value so
+    # we never violate its invariant even if the slider is >0.5.
+    shape_greeble_density = clamp(gen_greeble_density_raw, 0.0, 0.5)
+
     shape_params = ShapeParams(
         length=int(source.get("length", 40)),
         width_max=int(source.get("width", 20)),
         height_max=int(source.get("height", 12)),
         engine_count=int(source.get("engines", 2)),
         wing_prob=_finite_float(source, "wing_prob", 0.75),
-        greeble_density=_finite_float(source, "greeble_density", 0.05),
+        greeble_density=shape_greeble_density,
         cockpit_style=CockpitStyle(
             source.get("cockpit", CockpitStyle.BUBBLE.value)
         ),
@@ -301,7 +358,18 @@ def build_params_from_source(
         rivet_period=int(source.get("rivet_period", 0)),
         engine_glow_ring=engine_glow_ring,
     )
-    return seed, palette_name, shape_params, texture_params
+
+    # Optional top-level generator kwargs. ``None`` means "auto" / pipeline
+    # default — only members actually chosen by the user are forwarded so
+    # older ``generate`` signatures can still swallow the rest.
+    extra_gen_kwargs: dict[str, Any] = {
+        "hull_style": _parse_optional_enum(source, "hull_style", HullStyle),
+        "engine_style": _parse_optional_enum(
+            source, "engine_style", EngineStyle
+        ),
+        "greeble_density": gen_greeble_density,
+    }
+    return seed, palette_name, shape_params, texture_params, extra_gen_kwargs
 
 
 def clamp(v: float, lo: float, hi: float) -> float:

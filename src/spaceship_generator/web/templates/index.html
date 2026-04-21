@@ -247,11 +247,6 @@
                             {{ num_range("wing_prob", 0, 1, 0.05, defaults.wing_prob) }}
                         </label>
                     </div>
-                    <div class="control" data-param="greeble_density">
-                        <label>Greeble density {{ tip("greeble_density") }}
-                            {{ num_range("greeble_density", 0, 0.5, 0.01, defaults.greeble_density) }}
-                        </label>
-                    </div>
                     <div class="control" data-param="cockpit">
                         <label>Cockpit style {{ tip("cockpit") }}
                             <select name="cockpit">
@@ -277,6 +272,69 @@
                                 <option value="{{ w }}" {% if w == defaults.wing_style %}selected{% endif %}>{{ w }}</option>
                                 {% endfor %}
                             </select>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            {# ── Styles group — hull / engine pickers + greeble density slider.
+               Archetype dials that sit on top of the shape dimensions. Each
+               picker offers "auto" as the default, meaning the generator
+               picks (``None`` flows through ``build_params_from_source`` to
+               the ``generate`` kwargs). Wing style lives up in SHAPE because
+               it's a ``ShapeParams`` field, not a top-level ``generate``
+               kwarg — all four controls the UI advertises are still reachable
+               from the form (hull_style + engine_style + wing_style above +
+               greeble_density below). ─────────────────────────────────── #}
+            <section class="panel-group" data-group="styles" x-data="{open: true}">
+                <header class="panel-group-header"
+                        @click="open = !open"
+                        :aria-expanded="open"
+                        tabindex="0"
+                        role="button"
+                        @keydown.enter.prevent="open = !open"
+                        @keydown.space.prevent="open = !open">
+                    <h3>STYLES</h3>
+                    <i data-lucide="chevron-down"
+                       :style="open ? '' : 'transform: rotate(-90deg)'"></i>
+                </header>
+                <div class="panel-group-body" x-show="open" x-transition>
+                    <div class="control" data-param="hull_style">
+                        <label>Hull style
+                            <select name="hull_style">
+                                <option value="auto" {% if defaults.hull_style == "auto" %}selected{% endif %}>auto</option>
+                                {% for h in hull_styles %}
+                                <option value="{{ h }}" {% if h == defaults.hull_style %}selected{% endif %}>{{ h }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                    <div class="control" data-param="engine_style">
+                        <label>Engine style
+                            <select name="engine_style">
+                                <option value="auto" {% if defaults.engine_style == "auto" %}selected{% endif %}>auto</option>
+                                {% for e in engine_styles %}
+                                <option value="{{ e }}" {% if e == defaults.engine_style %}selected{% endif %}>{{ e }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+                    {# Greeble density — scattered surface detail strength.
+                       0 disables scattering; 1 covers every candidate anchor.
+                       Separate readout span mirrors the slider's current
+                       value live via a single ``oninput`` handler. Uses a
+                       vanilla <input type="range"> so no JS bundler is
+                       needed. #}
+                    <div class="control" data-param="greeble_density">
+                        <label for="greeble_density">Greeble density
+                            <input type="range" id="greeble_density"
+                                   name="greeble_density"
+                                   min="0" max="1" step="0.05"
+                                   value="{{ defaults.greeble_density }}"
+                                   oninput="var r=document.getElementById('greeble_density_readout'); if(r) r.textContent = this.value;">
+                            <span id="greeble_density_readout"
+                                  class="readout"
+                                  aria-live="polite">{{ defaults.greeble_density }}</span>
                         </label>
                     </div>
                 </div>
