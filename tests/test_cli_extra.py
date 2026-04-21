@@ -1153,3 +1153,175 @@ def test_cockpit_style_typeerror_fallback_warns_and_retries(
     assert "cockpit_style" not in calls[0]
     err = capsys.readouterr().err
     assert "Warning" in err and "--cockpit-style" in err
+
+
+# ----------- --preset / --list-presets flags -----------
+
+
+def test_list_presets_prints_all_names_and_exits_zero(capsys):
+    """``--list-presets`` prints all 6 preset names, one per line, exit 0."""
+    from spaceship_generator.presets import list_presets
+
+    rc = main(["--list-presets"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    expected = set(list_presets())
+    # Sanity-check there are exactly 6 built-in presets.
+    assert expected == {
+        "corvette",
+        "dropship",
+        "science_vessel",
+        "gunship",
+        "freighter_heavy",
+        "interceptor",
+    }
+    for name in expected:
+        assert name in out
+
+
+def test_preset_corvette_sets_hull_engine_wing_cockpit(monkeypatch, tmp_path: Path):
+    """``--preset corvette`` forwards corvette's hull/engine/wing/cockpit
+    enum members to ``generate()``."""
+    from spaceship_generator.engine_styles import EngineStyle
+    from spaceship_generator.shape import CockpitStyle
+    from spaceship_generator.structure_styles import HullStyle
+    from spaceship_generator.wing_styles import WingStyle
+
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    rc = main(
+        [
+            "--seed",
+            "71",
+            "--preset",
+            "corvette",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert len(calls) == 1
+    # Preset 'corvette' → DAGGER / TWIN_NACELLE / SWEPT / BUBBLE.
+    assert calls[0]["hull_style"] == HullStyle.DAGGER
+    assert calls[0]["engine_style"] == EngineStyle.TWIN_NACELLE
+    assert calls[0]["shape_params"].wing_style == WingStyle.SWEPT
+    assert calls[0]["shape_params"].cockpit_style == CockpitStyle.BUBBLE
+
+
+def test_preset_with_explicit_hull_style_override(monkeypatch, tmp_path: Path):
+    """``--preset corvette --hull-style saucer`` overrides the preset hull to
+    SAUCER but keeps the rest of the preset (engine/wing/cockpit)."""
+    from spaceship_generator.engine_styles import EngineStyle
+    from spaceship_generator.structure_styles import HullStyle
+    from spaceship_generator.wing_styles import WingStyle
+
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    rc = main(
+        [
+            "--seed",
+            "73",
+            "--preset",
+            "corvette",
+            "--hull-style",
+            "saucer",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert len(calls) == 1
+    # Explicit flag wins — hull is SAUCER not DAGGER.
+    assert calls[0]["hull_style"] == HullStyle.SAUCER
+    # Remaining preset fields are preserved.
+    assert calls[0]["engine_style"] == EngineStyle.TWIN_NACELLE
+    assert calls[0]["shape_params"].wing_style == WingStyle.SWEPT
+
+
+def test_preset_nonexistent_exits_non_zero(capsys):
+    """``--preset nonexistent`` is rejected by argparse (exit code 2) because
+    the choices list is restricted to the known preset names."""
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--preset", "nonexistent"])
+    assert excinfo.value.code != 0
+    err = capsys.readouterr().err
+    assert "--preset" in err or "invalid choice" in err
+
+
+def test_preset_module_missing_fallback_does_not_crash(
+    monkeypatch, tmp_path: Path, capsys
+):
+    """If ``presets`` is missing (partial rollout), the CLI must not crash:
+    ``--list-presets`` warns and exits 0, and a normal run (no ``--preset``)
+    continues to work."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    # Simulate the presets module being unavailable. We don't rebuild the
+    # parser (choices were frozen at module-load), but the fallback code
+    # paths in ``main`` handle a ``None`` module gracefully.
+    monkeypatch.setattr(cli, "_presets", None)
+    monkeypatch.setattr(cli, "_presets_error", "simulated missing")
+
+    # --list-presets returns 0 with a stderr warning.
+    rc = main(["--list-presets"])
+    assert rc == 0
+    err = capsys.readouterr().err
+    assert "presets unavailable" in err
+    assert "simulated missing" in err
+
+    # A normal run (no --preset) still works end-to-end.
+    rc = main(
+        [
+            "--seed",
+            "79",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert len(calls) == 1
+
+
+def test_preset_greeble_weapon_overrides(monkeypatch, tmp_path: Path):
+    """Individual ``--greeble-density`` and ``--weapon-count`` flags override
+    the preset's values."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    # corvette preset sets greeble_density=0.1 and weapon_count=2.
+    rc = main(
+        [
+            "--seed",
+            "83",
+            "--preset",
+            "corvette",
+            "--greeble-density",
+            "0.5",
+            "--weapon-count",
+            "0",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    assert len(calls) == 1
+    # Greeble override → 0.5 (both generator-level and shape_params).
+    assert calls[0]["greeble_density"] == pytest.approx(0.5)
+    assert calls[0]["shape_params"].greeble_density == pytest.approx(0.5)
+
+
+def test_help_documents_preset_flags(capsys):
+    """``--help`` output lists the new ``--preset`` and ``--list-presets`` flags."""
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--help"])
+    assert excinfo.value.code == 0
+    out = capsys.readouterr().out
+    assert "--preset" in out
+    assert "--list-presets" in out

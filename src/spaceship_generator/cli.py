@@ -35,6 +35,14 @@ except ImportError as _exc:  # pragma: no cover - exercised via monkeypatch
 else:
     _fleet_error = None
 
+try:
+    from . import presets as _presets  # type: ignore
+except ImportError as _exc:  # pragma: no cover - exercised via monkeypatch
+    _presets = None
+    _presets_error: str | None = str(_exc)
+else:
+    _presets_error = None
+
 
 def _parse_preview_size(value: str) -> tuple[int, int]:
     """Parse a ``WxH`` string into ``(W, H)``.
@@ -193,6 +201,25 @@ def build_parser() -> argparse.ArgumentParser:
                    help="List available palettes and exit.")
     p.add_argument("--list-styles", action="store_true",
                    help="List available hull/engine/wing styles and exit.")
+    # ``--preset``/``--list-presets`` are only active when the optional
+    # ``presets`` module is importable. When it's absent we still register
+    # the flags (so ``--help`` documents them) but restrict the choices to
+    # an empty list — argparse then rejects any value at parse time and
+    # callers get a clear error instead of a mysterious AttributeError.
+    _preset_choices = _presets.list_presets() if _presets is not None else []
+    p.add_argument(
+        "--preset",
+        choices=_preset_choices or None,
+        default=None,
+        help="Named ship archetype preset "
+             "(corvette, dropship, science_vessel, gunship, "
+             "freighter_heavy, interceptor). Individual flags "
+             "(--hull-style, --engine-style, --wing-style, "
+             "--cockpit-style, --greeble-density, --weapon-count, "
+             "--weapon-types) override preset values when provided.",
+    )
+    p.add_argument("--list-presets", action="store_true",
+                   help="List available preset names and exit.")
 
     # Shape params
     p.add_argument("--length", type=int, default=40, help="Ship length in blocks (Z axis).")
@@ -313,6 +340,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--quiet", action="store_true",
                    help="Suppress success lines (errors still go to stderr). "
                         "Mutually exclusive with --verbose.")
+
+    # Diagnostics
+    p.add_argument("--stats", action="store_true",
+                   help="After each ship, print a role → cell-count table "
+                        "(sorted by count desc, EMPTY skipped) plus total "
+                        "block count and grid density. Useful for verifying "
+                        "palette + style choices produced the desired "
+                        "material distribution.")
 
     return p
 
@@ -587,9 +622,88 @@ def _print_success(result: GenerationResult, *, elapsed: float | None, args: arg
         print(f"Elapsed: {elapsed:.3f}s")
 
 
+def _print_stats(result: GenerationResult) -> None:
+    """Print a role → cell-count table for ``result.role_grid``.
+
+    Format::
+
+        Role distribution:
+          HULL: 1234 (45.2%)
+          WINDOW: 321 (11.8%)
+          ...
+        Total blocks: 2728
+        Density: 0.284
+
+    - EMPTY is skipped (it's the dominant role and makes the table noisy).
+    - Percentages are against non-EMPTY blocks (so they sum to ~100% modulo
+      rounding).
+    - Density is ``filled / total_cells`` in the **full** grid (EMPTY
+      included in the denominator) so it measures how "packed" the ship is
+      in its bounding box.
+
+    Always writes to stdout; callers gate on ``--stats`` before invoking.
+    """
+    import numpy as np
+
+    from .palette import Role
+
+    grid = result.role_grid
+    values, counts = np.unique(grid, return_counts=True)
+    # ``np.unique`` returns ndarray scalars — cast to plain ints so we can
+    # feed them to ``Role(...)`` without surprises.
+    counts_by_role: dict[int, int] = {int(v): int(c) for v, c in zip(values, counts)}
+
+    total_cells = int(grid.size)
+    empty_count = counts_by_role.get(int(Role.EMPTY), 0)
+    filled = total_cells - empty_count
+    density = (filled / total_cells) if total_cells > 0 else 0.0
+
+    # Sort by count descending; skip EMPTY.
+    non_empty = [
+        (role_int, c)
+        for role_int, c in counts_by_role.items()
+        if role_int != int(Role.EMPTY)
+    ]
+    non_empty.sort(key=lambda rc: (-rc[1], rc[0]))
+
+    print("Role distribution:")
+    for role_int, c in non_empty:
+        try:
+            name = Role(role_int).name
+        except ValueError:
+            # Unknown role id (e.g. a custom weapon role beyond the enum):
+            # surface its numeric value rather than crashing.
+            name = f"ROLE_{role_int}"
+        pct = (c / filled * 100.0) if filled > 0 else 0.0
+        print(f"  {name}: {c} ({pct:.1f}%)")
+    print(f"Total blocks: {filled}")
+    print(f"Density: {density:.3f}")
+
+
+def _explicit_flags(argv: list[str] | None) -> set[str]:
+    """Return the set of CLI long-option names that appear in ``argv``.
+
+    Used to tell "user passed ``--hull-style saucer``" apart from "argparse
+    filled in the default". We only need long-option names (``--hull-style``,
+    etc.), and tokens like ``--foo=bar`` are normalized to ``--foo``. When
+    ``argv`` is ``None`` we fall back to :data:`sys.argv` minus the program
+    name so the behavior matches argparse's own default-source decision.
+    """
+    tokens = list(argv) if argv is not None else sys.argv[1:]
+    seen: set[str] = set()
+    for tok in tokens:
+        if not isinstance(tok, str) or not tok.startswith("--"):
+            continue
+        # ``--foo=bar`` → ``--foo``.
+        name = tok.split("=", 1)[0]
+        seen.add(name)
+    return seen
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    explicit = _explicit_flags(argv)
 
     if args.verbose and args.quiet:
         print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
@@ -633,6 +747,70 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
         return 0
+
+    if args.list_presets:
+        if _presets is None:
+            # Defensive fallback: presets module missing in a partial rollout.
+            # We still exit 0 so ``--list-presets`` remains a discovery tool
+            # and print a stderr breadcrumb.
+            print(
+                f"presets unavailable: {_presets_error}",
+                file=sys.stderr,
+            )
+            return 0
+        names = _presets.list_presets()
+        if not names:
+            print("(no presets found)")
+            return 0
+        for n in names:
+            print(n)
+        return 0
+
+    # Resolve ``--preset`` → kwargs bundle. Individual flags override.
+    # We mutate ``args`` in place so the downstream plumbing
+    # (_run_one / _run_fleet_ship) sees the merged values without needing
+    # to know about presets. The override rule: "user typed the flag on
+    # the command line" wins over the preset's value.
+    if args.preset is not None:
+        if _presets is None:
+            print(
+                f"presets unavailable: {_presets_error}",
+                file=sys.stderr,
+            )
+        else:
+            try:
+                preset_kwargs = _presets.apply_preset(args.preset)
+            except KeyError as exc:
+                print(f"Error: {exc}", file=sys.stderr)
+                return 2
+            # Apply each preset field only when the user didn't set the
+            # corresponding individual flag on the command line.
+            preset_shape = preset_kwargs.get("shape_params")
+            if preset_shape is not None:
+                if "--length" not in explicit:
+                    args.length = preset_shape.length
+                if "--width" not in explicit:
+                    args.width = preset_shape.width_max
+                if "--height" not in explicit:
+                    args.height = preset_shape.height_max
+                if "--wing-style" not in explicit:
+                    args.wing_style = preset_shape.wing_style.value
+                if "--cockpit-style" not in explicit:
+                    args.cockpit_style = preset_shape.cockpit_style.value
+            if "--hull-style" not in explicit and preset_kwargs.get("hull_style") is not None:
+                args.hull_style = preset_kwargs["hull_style"].value
+            if "--engine-style" not in explicit and preset_kwargs.get("engine_style") is not None:
+                args.engine_style = preset_kwargs["engine_style"].value
+            if "--greeble-density" not in explicit and "greeble_density" in preset_kwargs:
+                args.greeble_density = float(preset_kwargs["greeble_density"])
+            if "--weapon-count" not in explicit and "weapon_count" in preset_kwargs:
+                args.weapon_count = int(preset_kwargs["weapon_count"])
+            if "--weapon-types" not in explicit and preset_kwargs.get("weapon_types"):
+                # ``weapon_types`` from the preset is a list of WeaponType
+                # enum members; the CLI's downstream plumbing expects raw
+                # string tokens (to mirror ``--weapon-types`` input), so
+                # map back to ``.value``.
+                args.weapon_types = [wt.value for wt in preset_kwargs["weapon_types"]]
 
     # Fleet mode short-circuits the seeds loop: one fleet seed plans N ships
     # and each planned ship is generated individually.
@@ -686,6 +864,8 @@ def main(argv: list[str] | None = None) -> int:
             if i > 0 and not args.quiet:
                 print()
             _print_success(result, elapsed=elapsed, args=args)
+            if args.stats:
+                _print_stats(result)
             successes += 1
 
         if successes == 0:
@@ -730,6 +910,8 @@ def main(argv: list[str] | None = None) -> int:
         if bulk_mode and i > 0 and not args.quiet:
             print()
         _print_success(result, elapsed=elapsed, args=args)
+        if args.stats:
+            _print_stats(result)
         successes += 1
 
     # Exit-code semantics:
