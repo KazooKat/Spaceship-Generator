@@ -879,3 +879,55 @@ def test_csp_allows_unsafe_eval_for_alpine(client):
     csp = resp.headers.get("Content-Security-Policy", "")
     assert "script-src" in csp
     assert "'unsafe-eval'" in csp
+
+
+# --- /api/batch tests ---------------------------------------------------------
+
+
+def test_api_batch_basic(client):
+    """POST /api/batch with count=3 returns 200 and a ships array of length 3."""
+    body = dict(_minimal_json())
+    body["count"] = 3
+    resp = client.post("/api/batch", json=body)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "ships" in data
+    assert data["count"] == 3
+    assert len(data["ships"]) == 3
+    for ship in data["ships"]:
+        assert "gen_id" in ship
+        for key in ("seed", "palette", "shape", "blocks", "download_url", "preview_url"):
+            assert key in ship, f"missing key {key!r} in ship entry"
+
+
+def test_api_batch_with_seed(client):
+    """POST /api/batch with seed=100, count=2 gives ships[0].seed==100 and ships[1].seed==101."""
+    body = dict(_minimal_json())
+    body["seed"] = 100
+    body["count"] = 2
+    resp = client.post("/api/batch", json=body)
+    assert resp.status_code == 200
+    ships = resp.get_json()["ships"]
+    assert len(ships) == 2
+    assert ships[0]["seed"] == 100
+    assert ships[1]["seed"] == 101
+
+
+def test_api_batch_invalid_count(client):
+    """POST /api/batch with count=11 returns 400 with an 'error' key."""
+    body = dict(_minimal_json())
+    body["count"] = 11
+    resp = client.post("/api/batch", json=body)
+    assert resp.status_code == 400
+    data = resp.get_json()
+    assert "error" in data
+
+
+def test_api_batch_default(client):
+    """POST /api/batch with empty body returns 200 and exactly one ship."""
+    resp = client.post("/api/batch", json={})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["count"] == 1
+    assert len(data["ships"]) == 1
+    assert "gen_id" in data["ships"][0]
