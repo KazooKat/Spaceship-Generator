@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(web): palette color swatches in UI — `/api/palettes` now returns hex preview colors; swatch strip renders below palette selector
+- feat(api): `GET /api/result/<gen_id>` endpoint returns full result metadata (seed, palette, shape, blocks, filename, download/preview URLs)
+- feat(cli): `--output-json` flag emits NDJSON summary (seed, palette, shape, blocks, path) to stdout after each generation
+- feat(api): `POST /api/batch` endpoint generates 1–10 ships per request; `api_meta` exposes `batch_max: 10`
+- fix(test): replaced private `app.config["_RESULTS"]` access in eviction test with new `/api/result/<id>` endpoint
 - refactor(web): split monolithic app.js/preview.js/style.css into focused modules (app_core, app_ui, preview_math, preview_renderer, preview_bootstrap, style_base, style_controls, style_preview)
 - fix(block_colors): replace deprecated `Image.getdata()` with `get_flattened_data()` (Pillow 12+)
 - fix(web): form controls (styles/preset/density) now wire into the generator pipeline
