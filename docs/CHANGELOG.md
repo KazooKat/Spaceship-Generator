@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- refactor(web): split monolithic app.js/preview.js/style.css into focused modules (app_core, app_ui, preview_math, preview_renderer, preview_bootstrap, style_base, style_controls, style_preview)
+- fix(block_colors): replace deprecated `Image.getdata()` with `get_flattened_data()` (Pillow 12+)
 - fix(web): form controls (styles/preset/density) now wire into the generator pipeline
 - feat(palettes): add circus_bigtop (red/white main, gray support, blue accent)
 - chore(lint): remove unused `json` import in `tests/test_web_ui.py` (ruff autofix)
