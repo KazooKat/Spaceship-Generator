@@ -520,20 +520,9 @@ def test_memory_eviction_cleans_up_litematic(small_client):
     calls to exceed MAX_RESULTS (which the fixture clamps to 2), then hit
     /download/<first_gen_id> and expect 404 once the LRU has evicted it.
     The on-disk .litematic file for the evicted id must also be gone.
-
-    FIXME: we still reach into ``app.config["_RESULTS"]`` once per create
-    to capture the disk path of the GenerationResult *before* eviction
-    removes its dict entry. The public API does not otherwise expose the
-    filesystem location, so this one private-attribute read is the minimal
-    hook needed to verify disk cleanup. If a public ``/api/result/<id>``
-    endpoint is ever added that returns the filename, replace this read.
     """
     app, client = small_client
     assert app.config["MAX_RESULTS"] == 2
-
-    # FIXME(public-API): see docstring — used only to capture disk paths
-    # before eviction removes them from the store.
-    results_store = app.config["_RESULTS"]
 
     gen_ids: list[str] = []
     disk_paths: list[Path] = []
@@ -544,14 +533,17 @@ def test_memory_eviction_cleans_up_litematic(small_client):
         resp = client.post("/api/generate", json=body)
         assert resp.status_code == 200, resp.get_data(as_text=True)
         data = resp.get_json()
-        gen_ids.append(data["gen_id"])
+        gen_id = data["gen_id"]
+        gen_ids.append(gen_id)
 
-        # Capture disk path at creation time (before possible eviction).
-        result = results_store.get(data["gen_id"])
-        assert result is not None, (
-            f"freshly created result {data['gen_id']} not in store"
+        # Capture disk path at creation time via the public endpoint (before
+        # possible eviction removes the entry from the store).
+        result_resp = client.get(f"/api/result/{gen_id}")
+        assert result_resp.status_code == 200, (
+            f"freshly created result {gen_id} not found via /api/result/"
         )
-        disk_paths.append(Path(result.litematic_path))
+        filename = result_resp.get_json()["filename"]
+        disk_paths.append(Path(app.instance_path) / "generated" / filename)
 
     # Public-API verification: the first (evicted) id should 404 on all
     # result-serving endpoints.
@@ -578,6 +570,33 @@ def test_memory_eviction_cleans_up_litematic(small_client):
     )
     assert kept_a.exists()
     assert kept_b.exists()
+
+
+def test_api_result_endpoint(client):
+    """GET /api/result/<gen_id> returns metadata for a known id and 404 for unknown."""
+    # 1. Generate a ship so we have a valid gen_id.
+    resp = client.post("/api/generate", json=_minimal_json())
+    assert resp.status_code == 200
+    gen_id = resp.get_json()["gen_id"]
+
+    # 2. Fetch result metadata via the new endpoint.
+    result_resp = client.get(f"/api/result/{gen_id}")
+    assert result_resp.status_code == 200
+    data = result_resp.get_json()
+    for key in ("gen_id", "seed", "palette", "shape", "blocks", "filename",
+                "download_url", "preview_url"):
+        assert key in data, f"missing key {key!r} in /api/result response"
+    assert data["gen_id"] == gen_id
+    assert data["download_url"] == f"/download/{gen_id}"
+    assert data["preview_url"] == f"/preview/{gen_id}.png"
+    assert isinstance(data["shape"], list) and len(data["shape"]) == 3
+    assert isinstance(data["blocks"], int) and data["blocks"] > 0
+    assert data["filename"].endswith(".litematic")
+
+    # 3. Unknown id must return 404.
+    not_found = client.get("/api/result/nonexistent")
+    assert not_found.status_code == 404
+    assert "error" in not_found.get_json()
 
 
 # --- New tests covering F5's app.py changes --------------------------------
@@ -834,6 +853,22 @@ def test_rate_limit_isolates_by_ip(rate_limited_client):
         "/generate", data=form, headers={"X-Forwarded-For": "203.0.113.2"}
     )
     assert ok.status_code in (200, 302)
+
+
+def test_api_palettes_includes_colors(client):
+    """/api/palettes must include a 'colors' key with hex swatches per palette."""
+    resp = client.get("/api/palettes")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "colors" in data, "'colors' key missing from /api/palettes response"
+    colors = data["colors"]
+    assert isinstance(colors, dict) and len(colors) > 0
+    # At least one palette must expose a HULL swatch as a hex string.
+    has_hull = any(
+        isinstance(swatches.get("HULL"), str)
+        for swatches in colors.values()
+    )
+    assert has_hull, "No palette in 'colors' has a 'HULL' hex string"
 
 
 def test_csp_allows_unsafe_eval_for_alpine(client):

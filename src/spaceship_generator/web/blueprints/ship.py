@@ -408,10 +408,45 @@ def voxels(gen_id: str):
 
 # --- JSON API ---------------------------------------------------------------
 
+# Representative roles to include in the palette color preview.
+_PREVIEW_ROLES = ("HULL", "WINDOW", "ENGINE_GLOW", "WING")
+
+# Module-level cache: palette name -> {role_name: "#rrggbb"}.
+_PALETTE_COLORS_CACHE: dict[str, dict[str, str]] | None = None
+
+
+def _rgba_to_hex(r: float, g: float, b: float, a: float) -> str:  # noqa: ANN001
+    return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+
+
+def _build_palette_colors_cache() -> dict[str, dict[str, str]]:
+    """Load all palettes once and return a nested dict of preview hex colors."""
+    result: dict[str, dict[str, str]] = {}
+    for name in list_palettes():
+        try:
+            palette = load_palette(name)
+        except Exception:  # noqa: BLE001
+            continue
+        role_map: dict[str, str] = {}
+        for role_name in _PREVIEW_ROLES:
+            try:
+                role = Role[role_name]
+            except KeyError:
+                continue
+            rgba = palette.preview_colors.get(role)
+            if rgba is None:
+                continue
+            role_map[role_name] = _rgba_to_hex(*rgba)
+        result[name] = role_map
+    return result
+
 
 @ship_bp.route("/api/palettes", methods=["GET"], endpoint="api_palettes")
 def api_palettes():
-    return jsonify({"palettes": list_palettes()})
+    global _PALETTE_COLORS_CACHE
+    if _PALETTE_COLORS_CACHE is None:
+        _PALETTE_COLORS_CACHE = _build_palette_colors_cache()
+    return jsonify({"palettes": list_palettes(), "colors": _PALETTE_COLORS_CACHE})
 
 
 @ship_bp.route("/api/generate", methods=["POST"], endpoint="api_generate")
@@ -453,6 +488,71 @@ def api_generate():
             "gen_id": gen_id,
         }
     )
+
+
+@ship_bp.route("/api/batch", methods=["POST"], endpoint="api_batch")
+def api_batch():
+    limited = check_rate_limit(as_json=True)
+    if limited is not None:
+        return limited
+    st = state()
+    payload = request.get_json(silent=True) or {}
+    count = payload.get("count", 1)
+    if not isinstance(count, int) or count < 1 or count > 10:
+        return jsonify({"error": "count must be an integer 1\u201310"}), 400
+
+    ships = []
+    base_seed = payload.get("seed")
+    for i in range(count):
+        item = dict(payload)
+        item.pop("count", None)
+        if base_seed is None:
+            item.pop("seed", None)  # let build_params_from_source pick random
+        else:
+            item["seed"] = base_seed + i  # deterministic range from base_seed
+        try:
+            seed, palette_name, shape_params, texture_params, extra_gen_kwargs = (
+                build_params_from_source(item)
+            )
+            result = _generate_with_extras(
+                seed,
+                palette=palette_name,
+                shape_params=shape_params,
+                texture_params=texture_params,
+                out_dir=st.out_dir(),
+                with_preview=False,
+                extra_gen_kwargs=extra_gen_kwargs,
+            )
+        except (ValueError, FileNotFoundError, TypeError) as exc:
+            return jsonify({"error": str(exc), "ship_index": i}), 400
+        gen_id = st.store(result)
+        ships.append({
+            "seed": result.seed,
+            "palette": result.palette_name,
+            "shape": list(result.shape),
+            "blocks": result.block_count,
+            "download_url": url_for("download", gen_id=gen_id),
+            "preview_url": url_for("preview", gen_id=gen_id),
+            "gen_id": gen_id,
+        })
+    return jsonify({"ships": ships, "count": len(ships)})
+
+
+@ship_bp.route("/api/result/<gen_id>", methods=["GET"], endpoint="api_result")
+def api_result(gen_id: str):
+    result = state().get(gen_id)
+    if result is None:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({
+        "gen_id": gen_id,
+        "seed": result.seed,
+        "palette": result.palette_name,
+        "shape": list(result.shape),
+        "blocks": result.block_count,
+        "filename": Path(result.litematic_path).name,
+        "download_url": url_for("download", gen_id=gen_id),
+        "preview_url": url_for("preview", gen_id=gen_id),
+    })
 
 
 # --- /api/meta --------------------------------------------------------------
@@ -509,6 +609,7 @@ def api_meta():
                 "engine_style": "auto",
             },
             "version": version,
+            "batch_max": 10,
         }
     )
 

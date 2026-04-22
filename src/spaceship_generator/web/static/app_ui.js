@@ -254,6 +254,49 @@
         });
     }
 
+    // --- Palette swatches ----------------------------------------------------
+    var paletteColors = {};
+
+    function renderSwatches(paletteName) {
+        var strip = document.getElementById("palette-swatches");
+        if (!strip) return;
+        strip.innerHTML = "";
+        var cols = paletteColors[paletteName];
+        if (!cols) return;
+        for (var role in cols) {
+            if (!Object.prototype.hasOwnProperty.call(cols, role)) continue;
+            var s = document.createElement("span");
+            s.className = "palette-swatch";
+            s.style.backgroundColor = cols[role];
+            s.title = role;
+            strip.appendChild(s);
+        }
+    }
+
+    function bindPaletteSwatches() {
+        var sel = document.getElementById("palette");
+        if (!sel) return;
+        // Render immediately for the current selection.
+        renderSwatches(sel.value);
+        sel.addEventListener("change", function () {
+            renderSwatches(sel.value);
+        });
+    }
+
+    function fetchPaletteColors() {
+        fetch("/api/palettes")
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                if (data && data.colors) {
+                    paletteColors = data.colors;
+                    // Render swatches now that colors are loaded.
+                    var sel = document.getElementById("palette");
+                    if (sel) renderSwatches(sel.value);
+                }
+            })
+            .catch(function () { /* non-fatal — swatches stay empty */ });
+    }
+
     // --- Boot ----------------------------------------------------------------
     function boot() {
         window.ui.bindTipFlip(document);
@@ -262,6 +305,8 @@
         bindViewButtons();
         bindStatsListener();
         bindHtmxLifecycle();
+        bindPaletteSwatches();
+        fetchPaletteColors();
         window.ui.reinitLucide();
         window.ui.setStatus("READY", "ready");
     }
