@@ -151,7 +151,7 @@ def _avg_color(png_bytes: bytes) -> str | None:
     if w and h > w and h % w == 0:
         im = im.crop((0, 0, w, w))
 
-    pixels = im.getdata()
+    pixels = im.get_flattened_data()
     r_sum = g_sum = b_sum = a_sum = 0
     for pr, pg, pb, pa in pixels:
         if pa == 0:
