@@ -348,6 +348,8 @@ def build_parser() -> argparse.ArgumentParser:
                         "block count and grid density. Useful for verifying "
                         "palette + style choices produced the desired "
                         "material distribution.")
+    p.add_argument("--output-json", action="store_true",
+                   help="Print a JSON summary of each generated ship to stdout.")
 
     return p
 
@@ -680,6 +682,25 @@ def _print_stats(result: GenerationResult) -> None:
     print(f"Density: {density:.3f}")
 
 
+def _print_json_summary(result: GenerationResult) -> None:
+    """Print a one-line JSON summary of ``result`` to stdout.
+
+    Emits newline-delimited JSON (NDJSON) — one object per call — so that
+    bulk ``--seeds`` runs produce one machine-readable line per ship.
+    Always writes to stdout; callers gate on ``--output-json`` before invoking.
+    """
+    import json
+
+    summary = {
+        "seed": result.seed,
+        "palette": result.palette_name,
+        "shape": list(result.shape),
+        "blocks": result.block_count,
+        "path": str(result.litematic_path),
+    }
+    print(json.dumps(summary), file=sys.stdout)
+
+
 def _explicit_flags(argv: list[str] | None) -> set[str]:
     """Return the set of CLI long-option names that appear in ``argv``.
 
@@ -866,6 +887,8 @@ def main(argv: list[str] | None = None) -> int:
             _print_success(result, elapsed=elapsed, args=args)
             if args.stats:
                 _print_stats(result)
+            if args.output_json:
+                _print_json_summary(result)
             successes += 1
 
         if successes == 0:
@@ -912,6 +935,8 @@ def main(argv: list[str] | None = None) -> int:
         _print_success(result, elapsed=elapsed, args=args)
         if args.stats:
             _print_stats(result)
+        if args.output_json:
+            _print_json_summary(result)
         successes += 1
 
     # Exit-code semantics:
