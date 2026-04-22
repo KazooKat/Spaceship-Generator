@@ -11,7 +11,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style_base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style_controls.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style_preview.css') }}">
 
     {# HTMX for inline form submissions. #}
     <script src="https://unpkg.com/htmx.org@1.9.12"
@@ -22,9 +24,14 @@
     {# Alpine.js for declarative UI state (sidebars, overlays, collapsibles). #}
     <script defer src="https://unpkg.com/alpinejs@3.13.10/dist/cdn.min.js"></script>
 
-    {# Core app scripts. #}
-    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='preview.js') }}" defer></script>
+    {# Core app scripts — split modules replace the former monolithic app.js / preview.js. #}
+    {# preview_math → preview_renderer → preview_bootstrap (load order matters). #}
+    <script src="{{ url_for('static', filename='preview_math.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='preview_renderer.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='preview_bootstrap.js') }}" defer></script>
+    {# app_core must load before app_ui (app_ui calls window.ui set by app_core). #}
+    <script src="{{ url_for('static', filename='app_core.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='app_ui.js') }}" defer></script>
 
     {# New UI modules (created by Interactions + Viewport agents). #}
     <script src="{{ url_for('static', filename='shortcuts.js') }}" defer></script>
