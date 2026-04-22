@@ -186,6 +186,9 @@ class _ShipState:
             # Best-effort cleanup; do not raise during eviction.
             pass
 
+    def get(self, gen_id: str) -> GenerationResult | None:
+        return self.results.get(gen_id)
+
     def store(self, result: GenerationResult) -> str:
         gen_id = uuid.uuid4().hex[:12]
         max_results = int(self.app.config.get("MAX_RESULTS", _DEFAULT_MAX_RESULTS))
