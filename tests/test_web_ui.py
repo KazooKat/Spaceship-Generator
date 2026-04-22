@@ -1398,7 +1398,6 @@ def _grid_hash(client, form):
     sha256 hex digest of the voxel buffer.  This gives a compact fingerprint
     that must differ whenever the generator produces a distinct shape."""
     import hashlib
-    import json
     import re
 
     resp = client.post(
