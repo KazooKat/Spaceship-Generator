@@ -36,6 +36,9 @@ EXPECTED_PRESET_NAMES = {
     "gunship",
     "freighter_heavy",
     "interceptor",
+    "scout",
+    "battlecruiser",
+    "capital_carrier",
 }
 
 
@@ -46,8 +49,8 @@ EXPECTED_PRESET_NAMES = {
 
 def test_list_presets_returns_all_six_roles():
     assert set(list_presets()) == EXPECTED_PRESET_NAMES
-    # Six presets, sorted output.
-    assert len(list_presets()) == 6
+    # Nine presets, sorted output.
+    assert len(list_presets()) == 9
     assert list_presets() == sorted(list_presets())
 
 

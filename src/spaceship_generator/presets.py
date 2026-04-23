@@ -130,6 +130,36 @@ SHIP_PRESETS: dict[str, dict[str, Any]] = {
         "weapon_types": (WeaponType.LASER_LANCE,),
         "size": (15, 10, 45),
     },
+    "scout": {
+        "hull_style": HullStyle.SLEEK_RACING,
+        "engine_style": EngineStyle.ION_ARRAY,
+        "wing_style": WingStyle.SWEPT,
+        "cockpit_style": CockpitStyle.BUBBLE,
+        "greeble_density": 0.05,
+        "weapon_count": 1,
+        "weapon_types": (WeaponType.POINT_DEFENSE,),
+        "size": (8, 5, 14),
+    },
+    "battlecruiser": {
+        "hull_style": HullStyle.ARROW,
+        "engine_style": EngineStyle.QUAD_CLUSTER,
+        "wing_style": WingStyle.DELTA,
+        "cockpit_style": CockpitStyle.WRAP_BRIDGE,
+        "greeble_density": 0.2,
+        "weapon_count": 6,
+        "weapon_types": (WeaponType.TURRET_LARGE, WeaponType.MISSILE_POD, WeaponType.POINT_DEFENSE),
+        "size": (22, 12, 40),
+    },
+    "capital_carrier": {
+        "hull_style": HullStyle.MODULAR_BLOCK,
+        "engine_style": EngineStyle.RING,
+        "wing_style": WingStyle.STRAIGHT,
+        "cockpit_style": CockpitStyle.OFFSET_TURRET,
+        "greeble_density": 0.15,
+        "weapon_count": 8,
+        "weapon_types": (WeaponType.TURRET_LARGE, WeaponType.MISSILE_POD, WeaponType.POINT_DEFENSE),
+        "size": (30, 16, 50),
+    },
 }
 
 
