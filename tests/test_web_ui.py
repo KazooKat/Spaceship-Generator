@@ -1556,3 +1556,67 @@ class TestFormControlsFlowIntoGenerator:
             'palette <select id="palette"> missing — polish.js swatch '
             "refresh cannot bind to the dropdown"
         )
+
+
+# --- TestApiPresets ---------------------------------------------------------
+
+
+@pytest.mark.ui
+class TestApiPresets:
+    """``GET /api/presets`` returns full preset metadata for all archetypes."""
+
+    def test_api_presets_returns_200(self, client):
+        resp = client.get("/api/presets")
+        assert resp.status_code == 200
+        assert resp.is_json, "/api/presets must return JSON"
+
+    def test_api_presets_schema(self, client):
+        """Each item in the presets list must carry all required metadata fields
+        with the correct types."""
+        data = client.get("/api/presets").get_json()
+        assert "presets" in data, "/api/presets response missing 'presets' key"
+        required_fields = (
+            "name",
+            "hull_style",
+            "engine_style",
+            "wing_style",
+            "cockpit_style",
+            "greeble_density",
+            "weapon_count",
+            "weapon_types",
+            "size",
+        )
+        for item in data["presets"]:
+            for field in required_fields:
+                assert field in item, (
+                    f"preset item missing field {field!r}: {item!r}"
+                )
+            assert isinstance(item["name"], str)
+            assert isinstance(item["hull_style"], str)
+            assert isinstance(item["engine_style"], str)
+            assert isinstance(item["wing_style"], str)
+            assert isinstance(item["cockpit_style"], str)
+            assert isinstance(item["greeble_density"], float)
+            assert isinstance(item["weapon_count"], int)
+            assert isinstance(item["weapon_types"], list)
+            assert isinstance(item["size"], dict)
+            for dim in ("width", "height", "length"):
+                assert dim in item["size"], (
+                    f"preset {item['name']!r} size missing key {dim!r}"
+                )
+                assert isinstance(item["size"][dim], int)
+
+    def test_api_presets_count(self, client):
+        """Endpoint must return all 9 known preset archetypes."""
+        from spaceship_generator.presets import list_presets
+
+        data = client.get("/api/presets").get_json()
+        names = [item["name"] for item in data["presets"]]
+        expected = list_presets()
+        assert len(names) == 9, (
+            f"expected 9 presets, got {len(names)}: {names!r}"
+        )
+        assert sorted(names) == sorted(expected), (
+            f"preset names mismatch; got {sorted(names)!r}, "
+            f"expected {sorted(expected)!r}"
+        )

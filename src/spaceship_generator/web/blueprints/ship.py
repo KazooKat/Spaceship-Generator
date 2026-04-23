@@ -614,6 +614,68 @@ def api_meta():
     )
 
 
+@ship_bp.route("/api/health", methods=["GET"], endpoint="api_health")
+def api_health():
+    try:
+        from ... import __version__ as _pkg_version  # type: ignore
+        version = str(_pkg_version) or "dev"
+    except Exception:  # pragma: no cover - defensive
+        version = "dev"
+
+    return jsonify(
+        {
+            "status": "ok",
+            "version": version,
+            "palette_count": len(list_palettes()),
+            "preset_count": len(presets.list_presets()),
+        }
+    )
+
+
+@ship_bp.route("/api/presets", methods=["GET"], endpoint="api_presets")
+def api_presets():
+    """Return full metadata for every named preset as JSON.
+
+    Response shape::
+
+        {
+          "presets": [
+            {
+              "name": "corvette",
+              "hull_style": "dagger",
+              "engine_style": "twin_nacelle",
+              "wing_style": "swept",
+              "cockpit_style": "bubble",
+              "greeble_density": 0.1,
+              "weapon_count": 2,
+              "weapon_types": ["turret_large", "point_defense"],
+              "size": {"width": 20, "height": 12, "length": 50}
+            },
+            ...
+          ]
+        }
+
+    Enum values are serialised as their ``.value`` strings (lowercase
+    snake_case) matching the convention used by ``/api/meta``.
+    """
+    result = []
+    for name in presets.list_presets():
+        spec = presets.SHIP_PRESETS[name]
+        width, height, length = spec["size"]
+        result.append({
+            "name": name,
+            "hull_style": spec["hull_style"].value,
+            "engine_style": spec["engine_style"].value,
+            "wing_style": spec["wing_style"].value,
+            "cockpit_style": spec["cockpit_style"].value,
+            "greeble_density": float(spec["greeble_density"]),
+            "weapon_count": int(spec["weapon_count"]),
+            "weapon_types": [wt.value for wt in spec["weapon_types"]],
+            "size": {"width": width, "height": height, "length": length},
+        })
+    return jsonify({"presets": result})
+
+
 # --- /download-fleet --------------------------------------------------------
 # Bulk "plan-and-pack-a-fleet" endpoint. Given a seed + palette + count + size
 # tier + coherence, plan N ships via ``fleet.generate_fleet``, run each through
