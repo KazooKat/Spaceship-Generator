@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(api): add `GET /api/presets` endpoint — returns full preset metadata (hull/engine/wing/cockpit styles, size, weapon config) as JSON for all 9 archetypes
+- feat(cli): add `--repeat N` flag — generates N ships with consecutive seeds from a base seed; mutually exclusive with `--seeds`
+- feat(palettes): add `frozen_tundra` palette — calcite hull, packed-ice engine mass, soul-lantern cold-blue glow (arctic tundra theme)
+- feat(api): add `GET /api/health` health-probe endpoint — returns `{"status":"ok","version":"...","palette_count":N,"preset_count":M}` for Docker/orchestration
+- feat(palettes): add `volcanic_ash` palette — tuff hull, basalt engine casing, glowstone ember glow (volcanic ash theme)
+
 - feat(presets): add `scout`, `battlecruiser`, `capital_carrier` ship archetypes — small fast recon, heavy combat cruiser, and massive fleet carrier presets
 - feat(palettes): add `nebula_drift` palette — deep purple/purpur hull, magenta glass windows, amethyst engine block with shroomlight glow
 - feat(palettes): add `solar_flare` palette — yellow/orange terracotta hull, gold-block wings, glowstone engine wash and lantern running lights
