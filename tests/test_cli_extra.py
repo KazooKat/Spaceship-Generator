@@ -1514,3 +1514,34 @@ def test_palette_random_resolves_to_known_palette(monkeypatch, tmp_path: Path, c
     assert rc == 0
     out = capsys.readouterr().out
     assert f"Palette: {expected}" in out
+
+# ----------- --preview-azimuth / --preview-elevation -----------
+
+
+def test_main_preview_azimuth_elevation_exit_zero_and_produces_png(tmp_path: Path):
+    """--preview --preview-azimuth 60 --preview-elevation 20 exits 0 and writes a PNG."""
+    rc = main(
+        [
+            "--seed",
+            "42",
+            "--palette",
+            "sci_fi_industrial",
+            "--length",
+            "20",
+            "--width",
+            "10",
+            "--height",
+            "8",
+            "--preview",
+            "--preview-size",
+            "100x100",
+            "--preview-azimuth",
+            "60",
+            "--preview-elevation",
+            "20",
+            "--out",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    assert (tmp_path / "ship_42.png").exists()
