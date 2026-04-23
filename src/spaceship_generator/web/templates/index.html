@@ -650,7 +650,7 @@
        ────────────────────────────────────────────────────────────── #}
     <template x-if="helpOpen">
         <div class="modal-backdrop" @click="helpOpen = false">
-            <div class="modal" role="dialog"
+            <div id="shortcuts-modal" class="modal" role="dialog"
                  aria-label="Keyboard shortcuts"
                  @click.stop
                  @keydown.escape.window="helpOpen = false">
