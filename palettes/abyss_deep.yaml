@@ -1,0 +1,26 @@
+name: abyss_deep
+description: Abyssal depths runner. Deepslate-brick hull, dark prismarine engines, soul-lantern running lights in cold blue.
+
+blocks:
+  HULL:          minecraft:deepslate_bricks
+  HULL_DARK:     minecraft:deepslate_tiles
+  WINDOW:        minecraft:cyan_stained_glass
+  ENGINE:        minecraft:dark_prismarine
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:light_blue_stained_glass
+  WING:          minecraft:chiseled_deepslate
+  GREEBLE:       minecraft:smooth_basalt
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:blackstone
+
+preview_colors:
+  HULL:          "#3a3c44"
+  HULL_DARK:     "#2a2c32"
+  WINDOW:        "#40c8d8"
+  ENGINE:        "#1e4840"
+  ENGINE_GLOW:   "#d8f0ff"
+  COCKPIT_GLASS: "#90d8f0"
+  WING:          "#303238"
+  GREEBLE:       "#343438"
+  LIGHT:         "#60c0e0"
+  INTERIOR:      "#1a1a1e"
