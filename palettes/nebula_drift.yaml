@@ -1,0 +1,26 @@
+name: nebula_drift
+description: Cosmic nebula drifter. Deep purple hull, magenta glass windows, amethyst engines with shroomlight glow.
+
+blocks:
+  HULL:          minecraft:purple_concrete
+  HULL_DARK:     minecraft:purple_terracotta
+  WINDOW:        minecraft:magenta_stained_glass
+  ENGINE:        minecraft:amethyst_block
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:pink_stained_glass
+  WING:          minecraft:purpur_block
+  GREEBLE:       minecraft:deepslate_tiles
+  LIGHT:         minecraft:magenta_glazed_terracotta
+  INTERIOR:      minecraft:gray_concrete
+
+preview_colors:
+  HULL:          "#5b1fa8"
+  HULL_DARK:     "#6b3c7c"
+  WINDOW:        "#d469cc"
+  ENGINE:        "#9a6fcb"
+  ENGINE_GLOW:   "#e8c870"
+  COCKPIT_GLASS: "#f49cc4"
+  WING:          "#7b3896"
+  GREEBLE:       "#3c3c42"
+  LIGHT:         "#c040a0"
+  INTERIOR:      "#4a4a4a"
