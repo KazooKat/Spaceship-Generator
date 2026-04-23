@@ -1,0 +1,26 @@
+name: solar_flare
+description: Solar corona racer. Gold-block wings, terracotta hull, glowstone engine wash and lantern running lights.
+
+blocks:
+  HULL:          minecraft:yellow_terracotta
+  HULL_DARK:     minecraft:orange_terracotta
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:red_nether_bricks
+  ENGINE_GLOW:   minecraft:glowstone
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:gold_block
+  GREEBLE:       minecraft:red_concrete
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:sandstone
+
+preview_colors:
+  HULL:          "#c8782a"
+  HULL_DARK:     "#b05c2c"
+  WINDOW:        "#f0862c"
+  ENGINE:        "#7a1a1a"
+  ENGINE_GLOW:   "#f8e888"
+  COCKPIT_GLASS: "#f8e440"
+  WING:          "#e8c020"
+  GREEBLE:       "#8a1414"
+  LIGHT:         "#c87830"
+  INTERIOR:      "#d8c878"
