@@ -1620,3 +1620,36 @@ class TestApiPresets:
             f"preset names mismatch; got {sorted(names)!r}, "
             f"expected {sorted(expected)!r}"
         )
+
+
+# --- TestApiHealth ----------------------------------------------------------
+
+
+@pytest.mark.ui
+class TestApiHealth:
+    """``GET /api/health`` lightweight health-probe endpoint."""
+
+    def test_api_health_returns_200(self, client):
+        resp = client.get("/api/health")
+        assert resp.status_code == 200
+        assert resp.is_json, "/api/health must return JSON"
+
+    def test_api_health_schema(self, client):
+        """Response must carry status=='ok', a non-empty version string,
+        palette_count > 0, and preset_count > 0."""
+        data = client.get("/api/health").get_json()
+        assert data.get("status") == "ok", (
+            f"/api/health 'status' must be 'ok'; got {data.get('status')!r}"
+        )
+        assert isinstance(data.get("version"), str) and data["version"], (
+            f"/api/health 'version' must be a non-empty string; "
+            f"got {data.get('version')!r}"
+        )
+        assert isinstance(data.get("palette_count"), int) and data["palette_count"] > 0, (
+            f"/api/health 'palette_count' must be > 0; "
+            f"got {data.get('palette_count')!r}"
+        )
+        assert isinstance(data.get("preset_count"), int) and data["preset_count"] > 0, (
+            f"/api/health 'preset_count' must be > 0; "
+            f"got {data.get('preset_count')!r}"
+        )
