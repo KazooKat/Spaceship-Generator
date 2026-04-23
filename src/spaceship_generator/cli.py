@@ -196,7 +196,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Bulk mode: comma-separated seeds ('1,2,3') or inclusive range ('0-9'). "
                         "Mutually exclusive with --seed.")
     p.add_argument("--palette", type=str, default="sci_fi_industrial",
-                   help="Palette name to use (default: sci_fi_industrial).")
+                   help="Palette name to use (default: sci_fi_industrial). "
+                        "Use 'random' to pick a random palette.")
     p.add_argument("--list-palettes", action="store_true",
                    help="List available palettes and exit.")
     p.add_argument("--list-styles", action="store_true",
@@ -333,6 +334,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Also save a PNG preview alongside the .litematic (same stem).")
     p.add_argument("--preview-size", type=_parse_preview_size, default=(800, 800),
                    help="Preview size as WxH (default: 800x800).")
+    p.add_argument("--preview-azimuth", type=float, default=None,
+                   help="Camera azimuth angle in degrees for preview (default: 45).")
+    p.add_argument("--preview-elevation", type=float, default=None,
+                   help="Camera elevation angle in degrees for preview (default: 30).")
 
     # Verbosity
     p.add_argument("--verbose", action="store_true",
@@ -564,6 +569,22 @@ def _run_one(
                 print(f"weapons unavailable: {exc}", file=sys.stderr)
 
     if args.preview:
+        # Re-render with custom camera angles when either angle flag is set.
+        if args.preview_azimuth is not None or args.preview_elevation is not None:
+            try:
+                from .palette import load_palette
+                from .preview import render_preview
+
+                pal_obj = load_palette(args.palette)
+                result.preview_png = render_preview(
+                    result.role_grid,
+                    pal_obj,
+                    size=args.preview_size,
+                    azimuth_deg=args.preview_azimuth,
+                    elevation_deg=args.preview_elevation,
+                )
+            except Exception:  # pragma: no cover - preview is best-effort
+                pass
         preview_path = result.litematic_path.with_suffix(".png")
         result.save_preview(preview_path)
 
@@ -832,6 +853,12 @@ def main(argv: list[str] | None = None) -> int:
                 # string tokens (to mirror ``--weapon-types`` input), so
                 # map back to ``.value``.
                 args.weapon_types = [wt.value for wt in preset_kwargs["weapon_types"]]
+
+    # Resolve ``--palette random`` → a concrete palette name chosen at
+    # runtime. This is intercepted here so all downstream code (fleet,
+    # seeds loop, weapon pass) receives the same resolved name.
+    if args.palette == "random":
+        args.palette = random.choice(list_palettes())
 
     # Fleet mode short-circuits the seeds loop: one fleet seed plans N ships
     # and each planned ship is generated individually.

@@ -1447,3 +1447,70 @@ def test_stats_help_documents_flag(capsys):
     assert excinfo.value.code == 0
     out = capsys.readouterr().out
     assert "--stats" in out
+
+
+# ----------- --palette random alias -----------
+
+
+def test_palette_random_exits_zero(tmp_path: Path):
+    """``--palette random`` must succeed (exit 0) without crashing.
+
+    We don't assert which palette was chosen — only that generation
+    completes without error and produces a .litematic file.
+    """
+    rc = main(
+        [
+            "--seed",
+            "1",
+            "--palette",
+            "random",
+            "--length",
+            "20",
+            "--width",
+            "10",
+            "--height",
+            "8",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    litematics = list(tmp_path.glob("*.litematic"))
+    assert len(litematics) == 1
+
+
+def test_palette_random_resolves_to_known_palette(monkeypatch, tmp_path: Path, capsys):
+    """``--palette random`` resolves to a real palette name before generation.
+
+    We monkeypatch ``random.choice`` to return the first available palette
+    so the resolved name is deterministic, then verify the success output
+    names a palette (not ``"random"``).
+    """
+    from spaceship_generator.palette import list_palettes as _list_palettes
+
+    available = _list_palettes()
+    assert available, "No palettes found — cannot run test"
+    expected = available[0]
+
+    monkeypatch.setattr(cli.random, "choice", lambda seq: expected)
+
+    rc = main(
+        [
+            "--seed",
+            "2",
+            "--palette",
+            "random",
+            "--length",
+            "20",
+            "--width",
+            "10",
+            "--height",
+            "8",
+            "--out",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert f"Palette: {expected}" in out
