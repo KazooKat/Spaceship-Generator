@@ -115,6 +115,7 @@
         setText("seed-readout", meta.seed);
         setText("palette-readout", meta.palette);
         setText("stat-voxels", meta.voxels || meta.blocks);
+        setText("stat-dims", meta.shape);
 
         var dl = document.getElementById("btn-download");
         if (dl) {

@@ -138,6 +138,7 @@ class TestTopbarAndSidebar:
     def test_stat_readouts(self, client):
         body = client.get("/").get_data(as_text=True)
         assert _has_any(body, *_id_attr("stat-voxels"))
+        assert _has_any(body, *_id_attr("stat-dims"))
         assert _has_any(body, *_id_attr("stat-fps"))
 
     def test_axis_gizmo_canvas(self, client):
