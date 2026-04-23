@@ -304,6 +304,13 @@ def build_parser() -> argparse.ArgumentParser:
                         "placement to (e.g. 'turret_large,missile_pod'). "
                         "Defaults to all types.")
 
+    # Repeat mode — generate N ships with consecutive seeds.
+    p.add_argument("--repeat", type=_parse_pos_int, default=1,
+                   help="Generate N ships with consecutive seeds (default 1). "
+                        "Without --seed, seeds are random starting points; "
+                        "with --seed S, generates seeds S, S+1, …, S+N-1. "
+                        "Mutually exclusive with --seeds.")
+
     # Fleet (optional — requires fleet module; enabled when --fleet-count > 1).
     p.add_argument("--fleet-count", type=_parse_pos_int, default=1,
                    help="Generate a fleet of N ships (default 1, single-ship "
@@ -783,6 +790,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.seed is not None and args.seeds is not None:
         print("Error: --seed and --seeds are mutually exclusive.", file=sys.stderr)
         return 2
+    if args.seeds is not None and args.repeat > 1:
+        print("Error: --seeds and --repeat are mutually exclusive.", file=sys.stderr)
+        return 2
 
     if args.list_palettes:
         names = list_palettes()
@@ -956,9 +966,13 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         return 0
 
-    # Determine the seed list (legacy single + --seeds bulk modes).
+    # Determine the seed list (legacy single + --seeds bulk + --repeat modes).
     if args.seeds is not None:
         seeds = list(args.seeds)
+        bulk_mode = True
+    elif args.repeat > 1:
+        base = args.seed if args.seed is not None else random.randint(0, 2**31 - 1)
+        seeds = list(range(base, base + args.repeat))
         bulk_mode = True
     else:
         seed = args.seed if args.seed is not None else random.randint(0, 2**31 - 1)

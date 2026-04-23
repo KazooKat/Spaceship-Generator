@@ -1565,3 +1565,70 @@ def test_block_summary_flag_outputs_csv(tmp_path: Path, capsys):
     out = capsys.readouterr().out
     assert "block_id,count" in out
     assert any(line.startswith("minecraft:") for line in out.splitlines())
+
+
+# ----------- --repeat flag -----------
+
+
+def test_cli_repeat_generates_multiple_files(monkeypatch, tmp_path: Path):
+    """``--repeat 3`` creates 3 output .litematic files with distinct seeds."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    rc = main(
+        [
+            "--repeat",
+            "3",
+            "--palette",
+            "sci_fi_industrial",
+            "--length",
+            "20",
+            "--width",
+            "10",
+            "--height",
+            "8",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    # Exactly 3 generator calls with distinct seeds.
+    assert len(calls) == 3
+    seeds_used = [c["seed"] for c in calls]
+    assert len(set(seeds_used)) == 3
+    # 3 .litematic files on disk.
+    files = list(tmp_path.glob("*.litematic"))
+    assert len(files) == 3
+
+
+def test_cli_repeat_with_base_seed(monkeypatch, tmp_path: Path):
+    """``--repeat 3 --seed 100`` generates seeds 100, 101, 102."""
+    calls: list[dict] = []
+    _stub_generate(monkeypatch, calls)
+
+    rc = main(
+        [
+            "--repeat",
+            "3",
+            "--seed",
+            "100",
+            "--palette",
+            "sci_fi_industrial",
+            "--length",
+            "20",
+            "--width",
+            "10",
+            "--height",
+            "8",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+    seeds_used = [c["seed"] for c in calls]
+    assert seeds_used == [100, 101, 102]
+    # The three expected filenames must exist on disk.
+    for s in (100, 101, 102):
+        assert (tmp_path / f"ship_{s}.litematic").exists()
