@@ -1545,3 +1545,20 @@ def test_main_preview_azimuth_elevation_exit_zero_and_produces_png(tmp_path: Pat
     )
     assert rc == 0
     assert (tmp_path / "ship_42.png").exists()
+
+
+def test_block_summary_flag_outputs_csv(tmp_path: Path, capsys):
+    """--block-summary prints CSV header and at least one minecraft: block line."""
+    rc = main([
+        "--seed", "42",
+        "--palette", "sci_fi_industrial",
+        "--length", "20",
+        "--width", "10",
+        "--height", "8",
+        "--block-summary",
+        "--out", str(tmp_path),
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "block_id,count" in out
+    assert any(line.startswith("minecraft:") for line in out.splitlines())

@@ -355,6 +355,13 @@ def build_parser() -> argparse.ArgumentParser:
                         "material distribution.")
     p.add_argument("--output-json", action="store_true",
                    help="Print a JSON summary of each generated ship to stdout.")
+    p.add_argument(
+        "--block-summary",
+        action="store_true",
+        default=False,
+        help="Print block_id,count CSV (sorted by count desc) after generation. "
+             "Useful for survival mode resource planning.",
+    )
 
     return p
 
@@ -722,6 +729,29 @@ def _print_json_summary(result: GenerationResult) -> None:
     print(json.dumps(summary), file=sys.stdout)
 
 
+def _print_block_summary(result: GenerationResult) -> None:
+    """Print CSV of block_id,count sorted by count descending."""
+    import numpy as np
+
+    from .palette import Role, load_palette
+
+    pal = load_palette(result.palette_name)
+    roles, counts = np.unique(result.role_grid, return_counts=True)
+    pairs = []
+    for role_int, count in zip(roles, counts, strict=True):
+        if int(role_int) == int(Role.EMPTY):
+            continue
+        try:
+            block_id = pal.block_state(int(role_int)).id
+        except (ValueError, KeyError):
+            continue
+        pairs.append((block_id, int(count)))
+    pairs.sort(key=lambda x: -x[1])
+    print("block_id,count")
+    for block_id, count in pairs:
+        print(f"{block_id},{count}")
+
+
 def _explicit_flags(argv: list[str] | None) -> set[str]:
     """Return the set of CLI long-option names that appear in ``argv``.
 
@@ -916,6 +946,8 @@ def main(argv: list[str] | None = None) -> int:
                 _print_stats(result)
             if args.output_json:
                 _print_json_summary(result)
+            if args.block_summary:
+                _print_block_summary(result)
             successes += 1
 
         if successes == 0:
@@ -964,6 +996,8 @@ def main(argv: list[str] | None = None) -> int:
             _print_stats(result)
         if args.output_json:
             _print_json_summary(result)
+        if args.block_summary:
+            _print_block_summary(result)
         successes += 1
 
     # Exit-code semantics:
