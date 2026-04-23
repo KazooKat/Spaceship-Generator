@@ -1159,22 +1159,25 @@ def test_cockpit_style_typeerror_fallback_warns_and_retries(
 
 
 def test_list_presets_prints_all_names_and_exits_zero(capsys):
-    """``--list-presets`` prints all 6 preset names, one per line, exit 0."""
+    """``--list-presets`` prints all preset names, one per line, exit 0."""
     from spaceship_generator.presets import list_presets
 
     rc = main(["--list-presets"])
     assert rc == 0
     out = capsys.readouterr().out
     expected = set(list_presets())
-    # Sanity-check there are exactly 6 built-in presets.
-    assert expected == {
+    # Sanity-check all known built-in presets are present.
+    assert {
         "corvette",
         "dropship",
         "science_vessel",
         "gunship",
         "freighter_heavy",
         "interceptor",
-    }
+        "scout",
+        "battlecruiser",
+        "capital_carrier",
+    }.issubset(expected)
     for name in expected:
         assert name in out
 

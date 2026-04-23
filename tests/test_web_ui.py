@@ -1031,8 +1031,8 @@ class TestPresetDropdown:
         assert 'value=""' in block, "preset select missing empty (none) option"
         # Every list_presets() name must be an option value.
         names = list_presets()
-        assert len(names) == 6, (
-            f"expected 6 presets; got {len(names)}: {names!r}"
+        assert len(names) >= 6, (
+            f"expected at least 6 presets; got {len(names)}: {names!r}"
         )
         for name in names:
             assert f'value="{name}"' in block, (

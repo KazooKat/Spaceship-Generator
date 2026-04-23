@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(presets): add `scout`, `battlecruiser`, `capital_carrier` ship archetypes — small fast recon, heavy combat cruiser, and massive fleet carrier presets
+- feat(palettes): add `nebula_drift` palette — deep purple/purpur hull, magenta glass windows, amethyst engine block with shroomlight glow
+- feat(palettes): add `solar_flare` palette — yellow/orange terracotta hull, gold-block wings, glowstone engine wash and lantern running lights
+- feat(palettes): add `abyss_deep` palette — deepslate-brick hull, dark prismarine engines, soul-lantern running lights in cold deep-ocean blue
+- feat(web): add DIMS (W×H×L) ship dimensions readout to viewport status bar alongside VOX and FPS
+- feat(cli): add `--block-summary` flag — prints `block_id,count` CSV sorted by count descending for survival mode resource planning
+
 - feat(cli): add `--preview-azimuth` and `--preview-elevation` flags to control isometric camera angle when saving previews
 - feat(palettes): add `autumn_harvest` palette — orange terracotta hull, brown terracotta dark, shroomlight engine glow, jack o'lantern lights (seasonal theme)
 - feat(web): add keyboard shortcut help overlay — press `?` (or click the `?` button) to toggle a modal listing all shortcuts; styled with neon accent border
