@@ -1,0 +1,26 @@
+name: frozen_tundra
+description: Arctic tundra runner. Calcite-and-dripstone hull, packed-ice engines, soul-lantern cold-blue glow, snow-panel wings.
+
+blocks:
+  HULL:          minecraft:calcite
+  HULL_DARK:     minecraft:dripstone_block
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:packed_ice
+  ENGINE_GLOW:   minecraft:soul_lantern
+  COCKPIT_GLASS: minecraft:glass
+  WING:          minecraft:snow_block
+  GREEBLE:       minecraft:smooth_basalt
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:white_concrete
+
+preview_colors:
+  HULL:          "#e8e4d8"
+  HULL_DARK:     "#8a7a6a"
+  WINDOW:        "#90c8e8"
+  ENGINE:        "#8ab0c8"
+  ENGINE_GLOW:   "#60a8d0"
+  COCKPIT_GLASS: "#d8eef8"
+  WING:          "#f4f8fc"
+  GREEBLE:       "#343438"
+  LIGHT:         "#d8f0ff"
+  INTERIOR:      "#e8e8e8"
