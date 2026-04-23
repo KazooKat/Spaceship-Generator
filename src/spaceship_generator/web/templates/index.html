@@ -220,14 +220,21 @@
                     </div>
                     <div class="control" data-param="palette">
                         <label>Palette {{ tip("palette") }}
-                            <select name="palette" id="palette">
-                                <option value="random" {% if defaults.palette == "random" %}selected{% endif %}>
-                                    &#127922; random (seeded)
-                                </option>
-                                {% for p in palettes %}
-                                <option value="{{ p }}" {% if p == defaults.palette %}selected{% endif %}>{{ p }}</option>
-                                {% endfor %}
-                            </select>
+                            <div class="palette-select-row">
+                                <select name="palette" id="palette">
+                                    <option value="random" {% if defaults.palette == "random" %}selected{% endif %}>
+                                        &#127922; random (seeded)
+                                    </option>
+                                    {% for p in palettes %}
+                                    <option value="{{ p }}" {% if p == defaults.palette %}selected{% endif %}>{{ p }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" id="random-palette-btn"
+                                        class="btn ghost inline palette-random-btn"
+                                        aria-label="Pick a random palette">
+                                    &#8635; Random
+                                </button>
+                            </div>
                         </label>
                         {# Palette swatch preview. Rendered by polish.js from
                            hash-derived colors; refined with real block colors

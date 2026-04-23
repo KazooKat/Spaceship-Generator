@@ -283,6 +283,26 @@
         });
     }
 
+    // --- Random palette button -----------------------------------------------
+    function bindRandomPaletteBtn() {
+        var btn = document.getElementById("random-palette-btn");
+        if (!btn || btn.dataset.palRandBound === "1") return;
+        btn.dataset.palRandBound = "1";
+        btn.addEventListener("click", function () {
+            var sel = document.getElementById("palette");
+            if (!sel) return;
+            // Exclude the placeholder "random (seeded)" option (value="random")
+            // and any option with an empty value.
+            var opts = Array.from(sel.options).filter(function (o) {
+                return o.value && o.value !== "random";
+            });
+            if (!opts.length) return;
+            var pick = opts[Math.floor(Math.random() * opts.length)];
+            sel.value = pick.value;
+            try { sel.dispatchEvent(new Event("change", { bubbles: true })); } catch (e) { /* noop */ }
+        });
+    }
+
     function fetchPaletteColors() {
         fetch("/api/palettes")
             .then(function (r) { return r.ok ? r.json() : null; })
@@ -307,6 +327,7 @@
         bindHtmxLifecycle();
         bindPaletteSwatches();
         fetchPaletteColors();
+        bindRandomPaletteBtn();
         window.ui.reinitLucide();
         window.ui.setStatus("READY", "ready");
     }
