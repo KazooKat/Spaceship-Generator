@@ -18,6 +18,7 @@ from spaceship_generator.palette import (
     Role,
     _parse_color,
     list_palettes,
+    load_palette,
     validate_palette_file,
 )
 
@@ -259,3 +260,23 @@ def test_list_palettes_missing_dir_returns_empty(tmp_path: Path):
     """A nonexistent search_dir returns an empty list, not a crash."""
     missing = tmp_path / "does_not_exist"
     assert list_palettes(search_dir=missing) == []
+
+
+# ----------- autumn_harvest smoke test -----------
+
+
+def test_autumn_harvest_loads_all_roles():
+    """autumn_harvest must load and expose valid block states + preview colors for every role."""
+    from litemapy import BlockState
+
+    pal = load_palette("autumn_harvest")
+    assert pal.name == "autumn_harvest"
+    for role_name in REQUIRED_ROLES:
+        role = Role[role_name]
+        bs = pal.block_state(role)
+        assert isinstance(bs, BlockState), f"autumn_harvest: {role_name} missing BlockState"
+        assert "minecraft:" in str(bs), f"autumn_harvest: {role_name} block lacks minecraft: prefix"
+        color = pal.preview_color(role)
+        assert len(color) == 4, f"autumn_harvest: {role_name} preview_color is not 4-tuple"
+        for v in color:
+            assert 0.0 <= v <= 1.0, f"autumn_harvest: {role_name} color component out of range"

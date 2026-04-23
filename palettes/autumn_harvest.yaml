@@ -1,0 +1,26 @@
+name: autumn_harvest
+description: Seasonal autumn harvest. Orange terracotta hull, copper trim, brown earth tones, shroomlight glow.
+
+blocks:
+  HULL:          minecraft:orange_terracotta
+  HULL_DARK:     minecraft:brown_terracotta
+  WINDOW:        minecraft:brown_stained_glass
+  ENGINE:        minecraft:polished_deepslate
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:orange_stained_glass
+  WING:          minecraft:mud_bricks
+  GREEBLE:       minecraft:red_nether_bricks
+  LIGHT:         minecraft:jack_o_lantern
+  INTERIOR:      minecraft:stripped_oak_log
+
+preview_colors:
+  HULL:          "#c25c1e"
+  HULL_DARK:     "#714032"
+  WINDOW:        "#7a5840"
+  ENGINE:        "#3a3a3e"
+  ENGINE_GLOW:   "#f09246"
+  COCKPIT_GLASS: "#d87f33"
+  WING:          "#8a6a4e"
+  GREEBLE:       "#5c2424"
+  LIGHT:         "#e8a020"
+  INTERIOR:      "#9e6b3a"
