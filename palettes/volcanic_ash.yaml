@@ -1,0 +1,26 @@
+name: volcanic_ash
+description: Post-eruption volcanic surveyor. Tuff hull, smooth-basalt panels, glowstone ember glow through an ashen atmosphere.
+
+blocks:
+  HULL:          minecraft:tuff
+  HULL_DARK:     minecraft:smooth_basalt
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:basalt
+  ENGINE_GLOW:   minecraft:glowstone
+  COCKPIT_GLASS: minecraft:brown_stained_glass
+  WING:          minecraft:deepslate
+  GREEBLE:       minecraft:cracked_polished_blackstone_bricks
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:polished_deepslate
+
+preview_colors:
+  HULL:          "#6a6858"
+  HULL_DARK:     "#404040"
+  WINDOW:        "#c86820"
+  ENGINE:        "#383830"
+  ENGINE_GLOW:   "#f8d060"
+  COCKPIT_GLASS: "#784828"
+  WING:          "#303030"
+  GREEBLE:       "#282018"
+  LIGHT:         "#d08830"
+  INTERIOR:      "#484848"
