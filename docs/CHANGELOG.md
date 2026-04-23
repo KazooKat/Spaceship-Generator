@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(cli): add `--preview-azimuth` and `--preview-elevation` flags to control isometric camera angle when saving previews
+- feat(palettes): add `autumn_harvest` palette — orange terracotta hull, brown terracotta dark, shroomlight engine glow, jack o'lantern lights (seasonal theme)
+- feat(web): add keyboard shortcut help overlay — press `?` (or click the `?` button) to toggle a modal listing all shortcuts; styled with neon accent border
+- feat(cli): add `--palette random` alias — resolves to a randomly chosen palette at generation time
+- feat(web): add ⟳ Random Palette button inline with the palette selector; updates swatch strip on click
+
 - feat(web): palette color swatches in UI — `/api/palettes` now returns hex preview colors; swatch strip renders below palette selector
 - feat(api): `GET /api/result/<gen_id>` endpoint returns full result metadata (seed, palette, shape, blocks, filename, download/preview URLs)
 - feat(cli): `--output-json` flag emits NDJSON summary (seed, palette, shape, blocks, path) to stdout after each generation
