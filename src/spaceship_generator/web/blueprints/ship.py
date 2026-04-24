@@ -816,6 +816,98 @@ def _parse_download_fleet_args(args) -> tuple[int, str, int, str, float]:
     return seed, palette_name, count, size_tier, coherence
 
 
+@ship_bp.route("/api/fleet/plan", methods=["GET"], endpoint="fleet_plan")
+def fleet_plan():
+    """Return JSON metadata for a planned fleet without generating any files.
+
+    Query params (all optional):
+
+    * ``seed``       — int, default 0.
+    * ``palette``    — palette name, default ``sci_fi_industrial``. Must exist.
+    * ``count``      — int 1–10, default 3.
+    * ``size_tier``  — ``small``/``mid``/``large``/``capital``/``mixed``, default ``mid``.
+    * ``coherence``  — float 0.0–1.0, default 0.8.
+
+    Returns 200 JSON with fleet metadata on success, 400 JSON ``{"error": "..."}``
+    for invalid params.
+    """
+    # --- seed ---
+    try:
+        seed = int(request.args.get("seed") or 0)
+    except (TypeError, ValueError):
+        return jsonify({"error": f"seed must be an integer; got {request.args.get('seed')!r}"}), 400
+
+    # --- palette ---
+    palette_name = (request.args.get("palette") or "sci_fi_industrial").strip()
+    if not palette_name:
+        return jsonify({"error": "palette must be a non-empty string"}), 400
+    if palette_name not in list_palettes():
+        return jsonify({"error": f"unknown palette {palette_name!r}"}), 400
+
+    # --- count ---
+    raw_count = request.args.get("count", "3")
+    try:
+        count = int(float(raw_count))
+    except (TypeError, ValueError):
+        return jsonify({"error": f"count must be an integer; got {raw_count!r}"}), 400
+    if not 1 <= count <= 10:
+        return jsonify({"error": f"count must be in [1, 10]; got {count}"}), 400
+
+    # --- size_tier ---
+    size_tier = (request.args.get("size_tier") or "mid").strip().lower()
+    if size_tier not in _ALLOWED_SIZE_TIERS:
+        allowed = sorted(_ALLOWED_SIZE_TIERS)
+        return jsonify({"error": f"size_tier must be one of {allowed}; got {size_tier!r}"}), 400
+
+    # --- coherence ---
+    raw_coherence = request.args.get("coherence", "0.8")
+    try:
+        coherence = float(raw_coherence)
+    except (TypeError, ValueError):
+        return jsonify({"error": f"coherence must be a float; got {raw_coherence!r}"}), 400
+    if not 0.0 <= coherence <= 1.0:
+        return jsonify({"error": f"coherence must be in [0.0, 1.0]; got {coherence}"}), 400
+
+    fleet_params = FleetParams(
+        count=count,
+        palette=palette_name,
+        size_tier=size_tier,
+        style_coherence=coherence,
+        seed=seed,
+    )
+    try:
+        ships = generate_fleet(fleet_params)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    ships_json = []
+    for idx, ship in enumerate(ships):
+        ships_json.append({
+            "index": idx,
+            "seed": ship.seed,
+            "hull_style": ship.hull_style.value if ship.hull_style else None,
+            "engine_style": ship.engine_style.value if ship.engine_style else None,
+            "wing_style": ship.wing_style.value if ship.wing_style else None,
+            "cockpit_style": ship.cockpit_style.value if ship.cockpit_style else None,
+            "greeble_density": float(ship.greeble_density),
+            "weapon_count": int(ship.weapon_count),
+            "dims": {
+                "width": ship.dims[0],
+                "height": ship.dims[1],
+                "length": ship.dims[2],
+            },
+        })
+
+    return jsonify({
+        "seed": seed,
+        "palette": palette_name,
+        "count": count,
+        "size_tier": size_tier,
+        "coherence": coherence,
+        "ships": ships_json,
+    })
+
+
 @ship_bp.route("/download-fleet", methods=["GET"], endpoint="download_fleet")
 def download_fleet():
     """Plan ``count`` ships and stream them back as one zip of ``.litematic``.

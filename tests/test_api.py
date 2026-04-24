@@ -49,3 +49,43 @@ def test_api_preset_detail_unknown(client):
     assert rv.status_code == 404
     data = rv.get_json()
     assert "error" in data
+
+
+def test_fleet_plan_default_params(client):
+    rv = client.get("/api/fleet/plan")
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert "ships" in data
+    assert isinstance(data["ships"], list)
+    assert len(data["ships"]) == data["count"]
+    ship = data["ships"][0]
+    assert "seed" in ship
+    assert "dims" in ship
+    assert "hull_style" in ship
+    assert "width" in ship["dims"]
+
+
+def test_fleet_plan_custom_count(client):
+    rv = client.get("/api/fleet/plan?count=5&seed=42&palette=sci_fi_industrial")
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert data["count"] == 5
+    assert len(data["ships"]) == 5
+
+
+def test_fleet_plan_invalid_count_zero(client):
+    rv = client.get("/api/fleet/plan?count=0")
+    assert rv.status_code == 400
+    assert "error" in rv.get_json()
+
+
+def test_fleet_plan_invalid_palette(client):
+    rv = client.get("/api/fleet/plan?palette=nonexistent_xyz_palette")
+    assert rv.status_code == 400
+    assert "error" in rv.get_json()
+
+
+def test_fleet_plan_invalid_size_tier(client):
+    rv = client.get("/api/fleet/plan?size_tier=bogus")
+    assert rv.status_code == 400
+    assert "error" in rv.get_json()
