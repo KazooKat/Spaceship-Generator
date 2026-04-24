@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(web): add seed-phrase text input to web form — type a phrase to get a deterministic seed (SHA-256, same algorithm as `--seed-phrase`); overrides the numeric seed field
+- feat(api): add `GET /api/presets/<name>` endpoint — returns full single-preset detail (symmetry with `/api/palettes/<name>`); 404 on unknown name
+- feat(cli): add `--list-weapon-types` flag — prints all 5 weapon type names with 2-space indent; completes the `--list-*` discovery family alongside `--list-palettes`, `--list-styles`, `--list-presets`
+
 - feat(presets): add `description` field to all 9 ship archetypes — shown in `--list-presets` output and `/api/presets` JSON response
 - feat(api): add `GET /api/palettes/<name>` endpoint — returns roles, block IDs, and hex preview colors for a single named palette; 404 on unknown name
 - feat(cli): add `--seed-phrase <text>` flag — hashes text to deterministic seed (SHA-256 mod 2^31-1); prints resolved integer seed so ships can be reproduced
