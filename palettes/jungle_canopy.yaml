@@ -1,0 +1,26 @@
+name: jungle_canopy
+description: Jungle canopy runner. Jungle log hull, mossy stone underframe, ochre froglight engine wash.
+
+blocks:
+  HULL:          minecraft:jungle_log
+  HULL_DARK:     minecraft:mossy_cobblestone
+  WINDOW:        minecraft:lime_stained_glass
+  ENGINE:        minecraft:deepslate_bricks
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:lime_stained_glass
+  WING:          minecraft:jungle_planks
+  GREEBLE:       minecraft:cobblestone
+  LIGHT:         minecraft:shroomlight
+  INTERIOR:      minecraft:smooth_stone
+
+preview_colors:
+  HULL:          "#5c3a1e"
+  HULL_DARK:     "#4a5030"
+  WINDOW:        "#4a8030"
+  ENGINE:        "#3a3848"
+  ENGINE_GLOW:   "#d8b820"
+  COCKPIT_GLASS: "#2e5a20"
+  WING:          "#8a5c30"
+  GREEBLE:       "#888070"
+  LIGHT:         "#d0b840"
+  INTERIOR:      "#808078"

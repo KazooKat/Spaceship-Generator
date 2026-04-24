@@ -1,0 +1,26 @@
+name: swamp_bog
+description: Swamp bog hauler. Mangrove hull, mud underframe, verdant froglight engine glow.
+
+blocks:
+  HULL:          minecraft:mangrove_log
+  HULL_DARK:     minecraft:mud
+  WINDOW:        minecraft:gray_stained_glass
+  ENGINE:        minecraft:mossy_stone_bricks
+  ENGINE_GLOW:   minecraft:verdant_froglight
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:mangrove_planks
+  GREEBLE:       minecraft:mossy_cobblestone
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:packed_mud
+
+preview_colors:
+  HULL:          "#5a3828"
+  HULL_DARK:     "#5a5040"
+  WINDOW:        "#707880"
+  ENGINE:        "#484840"
+  ENGINE_GLOW:   "#408830"
+  COCKPIT_GLASS: "#3a3a3a"
+  WING:          "#7a4838"
+  GREEBLE:       "#585850"
+  LIGHT:         "#4080c8"
+  INTERIOR:      "#706858"
