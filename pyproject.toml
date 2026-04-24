@@ -57,6 +57,9 @@ spaceship_generator = ["py.typed", "data/*.json"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 markers = ["ui: web UI tests (slower)"]
+filterwarnings = [
+  "ignore::RuntimeWarning:runpy"
+]
 
 [tool.ruff]
 line-length = 100
