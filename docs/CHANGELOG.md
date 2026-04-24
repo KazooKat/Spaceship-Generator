@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- fix(cli): replace `utcnow()` with timezone-aware `datetime.now(UTC)` in `--export-manifest` timestamp — eliminates DeprecationWarning on Python 3.12+
+- fix(tests): add pytest `filterwarnings` entry to suppress known-harmless runpy `RuntimeWarning` in `test_cli_module_runpy_smoke`
+- feat(palettes): add `mushroom_islands` palette — mycelium hull, red mushroom cap wings, shroomlight engine glow (mushroom island biome theme)
+- feat(palettes): add `prismarine_sea` palette — prismarine-brick hull, dark prismarine underframe, sea-lantern engine glow (ocean monument theme)
+- feat(cli): add `--ship-size WxHxL` flag — override ship dimensions at generation time; validates W>=4, H>=4, L>=8; overrides preset size
+- feat(api): add `GET /api/compare` endpoint — accepts `seed_a`/`seed_b` plus optional `palette`/`preset`; returns both ships' dims, voxel count, and role counts side-by-side without generating files
+
 - fix(cli): replace `→` with `->` in `--stats` help and `--seed-phrase` stderr output — fixes `UnicodeEncodeError` on Windows cp1252 terminals
 - feat(cli): add `--palette-info <name>` flag — prints each role with its block ID and hex preview color for the named palette; exits 0 on success, 1 on unknown name
 - feat(cli): add `--export-manifest` flag — writes a `<name>.json` sidecar alongside each generated `.litematic` containing seed, palette, shape, block count, and UTC timestamp
