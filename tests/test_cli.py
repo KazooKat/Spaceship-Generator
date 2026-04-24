@@ -107,7 +107,7 @@ def test_seed_phrase_deterministic(tmp_path):
     import hashlib
     import subprocess
 
-    result1 = subprocess.run(
+    subprocess.run(
         [
             sys.executable,
             "-m",
@@ -121,7 +121,7 @@ def test_seed_phrase_deterministic(tmp_path):
         capture_output=True,
         check=True,
     )
-    result2 = subprocess.run(
+    subprocess.run(
         [
             sys.executable,
             "-m",
