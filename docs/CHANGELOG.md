@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- fix(cli): replace `→` with `->` in `--stats` help and `--seed-phrase` stderr output — fixes `UnicodeEncodeError` on Windows cp1252 terminals
+- feat(cli): add `--palette-info <name>` flag — prints each role with its block ID and hex preview color for the named palette; exits 0 on success, 1 on unknown name
+- feat(cli): add `--export-manifest` flag — writes a `<name>.json` sidecar alongside each generated `.litematic` containing seed, palette, shape, block count, and UTC timestamp
+- feat(api): add `GET /api/fleet/plan` endpoint — returns JSON fleet metadata (count, size tier, coherence, per-ship seed/dims/styles) without generating any files; validates all five query params with 400 on bad input
+- feat(palettes): add `jungle_canopy` palette — jungle log hull, mossy cobblestone underframe, ochre froglight engine glow, lime glass windows (tropical jungle theme)
+- feat(palettes): add `swamp_bog` palette — mangrove log hull, mud underframe, verdant froglight engine glow, soul lantern running lights (dark swamp theme)
+
 - feat(web): add seed-phrase text input to web form — type a phrase to get a deterministic seed (SHA-256, same algorithm as `--seed-phrase`); overrides the numeric seed field
 - feat(api): add `GET /api/presets/<name>` endpoint — returns full single-preset detail (symmetry with `/api/palettes/<name>`); 404 on unknown name
 - feat(cli): add `--list-weapon-types` flag — prints all 5 weapon type names with 2-space indent; completes the `--list-*` discovery family alongside `--list-palettes`, `--list-styles`, `--list-presets`
