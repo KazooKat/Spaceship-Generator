@@ -33,3 +33,19 @@ def test_api_palette_detail_not_found(client):
     assert rv.status_code == 404
     data = rv.get_json()
     assert "error" in data
+
+
+def test_api_preset_detail_known(client):
+    rv = client.get("/api/presets/corvette")
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert data["name"] == "corvette"
+    assert "description" in data
+    assert isinstance(data["description"], str) and len(data["description"]) > 0
+
+
+def test_api_preset_detail_unknown(client):
+    rv = client.get("/api/presets/nonexistent_xyz")
+    assert rv.status_code == 404
+    data = rv.get_json()
+    assert "error" in data

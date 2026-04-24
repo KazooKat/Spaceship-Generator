@@ -693,6 +693,48 @@ def api_presets():
     return jsonify({"presets": result})
 
 
+@ship_bp.route("/api/presets/<string:name>", methods=["GET"], endpoint="api_preset_detail")
+def api_preset_detail(name: str):
+    """Return full metadata for a single named preset.
+
+    Response shape mirrors one entry from ``/api/presets``::
+
+        {
+          "name": "corvette",
+          "description": "Fast light warship ...",
+          "hull_style": "dagger",
+          "engine_style": "twin_nacelle",
+          "wing_style": "swept",
+          "cockpit_style": "bubble",
+          "greeble_density": 0.1,
+          "weapon_count": 2,
+          "weapon_types": ["turret_large", "point_defense"],
+          "size": {"width": 20, "height": 12, "length": 50}
+        }
+
+    Returns 404 if the preset name is not recognised, 503 if the presets
+    module failed to import.
+    """
+    if not hasattr(presets, "SHIP_PRESETS"):
+        return jsonify({"error": "presets unavailable"}), 503
+    spec = presets.SHIP_PRESETS.get(name)
+    if spec is None:
+        return jsonify({"error": "preset not found", "name": name}), 404
+    width, height, length = spec["size"]
+    return jsonify({
+        "name": name,
+        "description": spec["description"],
+        "hull_style": spec["hull_style"].value,
+        "engine_style": spec["engine_style"].value,
+        "wing_style": spec["wing_style"].value,
+        "cockpit_style": spec["cockpit_style"].value,
+        "greeble_density": float(spec["greeble_density"]),
+        "weapon_count": int(spec["weapon_count"]),
+        "weapon_types": [wt.value for wt in spec["weapon_types"]],
+        "size": {"width": width, "height": height, "length": length},
+    })
+
+
 # --- /download-fleet --------------------------------------------------------
 # Bulk "plan-and-pack-a-fleet" endpoint. Given a seed + palette + count + size
 # tier + coherence, plan N ships via ``fleet.generate_fleet``, run each through
