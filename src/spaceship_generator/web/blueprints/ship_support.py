@@ -13,6 +13,7 @@ Extracted from ``ship.py`` so the route module stays under the project's
 
 from __future__ import annotations
 
+import hashlib
 import math
 import sys
 import threading
@@ -485,6 +486,14 @@ def build_params_from_source(
     if preset_name is not None:
         source = _merge_preset_into_source(source, preset_name)
     seed = int(source.get("seed") or 0)
+
+    # seed_phrase overrides the numeric seed when non-empty — same hash as CLI.
+    seed_phrase = source.get("seed_phrase") or ""
+    if isinstance(seed_phrase, str):
+        seed_phrase = seed_phrase.strip()
+    if seed_phrase:
+        seed = int(hashlib.sha256(seed_phrase.encode()).hexdigest(), 16) % (2**31 - 1)
+
     palette_name = source.get("palette", "sci_fi_industrial")
 
     # "random" (or "__random__") picks a palette deterministically from the

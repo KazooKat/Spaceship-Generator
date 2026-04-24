@@ -1622,6 +1622,163 @@ class TestApiPresets:
         )
 
 
+# --- TestSeedPhrase ---------------------------------------------------------
+
+
+@pytest.mark.ui
+class TestSeedPhrase:
+    """``seed_phrase`` text input hashes a memorable string to a deterministic
+    numeric seed, matching the CLI ``--seed-phrase`` behaviour.
+
+    The phrase is SHA-256-hashed server-side:
+        int(sha256(phrase.encode()).hexdigest(), 16) % (2**31 - 1)
+    Submitting the same phrase twice must produce the same result; submitting
+    it with an explicit numeric seed must ignore the number (phrase wins).
+    """
+
+    def test_index_renders_seed_phrase_input(self, client):
+        """GET / must include a ``<input name="seed_phrase">`` text field."""
+        body = client.get("/").get_data(as_text=True)
+        assert (
+            'name="seed_phrase"' in body or "name='seed_phrase'" in body
+        ), "seed_phrase input missing from rendered index"
+
+    def test_index_renders_override_hint(self, client):
+        """The page must include the hint text explaining the phrase overrides
+        the numeric seed."""
+        body = client.get("/").get_data(as_text=True)
+        assert "overrides" in body, (
+            "seed_phrase override hint missing from rendered index"
+        )
+
+    def test_post_seed_phrase_returns_200(self, client):
+        """POST /generate with seed_phrase='hello world' must succeed."""
+        form = {
+            "seed_phrase": "hello world",
+            "palette": "sci_fi_industrial",
+            "length": "20",
+            "width": "12",
+            "height": "8",
+            "engines": "1",
+            "wing_prob": "0.0",
+            "greeble_density": "0.0",
+            "window_period": "4",
+            "cockpit": "bubble",
+            "structure_style": "frigate",
+            "wing_style": "straight",
+        }
+        resp = client.post(
+            "/generate", data=form, headers={"HX-Request": "true"}
+        )
+        assert resp.status_code == 200, (
+            f"POST with seed_phrase returned {resp.status_code}: "
+            f"{resp.get_data(as_text=True)[:300]}"
+        )
+
+    def test_seed_phrase_is_deterministic(self, client):
+        """Two POSTs with the same seed_phrase must produce the same voxel
+        grid (same gen fingerprint), proving the hash is deterministic."""
+        import hashlib
+        import re
+
+        form = {
+            "seed_phrase": "hello world",
+            "palette": "sci_fi_industrial",
+            "length": "20",
+            "width": "12",
+            "height": "8",
+            "engines": "1",
+            "wing_prob": "0.0",
+            "greeble_density": "0.0",
+            "window_period": "4",
+            "cockpit": "bubble",
+            "structure_style": "frigate",
+            "wing_style": "straight",
+        }
+
+        def _voxel_fingerprint():
+            resp = client.post(
+                "/generate", data=form, headers={"HX-Request": "true"}
+            )
+            assert resp.status_code == 200
+            body = resp.get_data(as_text=True)
+            m = re.search(r'data-gen-id=["\']([^"\']+)["\']', body)
+            assert m is not None, f"data-gen-id not found: {body[:400]}"
+            gen_id = m.group(1)
+            voxel_resp = client.get(f"/voxels/{gen_id}.json")
+            assert voxel_resp.status_code == 200
+            data = voxel_resp.get_json()
+            fp = f"{data['dims']}:{data['voxels']}"
+            return hashlib.sha256(fp.encode()).hexdigest()
+
+        fp1 = _voxel_fingerprint()
+        fp2 = _voxel_fingerprint()
+        assert fp1 == fp2, (
+            "same seed_phrase produced different voxel grids — "
+            "seed_phrase hashing is not deterministic"
+        )
+
+    def test_seed_phrase_overrides_numeric_seed(self):
+        """Unit-level: when both seed and seed_phrase are supplied, the phrase
+        must win (numeric seed is ignored)."""
+        import hashlib
+
+        from spaceship_generator.web.blueprints.ship_support import (
+            build_params_from_source,
+        )
+
+        phrase = "hello world"
+        expected_seed = (
+            int(hashlib.sha256(phrase.encode()).hexdigest(), 16) % (2**31 - 1)
+        )
+        source = {
+            "seed": "9999",
+            "seed_phrase": phrase,
+            "palette": "sci_fi_industrial",
+            "length": "20",
+            "width": "12",
+            "height": "8",
+            "engines": "1",
+            "wing_prob": "0.0",
+            "greeble_density": "0.0",
+            "window_period": "4",
+            "cockpit": "bubble",
+            "structure_style": "frigate",
+            "wing_style": "straight",
+        }
+        seed, _pal, _shape, _tex, _extras = build_params_from_source(source)
+        assert seed == expected_seed, (
+            f"seed_phrase should override numeric seed; "
+            f"expected {expected_seed}, got {seed}"
+        )
+
+    def test_empty_seed_phrase_leaves_numeric_seed(self):
+        """Unit-level: an empty seed_phrase must not override the numeric seed."""
+        from spaceship_generator.web.blueprints.ship_support import (
+            build_params_from_source,
+        )
+
+        source = {
+            "seed": "42",
+            "seed_phrase": "",
+            "palette": "sci_fi_industrial",
+            "length": "20",
+            "width": "12",
+            "height": "8",
+            "engines": "1",
+            "wing_prob": "0.0",
+            "greeble_density": "0.0",
+            "window_period": "4",
+            "cockpit": "bubble",
+            "structure_style": "frigate",
+            "wing_style": "straight",
+        }
+        seed, _pal, _shape, _tex, _extras = build_params_from_source(source)
+        assert seed == 42, (
+            f"empty seed_phrase must not override numeric seed; got {seed}"
+        )
+
+
 # --- TestApiHealth ----------------------------------------------------------
 
 
