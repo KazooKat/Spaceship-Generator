@@ -1,0 +1,26 @@
+name: cherry_blossom
+description: Cherry planks hull, pink concrete accent, shroomlight glow — Minecraft 1.20 cherry blossom theme.
+
+blocks:
+  HULL:           minecraft:cherry_planks
+  HULL_DARK:      minecraft:cherry_log
+  WINDOW:         minecraft:pink_stained_glass
+  ENGINE:         minecraft:pink_concrete
+  ENGINE_GLOW:    minecraft:shroomlight
+  COCKPIT_GLASS:  minecraft:white_stained_glass
+  WING:           minecraft:cherry_planks
+  GREEBLE:        minecraft:cherry_log
+  LIGHT:          minecraft:shroomlight
+  INTERIOR:       minecraft:white_concrete_powder
+
+preview_colors:
+  HULL:           "#e8a0b4"
+  HULL_DARK:      "#7a3050"
+  WINDOW:         "#f8b8d0"
+  ENGINE:         "#f48fb1"
+  ENGINE_GLOW:    "#ffee88"
+  COCKPIT_GLASS:  "#f0f0f0"
+  WING:           "#e8a0b4"
+  GREEBLE:        "#7a3050"
+  LIGHT:          "#ffee88"
+  INTERIOR:       "#fafafa"

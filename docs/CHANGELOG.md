@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(palettes): add `cherry_blossom` palette — cherry planks hull, pink concrete accent, shroomlight glow (Minecraft 1.20 cherry blossom theme)
 - feat(api): add `GET /api/presets` endpoint — returns full preset metadata (hull/engine/wing/cockpit styles, size, weapon config) as JSON for all 9 archetypes
 - feat(cli): add `--repeat N` flag — generates N ships with consecutive seeds from a base seed; mutually exclusive with `--seeds`
 - feat(palettes): add `frozen_tundra` palette — calcite hull, packed-ice engine mass, soul-lantern cold-blue glow (arctic tundra theme)
