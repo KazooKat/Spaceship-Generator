@@ -449,6 +449,22 @@ def api_palettes():
     return jsonify({"palettes": list_palettes(), "colors": _PALETTE_COLORS_CACHE})
 
 
+@ship_bp.route("/api/palettes/<string:name>", methods=["GET"], endpoint="api_palette_detail")
+def api_palette_detail(name: str):
+    try:
+        pal = load_palette(name)
+    except Exception:  # noqa: BLE001
+        return jsonify({"error": f"palette {name!r} not found"}), 404
+    return jsonify({
+        "name": pal.name,
+        "roles": {role.name: str(block) for role, block in pal.blocks.items()},
+        "preview_colors": {
+            role.name: _rgba_to_hex(*rgba)
+            for role, rgba in pal.preview_colors.items()
+        },
+    })
+
+
 @ship_bp.route("/api/generate", methods=["POST"], endpoint="api_generate")
 def api_generate():
     limited = check_rate_limit(as_json=True)
@@ -664,6 +680,7 @@ def api_presets():
         width, height, length = spec["size"]
         result.append({
             "name": name,
+            "description": spec["description"],
             "hull_style": spec["hull_style"].value,
             "engine_style": spec["engine_style"].value,
             "wing_style": spec["wing_style"].value,
