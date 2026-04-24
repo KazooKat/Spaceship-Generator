@@ -1029,7 +1029,7 @@ def main(argv: list[str] | None = None) -> int:
                     "shape": list(result.shape),
                     "blocks": result.block_count,
                     "litematic": str(result.litematic_path),
-                    "timestamp": _dt.datetime.utcnow().isoformat() + "Z",
+                    "timestamp": _dt.datetime.now(_dt.UTC).isoformat() + "Z",
                 }
                 Path(result.litematic_path).with_suffix(".json").write_text(
                     _json.dumps(_manifest, indent=2), encoding="utf-8"
@@ -1097,7 +1097,7 @@ def main(argv: list[str] | None = None) -> int:
                 "shape": list(result.shape),
                 "blocks": result.block_count,
                 "litematic": str(result.litematic_path),
-                "timestamp": _dt.datetime.utcnow().isoformat() + "Z",
+                "timestamp": _dt.datetime.now(_dt.UTC).isoformat() + "Z",
             }
             Path(result.litematic_path).with_suffix(".json").write_text(
                 _json.dumps(_manifest, indent=2), encoding="utf-8"
