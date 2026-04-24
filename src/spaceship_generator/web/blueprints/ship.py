@@ -53,6 +53,22 @@ from .ship_support import (
 ship_bp = Blueprint("ship", __name__)
 
 
+def _ship_metadata(seed: int, shape_params, palette_name: str) -> dict:
+    """Return metadata for one ship without writing any files."""
+    shape_grid = generate_shape(seed, shape_params)
+    W, H, L = shape_grid.shape
+    role_grid = assign_roles(shape_grid)
+    filled_mask = shape_grid > 0
+    roles, counts = np.unique(role_grid[filled_mask], return_counts=True)
+    role_map = {str(r): int(c) for r, c in zip(roles, counts, strict=True)}
+    return {
+        "seed": seed,
+        "dimensions": {"width": W, "height": H, "length": L},
+        "voxel_count": int(np.sum(filled_mask)),
+        "role_counts": role_map,
+    }
+
+
 def _generate_with_extras(seed, *, extra_gen_kwargs: dict, **base_kwargs):
     """Call :func:`generate` with the base kwargs plus the style-picker
     extras, falling back if ``generate()`` doesn't accept them yet.
@@ -906,6 +922,50 @@ def fleet_plan():
         "coherence": coherence,
         "ships": ships_json,
     })
+
+
+@ship_bp.route("/api/compare", methods=["GET"], endpoint="compare")
+def api_compare():
+    """Compare two ships by seed — returns metadata side-by-side without generating files."""
+    # seed_a
+    raw_a = request.args.get("seed_a")
+    if raw_a is None:
+        return jsonify({"error": "seed_a is required"}), 400
+    try:
+        seed_a = int(raw_a)
+    except (TypeError, ValueError):
+        return jsonify({"error": f"seed_a must be an integer; got {raw_a!r}"}), 400
+    # seed_b
+    raw_b = request.args.get("seed_b")
+    if raw_b is None:
+        return jsonify({"error": "seed_b is required"}), 400
+    try:
+        seed_b = int(raw_b)
+    except (TypeError, ValueError):
+        return jsonify({"error": f"seed_b must be an integer; got {raw_b!r}"}), 400
+    # palette
+    palette_name = (request.args.get("palette") or "sci_fi_industrial").strip()
+    if palette_name not in list_palettes():
+        return jsonify({"error": f"unknown palette {palette_name!r}"}), 400
+    # shape params (default or from preset)
+    preset_name = request.args.get("preset")
+    shape_params = ShapeParams()
+    if preset_name:
+        if preset_name not in presets.SHIP_PRESETS:
+            return jsonify({"error": f"unknown preset {preset_name!r}"}), 400
+        spec = presets.SHIP_PRESETS[preset_name]
+        width, height, length = spec["size"]
+        shape_params = ShapeParams(
+            length=length,
+            width_max=width,
+            height_max=height,
+        )
+    try:
+        meta_a = _ship_metadata(seed_a, shape_params, palette_name)
+        meta_b = _ship_metadata(seed_b, shape_params, palette_name)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+    return jsonify({"palette": palette_name, "ship_a": meta_a, "ship_b": meta_b})
 
 
 @ship_bp.route("/download-fleet", methods=["GET"], endpoint="download_fleet")

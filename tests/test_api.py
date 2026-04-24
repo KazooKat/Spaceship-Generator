@@ -89,3 +89,25 @@ def test_fleet_plan_invalid_size_tier(client):
     rv = client.get("/api/fleet/plan?size_tier=bogus")
     assert rv.status_code == 400
     assert "error" in rv.get_json()
+
+
+def test_api_compare_basic(client):
+    rv = client.get("/api/compare?seed_a=1&seed_b=2")
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert "ship_a" in data and "ship_b" in data
+    assert data["ship_a"]["seed"] == 1
+    assert data["ship_b"]["seed"] == 2
+    assert "dimensions" in data["ship_a"]
+    assert "voxel_count" in data["ship_a"]
+
+
+def test_api_compare_missing_seed(client):
+    rv = client.get("/api/compare?seed_a=1")
+    assert rv.status_code == 400
+    assert "seed_b" in rv.get_json()["error"]
+
+
+def test_api_compare_bad_palette(client):
+    rv = client.get("/api/compare?seed_a=1&seed_b=2&palette=not_a_real_palette")
+    assert rv.status_code == 400
