@@ -1182,6 +1182,19 @@ def test_list_presets_prints_all_names_and_exits_zero(capsys):
         assert name in out
 
 
+def test_list_weapon_types(capsys):
+    """``--list-weapon-types`` exits 0 and prints all weapon type values."""
+    result = subprocess.run(
+        [sys.executable, "-m", "spaceship_generator", "--list-weapon-types"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "turret_large" in result.stdout
+    assert "missile_pod" in result.stdout
+
+
 def test_preset_corvette_sets_hull_engine_wing_cockpit(monkeypatch, tmp_path: Path):
     """``--preset corvette`` forwards corvette's hull/engine/wing/cockpit
     enum members to ``generate()``."""

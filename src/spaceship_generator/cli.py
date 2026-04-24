@@ -232,6 +232,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--list-presets", action="store_true",
                    help="List available preset names and exit.")
+    p.add_argument("--list-weapon-types", action="store_true",
+                   help="Print all available weapon types and exit.")
 
     # Shape params
     p.add_argument("--length", type=int, default=40, help="Ship length in blocks (Z axis).")
@@ -878,6 +880,14 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(f"  {n}")
         return 0
+
+    if args.list_weapon_types:
+        if _weapon_styles is None:
+            print(f"weapon_styles unavailable: {_weapon_styles_error}", file=sys.stderr)
+            raise SystemExit(1)
+        for wt in _weapon_styles.WeaponType:
+            print(f"  {wt.value}")
+        raise SystemExit(0)
 
     # Resolve ``--preset`` → kwargs bundle. Individual flags override.
     # We mutate ``args`` in place so the downstream plumbing
