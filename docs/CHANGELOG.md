@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(presets): add `description` field to all 9 ship archetypes — shown in `--list-presets` output and `/api/presets` JSON response
 - feat(api): add `GET /api/palettes/<name>` endpoint — returns roles, block IDs, and hex preview colors for a single named palette; 404 on unknown name
 - feat(cli): add `--seed-phrase <text>` flag — hashes text to deterministic seed (SHA-256 mod 2^31-1); prints resolved integer seed so ships can be reproduced
 - feat(palettes): add `cherry_blossom` palette — cherry planks hull, pink concrete accent, shroomlight glow (Minecraft 1.20 cherry blossom theme)

@@ -71,6 +71,7 @@ PRESET_KEYS: tuple[str, ...] = (
 # for callers.
 SHIP_PRESETS: dict[str, dict[str, Any]] = {
     "corvette": {
+        "description": "Fast light warship — twin nacelles, two weapon hardpoints",
         "hull_style": HullStyle.DAGGER,
         "engine_style": EngineStyle.TWIN_NACELLE,
         "wing_style": WingStyle.SWEPT,
@@ -81,6 +82,7 @@ SHIP_PRESETS: dict[str, dict[str, Any]] = {
         "size": (20, 12, 50),
     },
     "dropship": {
+        "description": "Armored troop transport — wide hull, short-range insertion craft",
         "hull_style": HullStyle.BLOCKY_FREIGHTER,
         "engine_style": EngineStyle.QUAD_CLUSTER,
         "wing_style": WingStyle.TAPERED,
@@ -91,6 +93,7 @@ SHIP_PRESETS: dict[str, dict[str, Any]] = {
         "size": (25, 15, 35),
     },
     "science_vessel": {
+        "description": "Deep-space research ship — sensor arrays, zero weapons",
         "hull_style": HullStyle.SAUCER,
         "engine_style": EngineStyle.RING,
         "wing_style": WingStyle.GULL,
@@ -101,6 +104,7 @@ SHIP_PRESETS: dict[str, dict[str, Any]] = {
         "size": (30, 15, 50),
     },
     "gunship": {
+        "description": "Fire-support platform — heavy weapon loadout, twin-engine drive",
         "hull_style": HullStyle.ARROW,
         "engine_style": EngineStyle.ION_ARRAY,
         "wing_style": WingStyle.DELTA,
@@ -111,6 +115,7 @@ SHIP_PRESETS: dict[str, dict[str, Any]] = {
         "size": (22, 13, 55),
     },
     "freighter_heavy": {
+        "description": "Bulk cargo hauler — boxy silhouette, minimal armament",
         "hull_style": HullStyle.WHALE,
         "engine_style": EngineStyle.SINGLE_CORE,
         "wing_style": WingStyle.STRAIGHT,
@@ -121,6 +126,7 @@ SHIP_PRESETS: dict[str, dict[str, Any]] = {
         "size": (40, 20, 80),
     },
     "interceptor": {
+        "description": "Agile point-defense fighter — small frame, high speed",
         "hull_style": HullStyle.DAGGER,
         "engine_style": EngineStyle.ION_ARRAY,
         "wing_style": WingStyle.SPLIT,
@@ -131,6 +137,7 @@ SHIP_PRESETS: dict[str, dict[str, Any]] = {
         "size": (15, 10, 45),
     },
     "scout": {
+        "description": "Lightweight recon craft — speed over firepower, long-range",
         "hull_style": HullStyle.SLEEK_RACING,
         "engine_style": EngineStyle.ION_ARRAY,
         "wing_style": WingStyle.SWEPT,
@@ -141,6 +148,7 @@ SHIP_PRESETS: dict[str, dict[str, Any]] = {
         "size": (8, 5, 14),
     },
     "battlecruiser": {
+        "description": "Heavy combat line ship — thick armor, quad-cluster engines",
         "hull_style": HullStyle.ARROW,
         "engine_style": EngineStyle.QUAD_CLUSTER,
         "wing_style": WingStyle.DELTA,
@@ -151,6 +159,7 @@ SHIP_PRESETS: dict[str, dict[str, Any]] = {
         "size": (22, 12, 40),
     },
     "capital_carrier": {
+        "description": "Fleet flagship — massive hull, hosts fighter wings",
         "hull_style": HullStyle.MODULAR_BLOCK,
         "engine_style": EngineStyle.RING,
         "wing_style": WingStyle.STRAIGHT,

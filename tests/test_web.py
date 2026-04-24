@@ -931,3 +931,23 @@ def test_api_batch_default(client):
     assert data["count"] == 1
     assert len(data["ships"]) == 1
     assert "gen_id" in data["ships"][0]
+
+
+def test_api_presets_includes_description(client):
+    """GET /api/presets — every preset entry must include a non-empty 'description' string."""
+    resp = client.get("/api/presets")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "presets" in data
+    presets = data["presets"]
+    assert len(presets) == 9
+    for entry in presets:
+        assert "description" in entry, (
+            f"preset {entry.get('name')!r} is missing 'description' in /api/presets response"
+        )
+        assert isinstance(entry["description"], str) and len(entry["description"]) > 0, (
+            f"preset {entry.get('name')!r} has empty 'description'"
+        )
+    # Spot-check corvette's exact description.
+    corvette = next(e for e in presets if e["name"] == "corvette")
+    assert corvette["description"] == "Fast light warship — twin nacelles, two weapon hardpoints"

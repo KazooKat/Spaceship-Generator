@@ -61,9 +61,11 @@ def test_ship_presets_dict_matches_list_presets():
 @pytest.mark.parametrize("name", sorted(EXPECTED_PRESET_NAMES))
 def test_every_preset_has_full_key_schema(name):
     spec = SHIP_PRESETS[name]
-    assert set(spec.keys()) == set(PRESET_KEYS), (
-        f"preset {name!r} keys={sorted(spec.keys())} "
-        f"expected={sorted(PRESET_KEYS)}"
+    # PRESET_KEYS lists the generate-kwarg keys; "description" is metadata
+    # and lives alongside them but is intentionally excluded from PRESET_KEYS.
+    assert set(PRESET_KEYS).issubset(set(spec.keys())), (
+        f"preset {name!r} is missing required keys; "
+        f"keys={sorted(spec.keys())} expected superset of {sorted(PRESET_KEYS)}"
     )
 
 
@@ -189,6 +191,30 @@ def test_interceptor_is_small_and_fast():
     assert (w, h, length) == (15, 10, 45)
     assert spec["weapon_count"] == 1
     assert spec["weapon_types"] == (WeaponType.LASER_LANCE,)
+
+
+# ---------------------------------------------------------------------------
+# Description field
+# ---------------------------------------------------------------------------
+
+
+def test_corvette_description_is_nonempty_string():
+    desc = SHIP_PRESETS["corvette"]["description"]
+    assert isinstance(desc, str) and len(desc) > 0
+
+
+@pytest.mark.parametrize("name", sorted(EXPECTED_PRESET_NAMES))
+def test_every_preset_has_nonempty_description(name):
+    desc = SHIP_PRESETS[name]["description"]
+    assert isinstance(desc, str) and len(desc) > 0, (
+        f"preset {name!r} has empty or missing description"
+    )
+
+
+def test_apply_preset_does_not_include_description():
+    """description is metadata only — it must not leak into generate kwargs."""
+    kwargs = apply_preset("corvette")
+    assert "description" not in kwargs
 
 
 # ---------------------------------------------------------------------------
