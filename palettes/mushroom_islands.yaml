@@ -1,0 +1,26 @@
+name: mushroom_islands
+description: Mycelium hull, red mushroom cap wings, shroomlight engine glow — Minecraft mushroom island biome theme.
+
+blocks:
+  HULL:           minecraft:mycelium
+  HULL_DARK:      minecraft:brown_mushroom_block
+  WINDOW:         minecraft:red_stained_glass
+  ENGINE:         minecraft:mushroom_stem
+  ENGINE_GLOW:    minecraft:shroomlight
+  COCKPIT_GLASS:  minecraft:lime_stained_glass
+  WING:           minecraft:red_mushroom_block
+  GREEBLE:        minecraft:mossy_cobblestone
+  LIGHT:          minecraft:shroomlight
+  INTERIOR:       minecraft:coarse_dirt
+
+preview_colors:
+  HULL:           "#7a6080"
+  HULL_DARK:      "#6b3a28"
+  WINDOW:         "#e05050"
+  ENGINE:         "#e8e0d8"
+  ENGINE_GLOW:    "#ffcc44"
+  COCKPIT_GLASS:  "#80e040"
+  WING:           "#cc2020"
+  GREEBLE:        "#6a7060"
+  LIGHT:          "#ffcc44"
+  INTERIOR:       "#5a4030"
