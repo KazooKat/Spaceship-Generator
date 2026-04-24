@@ -211,6 +211,9 @@ def build_parser() -> argparse.ArgumentParser:
                         "Use 'random' to pick a random palette.")
     p.add_argument("--list-palettes", action="store_true",
                    help="List available palettes and exit.")
+    p.add_argument("--palette-info", metavar="NAME",
+                   help="Print role -> block ID and hex preview color for NAME and exit. "
+                        "Use --list-palettes to see available palette names.")
     p.add_argument("--list-styles", action="store_true",
                    help="List available hull/engine/wing styles and exit.")
     # ``--preset``/``--list-presets`` are only active when the optional
@@ -368,13 +371,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Diagnostics
     p.add_argument("--stats", action="store_true",
-                   help="After each ship, print a role → cell-count table "
+                   help="After each ship, print a role -> cell-count table "
                         "(sorted by count desc, EMPTY skipped) plus total "
                         "block count and grid density. Useful for verifying "
                         "palette + style choices produced the desired "
                         "material distribution.")
     p.add_argument("--output-json", action="store_true",
                    help="Print a JSON summary of each generated ship to stdout.")
+    p.add_argument("--export-manifest", action="store_true",
+                   help="Write <name>.json sidecar alongside each .litematic with "
+                        "seed, palette, shape, block count, and UTC timestamp.")
     p.add_argument(
         "--block-summary",
         action="store_true",
@@ -817,7 +823,7 @@ def main(argv: list[str] | None = None) -> int:
             int(hashlib.sha256(args.seed_phrase.encode()).hexdigest(), 16) % (2**31 - 1)
         )
         print(
-            f'Seed phrase "{args.seed_phrase}" \u2192 seed {phrase_seed}',
+            f'Seed phrase "{args.seed_phrase}" -> seed {phrase_seed}',
             file=sys.stderr,
         )
         args.seed = phrase_seed
@@ -888,6 +894,23 @@ def main(argv: list[str] | None = None) -> int:
         for wt in _weapon_styles.WeaponType:
             print(f"  {wt.value}")
         raise SystemExit(0)
+
+    if getattr(args, "palette_info", None):
+        from .palette import Role, load_palette
+        try:
+            pal = load_palette(args.palette_info)
+        except FileNotFoundError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(f"Palette: {pal.name}")
+        for role in Role:
+            if role == Role.EMPTY:
+                continue
+            bs = pal.blocks[role]
+            r_f, g_f, b_f, _ = pal.preview_colors[role]
+            hex_col = f"#{int(r_f * 255):02x}{int(g_f * 255):02x}{int(b_f * 255):02x}"
+            print(f"  {role.name:<16} {bs.id:<40} {hex_col}")
+        return 0
 
     # Resolve ``--preset`` → kwargs bundle. Individual flags override.
     # We mutate ``args`` in place so the downstream plumbing
@@ -997,6 +1020,20 @@ def main(argv: list[str] | None = None) -> int:
                 _print_stats(result)
             if args.output_json:
                 _print_json_summary(result)
+            if args.export_manifest:
+                import datetime as _dt
+                import json as _json
+                _manifest = {
+                    "seed": result.seed,
+                    "palette": result.palette_name,
+                    "shape": list(result.shape),
+                    "blocks": result.block_count,
+                    "litematic": str(result.litematic_path),
+                    "timestamp": _dt.datetime.utcnow().isoformat() + "Z",
+                }
+                Path(result.litematic_path).with_suffix(".json").write_text(
+                    _json.dumps(_manifest, indent=2), encoding="utf-8"
+                )
             if args.block_summary:
                 _print_block_summary(result)
             successes += 1
@@ -1051,6 +1088,20 @@ def main(argv: list[str] | None = None) -> int:
             _print_stats(result)
         if args.output_json:
             _print_json_summary(result)
+        if args.export_manifest:
+            import datetime as _dt
+            import json as _json
+            _manifest = {
+                "seed": result.seed,
+                "palette": result.palette_name,
+                "shape": list(result.shape),
+                "blocks": result.block_count,
+                "litematic": str(result.litematic_path),
+                "timestamp": _dt.datetime.utcnow().isoformat() + "Z",
+            }
+            Path(result.litematic_path).with_suffix(".json").write_text(
+                _json.dumps(_manifest, indent=2), encoding="utf-8"
+            )
         if args.block_summary:
             _print_block_summary(result)
         successes += 1

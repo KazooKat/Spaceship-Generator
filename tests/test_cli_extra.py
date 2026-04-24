@@ -1645,3 +1645,35 @@ def test_cli_repeat_with_base_seed(monkeypatch, tmp_path: Path):
     # The three expected filenames must exist on disk.
     for s in (100, 101, 102):
         assert (tmp_path / f"ship_{s}.litematic").exists()
+
+
+# ----------- --palette-info -----------
+
+def test_palette_info_known(capsys):
+    rc = main(["--palette-info", "sci_fi_industrial"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "Palette: sci_fi_industrial" in out
+    assert "HULL" in out
+    assert "#" in out  # hex color present
+
+
+def test_palette_info_unknown(capsys):
+    rc = main(["--palette-info", "nonexistent_xyz_palette_abc"])
+    assert rc == 1
+
+
+# ----------- --export-manifest -----------
+
+def test_export_manifest_writes_sidecar(tmp_path):
+    import json
+    rc = main(["--seed", "1", "--out", str(tmp_path), "--export-manifest", "--quiet"])
+    assert rc == 0
+    json_files = list(tmp_path.glob("*.json"))
+    assert len(json_files) == 1
+    data = json.loads(json_files[0].read_text(encoding="utf-8"))
+    assert data["seed"] == 1
+    assert "palette" in data
+    assert "shape" in data
+    assert "blocks" in data
+    assert "timestamp" in data
