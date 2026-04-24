@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import random
 import sys
 import time
@@ -195,6 +196,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seeds", type=_parse_seeds, default=None,
                    help="Bulk mode: comma-separated seeds ('1,2,3') or inclusive range ('0-9'). "
                         "Mutually exclusive with --seed.")
+    p.add_argument(
+        "--seed-phrase",
+        type=str,
+        default=None,
+        metavar="TEXT",
+        help=(
+            "Hash TEXT into a deterministic integer seed (SHA-256 mod 2^31-1). "
+            "Mutually exclusive with --seed and --seeds."
+        ),
+    )
     p.add_argument("--palette", type=str, default="sci_fi_industrial",
                    help="Palette name to use (default: sci_fi_industrial). "
                         "Use 'random' to pick a random palette.")
@@ -793,6 +804,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.seeds is not None and args.repeat > 1:
         print("Error: --seeds and --repeat are mutually exclusive.", file=sys.stderr)
         return 2
+    if args.seed_phrase is not None and (args.seed is not None or args.seeds is not None):
+        print(
+            "Error: --seed-phrase is mutually exclusive with --seed and --seeds.",
+            file=sys.stderr,
+        )
+        return 1
+    if args.seed_phrase is not None:
+        phrase_seed = (
+            int(hashlib.sha256(args.seed_phrase.encode()).hexdigest(), 16) % (2**31 - 1)
+        )
+        print(
+            f'Seed phrase "{args.seed_phrase}" \u2192 seed {phrase_seed}',
+            file=sys.stderr,
+        )
+        args.seed = phrase_seed
 
     if args.list_palettes:
         names = list_palettes()
@@ -845,7 +871,12 @@ def main(argv: list[str] | None = None) -> int:
             print("(no presets found)")
             return 0
         for n in names:
-            print(n)
+            spec = _presets.SHIP_PRESETS[n]
+            desc = spec.get("description", "")
+            if desc:
+                print(f"  {n} — {desc}")
+            else:
+                print(f"  {n}")
         return 0
 
     # Resolve ``--preset`` → kwargs bundle. Individual flags override.

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(cli): add `--seed-phrase <text>` flag — hashes text to deterministic seed (SHA-256 mod 2^31-1); prints resolved integer seed so ships can be reproduced
 - feat(palettes): add `cherry_blossom` palette — cherry planks hull, pink concrete accent, shroomlight glow (Minecraft 1.20 cherry blossom theme)
 - feat(api): add `GET /api/presets` endpoint — returns full preset metadata (hull/engine/wing/cockpit styles, size, weapon config) as JSON for all 9 archetypes
 - feat(cli): add `--repeat N` flag — generates N ships with consecutive seeds from a base seed; mutually exclusive with `--seeds`
