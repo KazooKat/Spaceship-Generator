@@ -1,0 +1,26 @@
+name: prismarine_sea
+description: Prismarine-brick hull, dark prismarine underframe, sea-lantern engine glow — underwater ocean monument theme.
+
+blocks:
+  HULL:          minecraft:prismarine_bricks
+  HULL_DARK:     minecraft:dark_prismarine
+  WINDOW:        minecraft:cyan_stained_glass
+  ENGINE:        minecraft:prismarine
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:light_blue_stained_glass
+  WING:          minecraft:cut_copper
+  GREEBLE:       minecraft:prismarine
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:green_concrete_powder
+
+preview_colors:
+  HULL:          "#5ba88a"
+  HULL_DARK:     "#2e5c44"
+  WINDOW:        "#30e0e8"
+  ENGINE:        "#60b8a0"
+  ENGINE_GLOW:   "#d8f0f8"
+  COCKPIT_GLASS: "#a0d8f0"
+  WING:          "#c87040"
+  GREEBLE:       "#60b8a0"
+  LIGHT:         "#d8f0f8"
+  INTERIOR:      "#80b870"
