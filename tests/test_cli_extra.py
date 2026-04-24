@@ -1663,6 +1663,29 @@ def test_palette_info_unknown(capsys):
     assert rc == 1
 
 
+# ----------- --ship-size flag -----------
+
+
+def test_ship_size_valid_exits_zero(tmp_path: Path):
+    """``--ship-size 16x8x24`` with a valid seed exits 0."""
+    rc = main(["--seed", "42", "--ship-size", "16x8x24", "--out", str(tmp_path), "--quiet"])
+    assert rc == 0
+
+
+def test_ship_size_below_minimum_width_exits_non_zero(tmp_path: Path, capsys):
+    """``--ship-size 3x4x8`` is invalid (W=3 < 4) and must exit non-zero."""
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--seed", "1", "--ship-size", "3x4x8", "--out", str(tmp_path)])
+    assert excinfo.value.code != 0
+
+
+def test_ship_size_non_numeric_exits_non_zero(tmp_path: Path, capsys):
+    """``--ship-size notanumber`` is invalid and must exit non-zero."""
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--seed", "1", "--ship-size", "notanumber", "--out", str(tmp_path)])
+    assert excinfo.value.code != 0
+
+
 # ----------- --export-manifest -----------
 
 def test_export_manifest_writes_sidecar(tmp_path):

@@ -45,6 +45,31 @@ else:
     _presets_error = None
 
 
+def _parse_ship_size(value: str) -> tuple[int, int, int]:
+    """Parse a ``WxHxL`` string into ``(W, H, L)``.
+
+    Raises :class:`argparse.ArgumentTypeError` on malformed input or
+    dimensions that violate the :class:`ShapeParams` minimums
+    (W>=4, H>=4, L>=8).
+    """
+    parts = value.lower().split("x")
+    if len(parts) != 3:
+        raise argparse.ArgumentTypeError(
+            f"--ship-size must be WxHxL with positive integers, got {value!r}"
+        )
+    try:
+        w, h, length = (int(p) for p in parts)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"--ship-size must be WxHxL with positive integers, got {value!r}"
+        ) from exc
+    if w < 4 or h < 4 or length < 8:
+        raise argparse.ArgumentTypeError(
+            f"--ship-size: W>=4, H>=4, L>=8 required; got W={w} H={h} L={length}"
+        )
+    return (w, h, length)
+
+
 def _parse_preview_size(value: str) -> tuple[int, int]:
     """Parse a ``WxH`` string into ``(W, H)``.
 
@@ -357,6 +382,13 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Also save a PNG preview alongside the .litematic (same stem).")
     p.add_argument("--preview-size", type=_parse_preview_size, default=(800, 800),
                    help="Preview size as WxH (default: 800x800).")
+    p.add_argument(
+        "--ship-size",
+        type=_parse_ship_size,
+        default=None,
+        metavar="WxHxL",
+        help="Override ship dimensions: width x height x length in blocks (e.g. 30x10x50). W>=4, H>=4, L>=8.",
+    )
     p.add_argument("--preview-azimuth", type=float, default=None,
                    help="Camera azimuth angle in degrees for preview (default: 45).")
     p.add_argument("--preview-elevation", type=float, default=None,
@@ -519,6 +551,15 @@ def _run_one(
         CockpitStyle(args.cockpit_style) if args.cockpit_style else None
     )
     gen_greeble = args.greeble_density if args.greeble_density is not None else 0.0
+
+    # When ``--ship-size`` is provided, override the three dimension fields on
+    # the already-built ShapeParams so all downstream code (generator, fleet,
+    # etc.) sees the user-supplied dimensions.
+    if getattr(args, "ship_size", None) is not None:
+        w, h, length = args.ship_size
+        shape_params.width_max = w
+        shape_params.height_max = h
+        shape_params.length = length
 
     # When ``--cockpit-style`` is explicitly set, push it onto ShapeParams
     # too so consumers that read ``shape_params.cockpit_style`` (rather
