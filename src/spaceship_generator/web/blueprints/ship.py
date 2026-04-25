@@ -13,6 +13,8 @@ import random
 import tempfile
 import zipfile
 from pathlib import Path
+from random import Random
+from secrets import randbits
 
 import numpy as np
 from flask import (
@@ -491,6 +493,60 @@ def api_styles():
         "greeble_types": [t.value for t in GreebleType],
         "weapon_types": [t.value for t in WeaponType],
     })
+
+
+@ship_bp.route("/api/random", methods=["GET"], endpoint="api_random")
+def api_random():
+    """Return a random seed/palette/preset combo as JSON.
+
+    Lets clients implement a "spin the wheel" feature with one round-trip:
+    no files are generated, no rate-limit cost beyond the standard request.
+    Behavior:
+
+    * Without ``?seed=``: every call yields a fresh non-deterministic
+      pick using :func:`secrets.randbits` for both the seed and the
+      palette/preset selection.
+    * With ``?seed=<int>``: the seed is echoed back as-is and the palette
+      and preset are chosen via a ``random.Random(seed)`` so the same
+      seed deterministically reproduces the same combo. Useful for
+      sharable / bookmarkable links.
+
+    The response sets ``Cache-Control: no-store`` so a CDN or browser
+    can't memoize an "old" random pick — every GET is fresh.
+    """
+    palettes = list_palettes()
+    preset_names = presets.list_presets()
+
+    raw_seed = request.args.get("seed")
+    seed: int
+    rng: random.Random
+    if raw_seed is not None:
+        try:
+            seed = int(raw_seed)
+            rng = Random(seed)
+        except (TypeError, ValueError):
+            # Spec says always 200 — silently fall back to a fresh non-
+            # deterministic pick when the seed param can't parse.
+            seed = randbits(31)
+            rng = random.SystemRandom()
+    else:
+        # secrets.randbits gives 31-bit non-negative ints in [0, 2**31-1],
+        # matching the seed range used elsewhere in this module.
+        seed = randbits(31)
+        # Use SystemRandom for palette/preset picks so two near-simultaneous
+        # calls don't share state with the global ``random`` module.
+        rng = random.SystemRandom()
+
+    palette_name = rng.choice(palettes) if palettes else ""
+    preset_name = rng.choice(preset_names) if preset_names else ""
+
+    resp = jsonify({
+        "seed": int(seed),
+        "palette": palette_name,
+        "preset": preset_name,
+    })
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @ship_bp.route("/api/generate", methods=["POST"], endpoint="api_generate")

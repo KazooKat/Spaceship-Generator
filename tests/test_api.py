@@ -135,3 +135,40 @@ def test_api_styles_greeble_types_contains_known_values(client):
     data = resp.get_json()
     assert "turret" in data["greeble_types"]
     assert "dish" in data["greeble_types"]
+
+
+def test_api_random_returns_keys(client):
+    from spaceship_generator import presets as _presets
+    from spaceship_generator.palette import list_palettes as _list_palettes
+
+    resp = client.get("/api/random")
+    assert resp.status_code == 200
+    # Cache-Control: no-store so a proxy can't memoize a "spin" result.
+    assert resp.headers.get("Cache-Control") == "no-store"
+    data = resp.get_json()
+    assert set(data.keys()) == {"seed", "palette", "preset"}
+    assert isinstance(data["seed"], int)
+    assert 0 <= data["seed"] <= 2**31 - 1
+    assert isinstance(data["palette"], str)
+    assert isinstance(data["preset"], str)
+    assert data["palette"] in _list_palettes()
+    assert data["preset"] in _presets.list_presets()
+
+
+def test_api_random_two_calls_differ(client):
+    # 5 calls — astronomical odds that all share the same triple if RNG
+    # is sourced from secrets.randbits / SystemRandom as required.
+    triples = set()
+    for _ in range(5):
+        data = client.get("/api/random").get_json()
+        triples.add((data["seed"], data["palette"], data["preset"]))
+    assert len(triples) >= 2
+
+
+def test_api_random_with_seed_reproducible(client):
+    a = client.get("/api/random?seed=42").get_json()
+    b = client.get("/api/random?seed=42").get_json()
+    assert a["seed"] == 42
+    assert b["seed"] == 42
+    assert a["palette"] == b["palette"]
+    assert a["preset"] == b["preset"]
