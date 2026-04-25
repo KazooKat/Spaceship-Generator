@@ -1,0 +1,26 @@
+name: badlands_mesa
+description: Sun-baked mesa spire-runner. Red terracotta hull, orange wings, copper engine block.
+
+blocks:
+  HULL:          minecraft:red_terracotta
+  HULL_DARK:     minecraft:terracotta
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:copper_block
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:orange_terracotta
+  GREEBLE:       minecraft:cut_red_sandstone
+  LIGHT:         minecraft:ochre_froglight
+  INTERIOR:      minecraft:smooth_sandstone
+
+preview_colors:
+  HULL:          "#9b3723"
+  HULL_DARK:     "#875530"
+  WINDOW:        "#d87f33"
+  ENGINE:        "#c07830"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#ffd84a"
+  WING:          "#c05731"
+  GREEBLE:       "#c4745a"
+  LIGHT:         "#e2b34e"
+  INTERIOR:      "#d4be8c"

@@ -1,0 +1,26 @@
+name: end_city
+description: End-dimension city runner. Purpur hull, end stone brick accent, end rod glow.
+
+blocks:
+  HULL:          minecraft:purpur_block
+  HULL_DARK:     minecraft:end_stone_bricks
+  WINDOW:        minecraft:purple_stained_glass
+  ENGINE:        minecraft:purpur_pillar
+  ENGINE_GLOW:   minecraft:end_rod
+  COCKPIT_GLASS: minecraft:magenta_stained_glass
+  WING:          minecraft:polished_blackstone
+  GREEBLE:       minecraft:end_stone
+  LIGHT:         minecraft:end_rod
+  INTERIOR:      minecraft:end_stone
+
+preview_colors:
+  HULL:          "#7e5a9b"
+  HULL_DARK:     "#d3cba5"
+  WINDOW:        "#7b3fb5"
+  ENGINE:        "#8b6aaa"
+  ENGINE_GLOW:   "#f0f0f0"
+  COCKPIT_GLASS: "#c261c2"
+  WING:          "#2e2e36"
+  GREEBLE:       "#cec99e"
+  LIGHT:         "#f0f0f0"
+  INTERIOR:      "#c9c39a"

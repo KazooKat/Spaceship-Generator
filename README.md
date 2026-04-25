@@ -19,9 +19,9 @@ seed + params  →  3D voxel shape  →  role assignment  →  palette lookup  �
 - Parts-based procedural generation (hull, cockpit, engines, wings, greebles)
 - Bilateral symmetry for recognisable ship silhouettes
 - Seed-reproducible — same seed always produces the same ship
-- 5 hull silhouettes, 5 engine styles, 6 wing silhouettes (see [Styles](#styles))
+- 10 hull silhouettes, 9 engine styles, 6 wing silhouettes (see [Styles](#styles))
 - Greeble library — 6 surface-detail types (turret, dish, vent, antenna, panel line, sensor pod)
-- 33 block palettes spanning sci-fi, industrial, biome, and novelty themes
+- 40 block palettes spanning sci-fi, industrial, biome, and novelty themes
 - CLI + Flask web UI with isometric preview, sci-fi console theme, light/dark toggle, keyboard shortcuts
 - `.litematic` output loads directly in the Litematica mod
 - Property-based tests and CI on Python 3.11/3.12/3.13 across Ubuntu + Windows
@@ -65,6 +65,10 @@ spaceship-generator --seed 42 --palette sci_fi_industrial \
 - `--block-summary` — print block-count CSV for survival resource planning
 - `--preview-azimuth DEG` / `--preview-elevation DEG` — control isometric camera angle
 - `--fleet-count N` — generate a coherent fleet of N ships
+- `--ship-size WxHxL` — override ship dimensions (width × height × length); validates W≥4, H≥4, L≥8
+- `--seed-phrase TEXT` — hash memorable text to a deterministic seed (SHA-256)
+- `--export-manifest` — write `<name>.json` sidecar alongside each .litematic
+- `--palette-info NAME` — print role → block ID and hex preview color for a palette
 
 Output: `out/ship_42.litematic`.
 
@@ -92,6 +96,11 @@ Three independent dials shape the silhouette. Mix and match freely.
 - `whale` — fat rounded body, peak volume mid-ship
 - `dagger` — narrow slim blade, tapered both ends
 - `blocky_freighter` — boxy crate silhouette
+- `organic_bio` — rounded organic curves, puffy and wide
+- `hexagonal_lattice` — rippled hex-cell profile
+- `asymmetric_scavenger` — lopsided scavenged-parts look
+- `modular_block` — stepped rectangular modules
+- `sleek_racing` — narrow needle silhouette, low height
 
 **EngineStyle** — rear-engine archetype.
 
@@ -100,6 +109,10 @@ Three independent dials shape the silhouette. Mix and match freely.
 - `quad_cluster` — four small engines in a 2×2
 - `ring` — hollow annular torus thruster
 - `ion_array` — horizontal row of small glow blocks
+- `plasma_pulse` — alternating disk/annulus slabs, pulsed look
+- `magnetic_rail` — two elongated rail bars offset vertically
+- `bio_organic` — rng-seeded irregular blob clusters
+- `retro_rocket_cluster` — triangle of three compact round nozzles
 
 **WingStyle** — planform archetype.
 
@@ -117,16 +130,19 @@ Palettes live in `palettes/*.yaml`. Each palette maps semantic roles (e.g. `HULL
 | | | |
 |---|---|---|
 | `abyss_deep` | `alien_bio` | `amethyst_crystal` |
-| `ancient_ruin` | `autumn_harvest` | `biopunk_fungal` |
-| `candy_pop` | `circus_bigtop` | `coral_reef` |
-| `crimson_nether` | `cyberpunk_neon` | `deepslate_drone` |
-| `desert_sandstone` | `diamond_tech` | `end_void` |
+| `ancient_ruin` | `autumn_harvest` | `badlands_mesa` |
+| `biopunk_fungal` | `candy_pop` | `cherry_blossom` |
+| `circus_bigtop` | `coral_reef` | `crimson_nether` |
+| `cyberpunk_neon` | `deepslate_drone` | `desert_sandstone` |
+| `diamond_tech` | `end_city` | `end_void` |
 | `forest_camouflage` | `frozen_tundra` | `gold_imperial` |
-| `ice_crystal` | `lava_forge` | `nebula_drift` |
-| `neon_arcade` | `nordic_scout` | `quantum_chrome` |
+| `ice_crystal` | `jungle_canopy` | `lava_forge` |
+| `mushroom_islands` | `nebula_drift` | `neon_arcade` |
+| `nordic_scout` | `prismarine_sea` | `quantum_chrome` |
 | `rustic_salvage` | `sci_fi_industrial` | `sleek_modern` |
 | `solar_flare` | `stealth_black` | `steampunk_brass` |
-| `void_walker` | `volcanic_ash` | `wooden_frigate` |
+| `swamp_bog` | `void_walker` | `volcanic_ash` |
+| `wooden_frigate` | | |
 
 Example palette file:
 
