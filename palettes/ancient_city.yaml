@@ -1,0 +1,26 @@
+name: ancient_city
+description: Deep dark biome runner. Deepslate-tile hull, sculk catalyst engine glow, soul-lantern cyan accents.
+
+blocks:
+  HULL:          minecraft:deepslate_tiles
+  HULL_DARK:     minecraft:cracked_deepslate_tiles
+  WINDOW:        minecraft:cyan_stained_glass
+  ENGINE:        minecraft:sculk
+  ENGINE_GLOW:   minecraft:sculk_catalyst
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:polished_deepslate
+  GREEBLE:       minecraft:chiseled_deepslate
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:reinforced_deepslate
+
+preview_colors:
+  HULL:          "#4a4850"
+  HULL_DARK:     "#2a282e"
+  WINDOW:        "#3fb8c8"
+  ENGINE:        "#1a2828"
+  ENGINE_GLOW:   "#5fdcd4"
+  COCKPIT_GLASS: "#2a2228"
+  WING:          "#3a3840"
+  GREEBLE:       "#5c5a64"
+  LIGHT:         "#a8e8d8"
+  INTERIOR:      "#2c2a30"
