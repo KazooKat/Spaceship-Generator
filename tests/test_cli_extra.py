@@ -1735,3 +1735,129 @@ def test_greeble_style_invalid_type_exits_nonzero():
         capture_output=True, text=True
     )
     assert result.returncode != 0
+
+
+# ----------- --from-manifest -----------
+
+
+def test_cli_from_manifest_reproduces_ship(tmp_path):
+    """Generate a ship with --export-manifest, then reproduce from the
+    sidecar with --from-manifest and verify the rebuild has the same
+    seed/palette/shape/blocks."""
+    out1 = tmp_path / "first"
+    out2 = tmp_path / "second"
+    out1.mkdir()
+    out2.mkdir()
+
+    rc1 = main([
+        "--seed", "12345",
+        "--palette", "frozen_tundra",
+        "--export-manifest",
+        "--out", str(out1),
+        "--quiet",
+    ])
+    assert rc1 == 0
+
+    manifest_files = list(out1.glob("*.json"))
+    assert len(manifest_files) == 1
+    manifest_path = manifest_files[0]
+    original = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    # Reproduce: re-export manifest from the second run so we can compare.
+    rc2 = main([
+        "--from-manifest", str(manifest_path),
+        "--export-manifest",
+        "--out", str(out2),
+        "--quiet",
+    ])
+    assert rc2 == 0
+
+    repro_files = list(out2.glob("*.json"))
+    assert len(repro_files) == 1
+    reproduced = json.loads(repro_files[0].read_text(encoding="utf-8"))
+
+    assert reproduced["seed"] == original["seed"] == 12345
+    assert reproduced["palette"] == original["palette"] == "frozen_tundra"
+    assert reproduced["shape"] == original["shape"]
+    assert reproduced["blocks"] == original["blocks"]
+
+
+def test_cli_from_manifest_missing_file_errors(tmp_path):
+    """``--from-manifest /nonexistent.json`` exits non-zero with helpful message."""
+    bogus = tmp_path / "does_not_exist.json"
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--from-manifest", str(bogus), "--out", str(tmp_path)])
+    assert excinfo.value.code != 0
+
+
+def test_cli_from_manifest_invalid_json_errors(tmp_path):
+    """A manifest file containing invalid JSON exits non-zero."""
+    bad = tmp_path / "bad.json"
+    bad.write_text("not valid json {", encoding="utf-8")
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--from-manifest", str(bad), "--out", str(tmp_path)])
+    assert excinfo.value.code != 0
+
+
+def test_cli_from_manifest_missing_keys_errors(tmp_path):
+    """A manifest missing required keys (no seed) exits non-zero."""
+    bad = tmp_path / "missing.json"
+    bad.write_text(
+        json.dumps({"palette": "sci_fi_industrial", "shape": [20, 12, 40]}),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--from-manifest", str(bad), "--out", str(tmp_path)])
+    assert excinfo.value.code != 0
+
+
+def test_cli_from_manifest_conflicts_with_seed(tmp_path):
+    """``--from-manifest x.json --seed 1`` exits non-zero."""
+    manifest = tmp_path / "m.json"
+    manifest.write_text(
+        json.dumps({
+            "seed": 7,
+            "palette": "sci_fi_industrial",
+            "shape": [20, 12, 40],
+        }),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit) as excinfo:
+        main([
+            "--from-manifest", str(manifest),
+            "--seed", "1",
+            "--out", str(tmp_path),
+        ])
+    assert excinfo.value.code != 0
+
+
+# ----------- --repeat N produces N distinct ship files (real generator) -----------
+
+
+def test_cli_repeat_produces_n_distinct_files(tmp_path: Path):
+    """``--repeat 4 --seed 1000`` writes exactly 4 .litematic files with
+    pairwise-distinct byte contents (no stub — exercises the real generator)."""
+    rc = main(
+        [
+            "--seed",
+            "1000",
+            "--repeat",
+            "4",
+            "--out",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+    assert rc == 0
+
+    # Exactly N files on disk, one per consecutive seed (1000..1003).
+    files = sorted(tmp_path.glob("*.litematic"))
+    assert len(files) == 4
+    for s in (1000, 1001, 1002, 1003):
+        assert (tmp_path / f"ship_{s}.litematic").exists(), f"missing ship_{s}.litematic"
+
+    # Byte contents must be pairwise distinct (the litematic exporter is
+    # deterministic per-seed and embeds no timestamps, so equal bytes would
+    # mean two seeds collapsed to the same ship).
+    blobs = [p.read_bytes() for p in files]
+    assert len(set(blobs)) == 4, "all 4 ship files should be pairwise byte-distinct"

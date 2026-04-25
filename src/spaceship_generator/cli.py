@@ -919,6 +919,108 @@ def main(argv: list[str] | None = None) -> int:
         )
         args.seed = phrase_seed
 
+    # ``--from-manifest FILE`` reproduces a previously-exported ship by
+    # overriding seed/palette/dims from the JSON sidecar produced by
+    # ``--export-manifest``. It conflicts with anything that also chooses
+    # seeds (so the user's intent is unambiguous) and with fleet mode.
+    if getattr(args, "from_manifest", None) is not None:
+        conflicts = []
+        if args.seed is not None and "--seed" in explicit:
+            conflicts.append("--seed")
+        if args.seeds is not None:
+            conflicts.append("--seeds")
+        if args.seed_phrase is not None:
+            conflicts.append("--seed-phrase")
+        if args.repeat > 1:
+            conflicts.append("--repeat")
+        if int(getattr(args, "fleet_count", 1) or 1) > 1:
+            conflicts.append("--fleet-count")
+        if conflicts:
+            parser.error(
+                "--from-manifest is mutually exclusive with "
+                + ", ".join(conflicts)
+            )
+
+        manifest_path = Path(args.from_manifest)
+        if not manifest_path.is_file():
+            parser.error(f"--from-manifest: file not found: {manifest_path}")
+
+        import json as _json
+        try:
+            manifest_data = _json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            parser.error(f"--from-manifest: invalid JSON in {manifest_path}: {exc}")
+
+        if not isinstance(manifest_data, dict):
+            parser.error(
+                f"--from-manifest: top-level JSON in {manifest_path} must be an object"
+            )
+
+        # Required keys: ``seed``, ``palette``, and either ``shape`` (a 3-tuple)
+        # or width+height+length. Anything else is optional.
+        if "seed" not in manifest_data:
+            parser.error(
+                f"--from-manifest: missing required key 'seed' in {manifest_path}"
+            )
+        if "palette" not in manifest_data:
+            parser.error(
+                f"--from-manifest: missing required key 'palette' in {manifest_path}"
+            )
+
+        m_shape = manifest_data.get("shape")
+        if m_shape is not None:
+            if not isinstance(m_shape, list | tuple) or len(m_shape) != 3:
+                parser.error(
+                    f"--from-manifest: 'shape' must be a 3-element list "
+                    f"[W, H, L] in {manifest_path}"
+                )
+            try:
+                m_w, m_h, m_l = (int(x) for x in m_shape)
+            except (TypeError, ValueError) as exc:
+                parser.error(
+                    f"--from-manifest: 'shape' must contain integers in "
+                    f"{manifest_path}: {exc}"
+                )
+        elif all(k in manifest_data for k in ("width", "height", "length")):
+            try:
+                m_w = int(manifest_data["width"])
+                m_h = int(manifest_data["height"])
+                m_l = int(manifest_data["length"])
+            except (TypeError, ValueError) as exc:
+                parser.error(
+                    f"--from-manifest: width/height/length must be integers in "
+                    f"{manifest_path}: {exc}"
+                )
+        else:
+            parser.error(
+                f"--from-manifest: must contain 'shape' or "
+                f"width+height+length in {manifest_path}"
+            )
+
+        # Override args from the manifest BEFORE the generation pipeline runs.
+        try:
+            args.seed = int(manifest_data["seed"])
+        except (TypeError, ValueError) as exc:
+            parser.error(
+                f"--from-manifest: 'seed' must be an integer in "
+                f"{manifest_path}: {exc}"
+            )
+        args.palette = str(manifest_data["palette"])
+        args.width = m_w
+        args.height = m_h
+        args.length = m_l
+        # ``--ship-size`` would otherwise win in ``_run_one``; clear it so the
+        # manifest dims take effect.
+        args.ship_size = None
+        if manifest_data.get("preset") is not None:
+            args.preset = manifest_data["preset"]
+
+        print(
+            f"Reproducing from manifest: seed={args.seed} "
+            f"palette={args.palette} dims={m_w}x{m_h}x{m_l}",
+            file=sys.stderr,
+        )
+
     if args.list_palettes:
         names = list_palettes()
         if not names:
