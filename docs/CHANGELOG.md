@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- fix(ci): commit 105 block-texture PNG cache files and add `.gitignore` exception — resolves `test_block_texture_png_returns_cached_bytes` and two related CI failures on all Python/OS matrix combinations
+- feat(api): add `GET /api/styles` endpoint — returns `hull_styles`, `engine_styles`, `wing_styles`, `greeble_types`, `weapon_types` arrays for client-side discovery (parity with `/api/palettes` and `/api/presets`)
+- feat(cli): add `--dry-run` flag — resolves and prints generation params (seed, palette, dims, preset) as JSON without writing files; exits 0
+- feat(cli): add `--greeble-style TYPE` flag — restricts greeble scatter to one named `GreebleType` (turret/dish/vent/antenna/panel_line/sensor_pod); threads through `generate()` via new `greeble_types` param
+- feat(palettes): add `badlands_mesa` palette — red terracotta hull, orange terracotta wings, copper block engine, ochre froglight glow (Minecraft badlands/mesa biome theme)
+- feat(palettes): add `end_city` palette — purpur block hull, end stone brick accent, end rod glow (The End dimension / End City theme)
+- docs(readme): update palette count (33→40), hull silhouette count (5→10), engine style count (5→9); add missing `--ship-size`, `--seed-phrase`, `--export-manifest`, `--palette-info` to key-flags table; expand Styles section with all current hull/engine variants
+
 - fix(cli): replace `utcnow()` with timezone-aware `datetime.now(UTC)` in `--export-manifest` timestamp — eliminates DeprecationWarning on Python 3.12+
 - fix(tests): add pytest `filterwarnings` entry to suppress known-harmless runpy `RuntimeWarning` in `test_cli_module_runpy_smoke`
 - feat(palettes): add `mushroom_islands` palette — mycelium hull, red mushroom cap wings, shroomlight engine glow (mushroom island biome theme)
