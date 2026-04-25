@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(cli): add `--from-manifest FILE` flag — reproduce a ship from a prior `--export-manifest` JSON sidecar; validates required keys (seed/palette/shape) and rejects conflicts with `--seed`/`--seeds`/`--seed-phrase`/`--repeat`/`--fleet-count`
+- feat(api): add `GET /api/random` endpoint — returns a random `{seed, palette, preset}` JSON triple for client-side spin-the-wheel; optional `?seed=<int>` query param makes palette/preset selection reproducible; `Cache-Control: no-store`
+- feat(cli): add `--no-greebles` shortcut — equivalent to `--greeble-density 0`; mutually exclusive with `--greeble-density` (errors with non-zero exit if both passed)
+- feat(palettes): add `ancient_city` palette — deepslate-tile hull, cracked-deepslate accent, sculk-catalyst engine glow, soul-lantern running lights (deep dark biome / ancient city theme)
+- feat(palettes): add `dripstone_cave` palette — dripstone-block hull, pointed-dripstone accent, copper-bulb warm engine glow, cut-copper engines, weathered-copper wings (Minecraft dripstone cave biome)
+- test(cli): pin `--repeat N` produces exactly N distinct `.litematic` files with byte-distinct contents (4-ship distinctness property test, runs ~0.07s)
 - fix(ci): commit 105 block-texture PNG cache files and add `.gitignore` exception — resolves `test_block_texture_png_returns_cached_bytes` and two related CI failures on all Python/OS matrix combinations
 - feat(api): add `GET /api/styles` endpoint — returns `hull_styles`, `engine_styles`, `wing_styles`, `greeble_types`, `weapon_types` arrays for client-side discovery (parity with `/api/palettes` and `/api/presets`)
 - feat(cli): add `--dry-run` flag — resolves and prints generation params (seed, palette, dims, preset) as JSON without writing files; exits 0
