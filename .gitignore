@@ -45,6 +45,7 @@ out/
 tmp/
 *.litematic
 *.png
+!src/spaceship_generator/data/block_textures/*.png
 !docs/**/*.png
 
 # Logs
