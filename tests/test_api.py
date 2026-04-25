@@ -111,3 +111,27 @@ def test_api_compare_missing_seed(client):
 def test_api_compare_bad_palette(client):
     rv = client.get("/api/compare?seed_a=1&seed_b=2&palette=not_a_real_palette")
     assert rv.status_code == 400
+
+
+def test_api_styles_returns_all_keys(client):
+    resp = client.get("/api/styles")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert set(data.keys()) == {"hull_styles", "engine_styles", "wing_styles", "greeble_types", "weapon_types"}
+    for key in data:
+        assert isinstance(data[key], list), f"{key} should be a list"
+        assert len(data[key]) > 0, f"{key} should be non-empty"
+
+
+def test_api_styles_hull_styles_contains_known_values(client):
+    resp = client.get("/api/styles")
+    data = resp.get_json()
+    assert "arrow" in data["hull_styles"]
+    assert "saucer" in data["hull_styles"]
+
+
+def test_api_styles_greeble_types_contains_known_values(client):
+    resp = client.get("/api/styles")
+    data = resp.get_json()
+    assert "turret" in data["greeble_types"]
+    assert "dish" in data["greeble_types"]

@@ -31,7 +31,7 @@ from ...block_colors import block_alpha, is_translucent
 from ...engine_styles import EngineStyle, build_engines
 from ...fleet import SIZE_TIERS, FleetParams, generate_fleet
 from ...generator import generate
-from ...greeble_styles import scatter_greebles
+from ...greeble_styles import GreebleType, scatter_greebles
 from ...palette import Role, list_palettes, load_palette
 from ...shape import CockpitStyle, ShapeParams, StructureStyle, generate_shape
 from ...structure_styles import HullStyle
@@ -478,6 +478,18 @@ def api_palette_detail(name: str):
             role.name: _rgba_to_hex(*rgba)
             for role, rgba in pal.preview_colors.items()
         },
+    })
+
+
+@ship_bp.route("/api/styles", methods=["GET"], endpoint="api_styles")
+def api_styles():
+    """Return all available style names for hull, engine, wing, greeble, and weapon types."""
+    return jsonify({
+        "hull_styles": [s.value for s in HullStyle],
+        "engine_styles": [s.value for s in EngineStyle],
+        "wing_styles": [s.value for s in WingStyle],
+        "greeble_types": [t.value for t in GreebleType],
+        "weapon_types": [t.value for t in WeaponType],
     })
 
 
