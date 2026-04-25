@@ -11,7 +11,7 @@ import numpy as np
 
 from .engine_styles import EngineStyle, build_engines
 from .export import export_litematic, filled_voxel_count
-from .greeble_styles import scatter_greebles
+from .greeble_styles import GreebleType, scatter_greebles
 from .palette import Palette, Role, load_palette
 from .shape import ShapeParams, generate_shape
 from .structure_styles import HullStyle
@@ -92,6 +92,7 @@ def generate(
     hull_style: HullStyle | None = None,
     engine_style: EngineStyle | None = None,
     greeble_density: float = 0.0,
+    greeble_types: Iterable[GreebleType] | None = None,
     weapon_count: int = 0,
     weapon_types: Iterable[WeaponType] | None = None,
 ) -> GenerationResult:
@@ -137,6 +138,10 @@ def generate(
         main pipeline (and after greebles) and placements are written
         into empty cells only so existing hull/cockpit/engine/wing cells
         are preserved.
+    greeble_types:
+        Optional iterable of :class:`GreebleType` members restricting which
+        greeble archetypes may be scattered. ``None`` (default) allows every
+        type. Unknown members raise :class:`ValueError`.
     weapon_types:
         Optional iterable of :class:`WeaponType` members restricting which
         archetypes may be placed. ``None`` (default) allows every type.
@@ -155,6 +160,19 @@ def generate(
         raise ValueError(
             f"weapon_count must be >= 0; got {weapon_count!r}"
         )
+    # Materialize greeble_types once so we can validate members eagerly.
+    allowed_greeble_types: list[GreebleType] | None
+    if greeble_types is None:
+        allowed_greeble_types = None
+    else:
+        allowed_greeble_types = []
+        for t in greeble_types:
+            if not isinstance(t, GreebleType):
+                raise ValueError(
+                    f"greeble_types entries must be GreebleType members; "
+                    f"got {t!r}"
+                )
+            allowed_greeble_types.append(t)
     # Materialize weapon_types once so we can validate members eagerly and
     # still hand a concrete list to scatter_weapons below.
     allowed_weapon_types: list[WeaponType] | None
@@ -203,7 +221,7 @@ def generate(
         W, H, L = shape_grid.shape
         greeble_rng = np.random.default_rng(seed ^ 0x6E)
         for x, y, z, role in scatter_greebles(
-            shape_grid, greeble_rng, float(greeble_density)
+            shape_grid, greeble_rng, float(greeble_density), types=allowed_greeble_types
         ):
             if 0 <= x < W and 0 <= y < H and 0 <= z < L:
                 if shape_grid[x, y, z] == Role.EMPTY:

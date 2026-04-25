@@ -9,6 +9,7 @@ no-palettes-found branch of ``--list-palettes``, and the
 from __future__ import annotations
 
 import argparse
+import json
 import runpy
 import subprocess
 import sys
@@ -1689,7 +1690,6 @@ def test_ship_size_non_numeric_exits_non_zero(tmp_path: Path, capsys):
 # ----------- --export-manifest -----------
 
 def test_export_manifest_writes_sidecar(tmp_path):
-    import json
     rc = main(["--seed", "1", "--out", str(tmp_path), "--export-manifest", "--quiet"])
     assert rc == 0
     json_files = list(tmp_path.glob("*.json"))
@@ -1700,3 +1700,38 @@ def test_export_manifest_writes_sidecar(tmp_path):
     assert "shape" in data
     assert "blocks" in data
     assert "timestamp" in data
+
+
+# ----------- --dry-run and --greeble-style flags -----------
+
+
+def test_dry_run_prints_json_seed_and_no_file_written(tmp_path):
+    """--dry-run should print JSON params and NOT write a .litematic file."""
+    result = subprocess.run(
+        [sys.executable, "-m", "spaceship_generator", "--seed", "99", "--dry-run", "--out", str(tmp_path)],
+        capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    data = json.loads(result.stdout.strip())
+    assert data["seed"] == 99
+    assert "palette" in data
+    assert "dry_run" in data
+    # No file written
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_greeble_style_valid_type_exits_zero(tmp_path):
+    result = subprocess.run(
+        [sys.executable, "-m", "spaceship_generator", "--seed", "1", "--greeble-style", "turret",
+         "--greeble-density", "0.1", "--out", str(tmp_path)],
+        capture_output=True, text=True
+    )
+    assert result.returncode == 0
+
+
+def test_greeble_style_invalid_type_exits_nonzero():
+    result = subprocess.run(
+        [sys.executable, "-m", "spaceship_generator", "--greeble-style", "not_a_real_type"],
+        capture_output=True, text=True
+    )
+    assert result.returncode != 0

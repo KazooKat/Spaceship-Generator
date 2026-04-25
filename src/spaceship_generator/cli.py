@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .engine_styles import EngineStyle
 from .generator import GenerationResult, generate
+from .greeble_styles import GreebleType
 from .palette import list_palettes
 from .shape import CockpitStyle, ShapeParams, StructureStyle
 from .structure_styles import HullStyle
@@ -278,6 +279,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--greeble-density", type=_parse_unit_float, default=None,
                    help="Density of surface greebles in [0.0, 1.0]. "
                         "When omitted, legacy defaults apply.")
+    p.add_argument(
+        "--greeble-style",
+        metavar="TYPE",
+        choices=[t.value for t in GreebleType],
+        help=(
+            "Restrict greeble scatter to one type: "
+            + ", ".join(t.value for t in GreebleType)
+            + ". Default: all types."
+        ),
+    )
     p.add_argument("--cockpit", choices=[c.value for c in CockpitStyle],
                    default=CockpitStyle.BUBBLE.value, help="Cockpit style.")
     p.add_argument(
@@ -365,6 +376,13 @@ def build_parser() -> argparse.ArgumentParser:
                    default=0.7,
                    help="Fleet style coherence in [0.0, 1.0] "
                         "(only used when --fleet-count > 1).")
+
+    # Dry-run mode
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Resolve generation params and print as JSON without writing files. Exit 0.",
+    )
 
     # Output
     p.add_argument("--out", type=Path, default=Path("out"),
@@ -551,6 +569,11 @@ def _run_one(
         CockpitStyle(args.cockpit_style) if args.cockpit_style else None
     )
     gen_greeble = args.greeble_density if args.greeble_density is not None else 0.0
+    greeble_types_arg = (
+        [GreebleType(args.greeble_style)]
+        if getattr(args, "greeble_style", None)
+        else None
+    )
 
     # When ``--ship-size`` is provided, override the three dimension fields on
     # the already-built ShapeParams so all downstream code (generator, fleet,
@@ -585,6 +608,7 @@ def _run_one(
             "hull_style": hull_style,
             "engine_style": engine_style,
             "greeble_density": gen_greeble,
+            "greeble_types": greeble_types_arg,
         }
         if cockpit_style is not None:
             extra_kwargs["cockpit_style"] = cockpit_style
@@ -598,10 +622,11 @@ def _run_one(
             or engine_style is not None
             or gen_greeble
             or cockpit_style is not None
+            or greeble_types_arg is not None
         ):
             print(
                 "Warning: --hull-style/--engine-style/--greeble-density/"
-                "--cockpit-style not supported by this generator; ignoring.",
+                "--cockpit-style/--greeble-style not supported by this generator; ignoring.",
                 file=sys.stderr,
             )
         result = generate(seed, **base_kwargs)
@@ -1004,6 +1029,28 @@ def main(argv: list[str] | None = None) -> int:
     # seeds loop, weapon pass) receives the same resolved name.
     if args.palette == "random":
         args.palette = random.choice(list_palettes())
+
+    # --dry-run: resolve params, print JSON summary, write nothing, exit 0.
+    if getattr(args, "dry_run", False):
+        import json as _json
+
+        dry_seed = args.seed if args.seed is not None else random.randint(0, 2**31 - 1)
+        # Resolve dimensions (--ship-size overrides individual flags).
+        if getattr(args, "ship_size", None) is not None:
+            dry_w, dry_h, dry_l = args.ship_size
+        else:
+            dry_w, dry_h, dry_l = args.width, args.height, args.length
+        dry_info = {
+            "seed": dry_seed,
+            "palette": args.palette,
+            "width": dry_w,
+            "height": dry_h,
+            "length": dry_l,
+            "preset": getattr(args, "preset", None),
+            "dry_run": True,
+        }
+        print(_json.dumps(dry_info))
+        return 0
 
     # Fleet mode short-circuits the seeds loop: one fleet seed plans N ships
     # and each planned ship is generated individually.
