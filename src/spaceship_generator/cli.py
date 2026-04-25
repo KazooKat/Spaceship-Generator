@@ -278,7 +278,13 @@ def build_parser() -> argparse.ArgumentParser:
     # post-build generator-level scatter stays off.
     p.add_argument("--greeble-density", type=_parse_unit_float, default=None,
                    help="Density of surface greebles in [0.0, 1.0]. "
-                        "When omitted, legacy defaults apply.")
+                        "When omitted, legacy defaults apply. "
+                        "Shortcut: --no-greebles is equivalent to "
+                        "--greeble-density 0 (mutually exclusive).")
+    p.add_argument("--no-greebles", action="store_true",
+                   help="Shortcut for --greeble-density 0 (disables greeble "
+                        "scatter entirely). Mutually exclusive with "
+                        "--greeble-density.")
     p.add_argument(
         "--greeble-style",
         metavar="TYPE",
@@ -431,6 +437,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--export-manifest", action="store_true",
                    help="Write <name>.json sidecar alongside each .litematic with "
                         "seed, palette, shape, block count, and UTC timestamp.")
+    p.add_argument(
+        "--from-manifest",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="Reproduce a ship from a prior --export-manifest JSON sidecar. "
+             "Reads seed, palette, and dims (shape) from FILE and overrides "
+             "those args. Mutually exclusive with --seed, --seeds, "
+             "--seed-phrase, --repeat, and --fleet-count.",
+    )
     p.add_argument(
         "--block-summary",
         action="store_true",
@@ -868,6 +884,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     explicit = _explicit_flags(argv)
+
+    # ``--no-greebles`` is a shortcut for ``--greeble-density 0``. Reject the
+    # ambiguous case where both flags are passed; otherwise materialize the
+    # shortcut by setting greeble_density to 0.0 so downstream plumbing
+    # (which only reads ``args.greeble_density``) needs no special-case.
+    if args.no_greebles and args.greeble_density is not None:
+        parser.error("--no-greebles and --greeble-density are mutually exclusive")
+    if args.no_greebles:
+        args.greeble_density = 0.0
 
     if args.verbose and args.quiet:
         print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)

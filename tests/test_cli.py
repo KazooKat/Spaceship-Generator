@@ -168,3 +168,46 @@ def test_seed_phrase_mutually_exclusive_with_seed(tmp_path):
         capture_output=True,
     )
     assert result.returncode != 0
+
+
+# ---------------------------------------------------------------------------
+# --no-greebles shortcut
+# ---------------------------------------------------------------------------
+
+
+def test_cli_no_greebles_shortcut_runs(tmp_path: Path):
+    """``--no-greebles`` runs cleanly (equivalent to ``--greeble-density 0``)
+    and writes a .litematic file with no traceback."""
+    rc = main(
+        ["--no-greebles", "--seed", "42", "--out", str(tmp_path)] + _SMALL_ARGS
+    )
+    assert rc == 0
+    files = list(tmp_path.glob("*.litematic"))
+    assert files, "expected at least one .litematic written under --no-greebles"
+
+
+def test_cli_no_greebles_conflicts_with_density(tmp_path: Path, capsys):
+    """Passing both ``--no-greebles`` and ``--greeble-density`` exits non-zero
+    via ``parser.error`` with the mutual-exclusion message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as excinfo:
+        main(
+            [
+                "--no-greebles",
+                "--greeble-density",
+                "0.3",
+                "--seed",
+                "1",
+                "--out",
+                str(tmp_path),
+            ]
+            + _SMALL_ARGS
+        )
+    # argparse's parser.error() exits with status 2.
+    assert excinfo.value.code != 0
+    captured = capsys.readouterr()
+    # Error message lands on stderr.
+    assert "--no-greebles" in captured.err
+    assert "--greeble-density" in captured.err
+    assert "mutually exclusive" in captured.err
