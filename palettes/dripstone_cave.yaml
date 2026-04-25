@@ -1,0 +1,26 @@
+name: dripstone_cave
+description: Dripstone cave runner. Dripstone-block hull, pointed-dripstone dark accents, cut-copper engines with copper-bulb warm glow, tuff greebles.
+
+blocks:
+  HULL:          minecraft:dripstone_block
+  HULL_DARK:     minecraft:pointed_dripstone
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:cut_copper
+  ENGINE_GLOW:   minecraft:copper_bulb
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:weathered_cut_copper
+  GREEBLE:       minecraft:tuff
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:smooth_stone
+
+preview_colors:
+  HULL:          "#c4a890"
+  HULL_DARK:     "#5a4438"
+  WINDOW:        "#e89858"
+  ENGINE:        "#b8704a"
+  ENGINE_GLOW:   "#f0a868"
+  COCKPIT_GLASS: "#3a3438"
+  WING:          "#6a8a78"
+  GREEBLE:       "#6e6862"
+  LIGHT:         "#f4d890"
+  INTERIOR:      "#c8c8c8"
