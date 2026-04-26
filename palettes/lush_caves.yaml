@@ -1,0 +1,26 @@
+name: lush_caves
+description: Lush caves bio-cruiser. Moss-block hull, flowering-azalea-leaves accent, verdant-froglight engine glow, glow-lichen running lights — Minecraft 1.18 lush caves biome.
+
+blocks:
+  HULL:          minecraft:moss_block
+  HULL_DARK:     minecraft:azalea_leaves
+  WINDOW:        minecraft:lime_stained_glass
+  ENGINE:        minecraft:mossy_cobblestone
+  ENGINE_GLOW:   minecraft:verdant_froglight
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:flowering_azalea_leaves
+  GREEBLE:       minecraft:rooted_dirt
+  LIGHT:         minecraft:glow_lichen
+  INTERIOR:      minecraft:moss_carpet
+
+preview_colors:
+  HULL:          "#5a7838"
+  HULL_DARK:     "#2a3a18"
+  WINDOW:        "#a8d870"
+  ENGINE:        "#5a6048"
+  ENGINE_GLOW:   "#88e858"
+  COCKPIT_GLASS: "#3a3a3a"
+  WING:          "#c878a8"
+  GREEBLE:       "#6a4a30"
+  LIGHT:         "#88c870"
+  INTERIOR:      "#7aa050"

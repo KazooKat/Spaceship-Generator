@@ -1,0 +1,26 @@
+name: pale_garden
+description: Pale garden ghost ship. Pale-oak-log hull, pale-moss-block dark accent, pale-oak-planks wings, lantern engine glow, creaking-heart cockpit — Minecraft 1.21 pale garden biome.
+
+blocks:
+  HULL:          minecraft:pale_oak_log
+  HULL_DARK:     minecraft:pale_moss_block
+  WINDOW:        minecraft:white_stained_glass
+  ENGINE:        minecraft:creaking_heart
+  ENGINE_GLOW:   minecraft:lantern
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:pale_oak_planks
+  GREEBLE:       minecraft:pale_hanging_moss
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:pale_moss_carpet
+
+preview_colors:
+  HULL:          "#d8d4c8"
+  HULL_DARK:     "#6a7868"
+  WINDOW:        "#f0eee0"
+  ENGINE:        "#604838"
+  ENGINE_GLOW:   "#f4d890"
+  COCKPIT_GLASS: "#3a3a3a"
+  WING:          "#cac4b0"
+  GREEBLE:       "#8a988a"
+  LIGHT:         "#f4d890"
+  INTERIOR:      "#a8b0a0"

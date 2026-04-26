@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(palettes): add `lush_caves`, `mangrove_swamp`, `pale_garden` palettes — biome pack for Minecraft 1.18 lush caves (moss-block hull, azalea-leaves accent, verdant-froglight glow, glow-lichen lights), 1.19 mangrove swamp (mangrove-log hull, muddy-mangrove-roots accent, ochre-froglight glow), and 1.21 pale garden (pale-oak-log hull, pale-moss-block accent, creaking-heart engines, lantern glow)
+- feat(api): add `GET /api/spec` endpoint — returns a hand-written OpenAPI 3.0.3 JSON document enumerating every `/api/*` route (paths, methods, summaries, query/path params, 200 response schemas) for client codegen and Swagger/Redoc browsers; version sourced from package metadata
 - docs(architecture): document shape pipeline — new `## Shape pipeline` section in `docs/architecture.md` with a Mermaid build-order diagram (hull -> cockpit -> engines -> wings -> greebles -> mirror -> connect-floaters -> mirror) and one subsection per module in `src/spaceship_generator/shape/` (`core.py`, `hull.py`, `assembly.py`, `cockpit.py`, `wings.py`, `engines.py`, `greebles.py`); foundation for the `shapes-A`..`shapes-E` epic
 - feat(cli): add `--from-manifest FILE` flag — reproduce a ship from a prior `--export-manifest` JSON sidecar; validates required keys (seed/palette/shape) and rejects conflicts with `--seed`/`--seeds`/`--seed-phrase`/`--repeat`/`--fleet-count`
 - feat(api): add `GET /api/random` endpoint — returns a random `{seed, palette, preset}` JSON triple for client-side spin-the-wheel; optional `?seed=<int>` query param makes palette/preset selection reproducible; `Cache-Control: no-store`

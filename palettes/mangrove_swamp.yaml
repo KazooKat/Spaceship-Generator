@@ -1,0 +1,26 @@
+name: mangrove_swamp
+description: Muggy bayou hauler. Mangrove-log hull, muddy-mangrove-roots dark accent, mangrove-planks wings, ochre-froglight engine glow — Minecraft 1.19 mangrove swamp biome.
+
+blocks:
+  HULL:          minecraft:mangrove_log
+  HULL_DARK:     minecraft:muddy_mangrove_roots
+  WINDOW:        minecraft:brown_stained_glass
+  ENGINE:        minecraft:packed_mud
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:mangrove_planks
+  GREEBLE:       minecraft:mangrove_roots
+  LIGHT:         minecraft:torch
+  INTERIOR:      minecraft:mud
+
+preview_colors:
+  HULL:          "#74302a"
+  HULL_DARK:     "#382820"
+  WINDOW:        "#9c6838"
+  ENGINE:        "#7a6850"
+  ENGINE_GLOW:   "#e8d870"
+  COCKPIT_GLASS: "#3a3a3a"
+  WING:          "#9a4838"
+  GREEBLE:       "#5a3828"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#5a5040"
