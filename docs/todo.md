@@ -54,6 +54,21 @@ Land them independently — each is its own design doc + plan.
       accept: TBD per concrete proposal
       notes: must come with a one-paragraph design before opening a new item below this one
 
+- [ ] feat-palettes-biome-pack-2026-04-26: add three new biome palettes (lush_caves, mangrove_swamp, pale_garden)
+      scope: `palettes/*.yaml`, `tests/test_palette.py` or `tests/test_palette_lint.py` (count update only)
+      accept: three new YAML palettes pass `test_palette_lint`, hull/wing/glow blocks valid; palette count test updated; loadable via `--palette NAME`
+      notes: lush_caves = azalea/glow_berries; mangrove_swamp = mangrove_log/mud/mangrove_roots; pale_garden = pale_oak (1.21); follow existing palette schema
+
+- [ ] feat-api-openapi-spec: add `GET /api/spec` endpoint returning OpenAPI 3.0 JSON schema
+      scope: `src/spaceship_generator/web/` (new endpoint), `tests/test_api.py` or `tests/test_web.py`
+      accept: route `/api/spec` returns `application/json` with valid OpenAPI 3.0 doc enumerating all current endpoints; test asserts shape and content-type
+      notes: hand-written schema is fine — no code generation; must enumerate existing endpoints (/api/health, /api/random, /api/styles, /api/palettes, /api/presets, /api/compare, /api/fleet/plan, etc.)
+
+- [ ] feat-docs-shape-pipeline: write architecture doc for the shape pipeline as foundation for shapes-A..E
+      scope: `docs/architecture.md` only (extend existing file; do not create a new one)
+      accept: new section "Shape pipeline" describes `shape/core.py`, `shape/hull.py`, `shape/assembly.py`, `shape/cockpit.py`, `shape/wings.py`, `shape/engines.py`, `shape/greebles.py` with one paragraph per module + a Mermaid or ASCII flow diagram of the build order; CHANGELOG bullet
+      notes: this unblocks the bigger shape epic (A–E) by giving future agents a single place to read before touching shape code
+
 ## Open — Bugs
 
 (none tracked here yet; daily tick adds them)
