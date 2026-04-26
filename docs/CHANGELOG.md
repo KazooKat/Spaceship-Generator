@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(architecture): document shape pipeline — new `## Shape pipeline` section in `docs/architecture.md` with a Mermaid build-order diagram (hull -> cockpit -> engines -> wings -> greebles -> mirror -> connect-floaters -> mirror) and one subsection per module in `src/spaceship_generator/shape/` (`core.py`, `hull.py`, `assembly.py`, `cockpit.py`, `wings.py`, `engines.py`, `greebles.py`); foundation for the `shapes-A`..`shapes-E` epic
 - feat(cli): add `--from-manifest FILE` flag — reproduce a ship from a prior `--export-manifest` JSON sidecar; validates required keys (seed/palette/shape) and rejects conflicts with `--seed`/`--seeds`/`--seed-phrase`/`--repeat`/`--fleet-count`
 - feat(api): add `GET /api/random` endpoint — returns a random `{seed, palette, preset}` JSON triple for client-side spin-the-wheel; optional `?seed=<int>` query param makes palette/preset selection reproducible; `Cache-Control: no-store`
 - feat(cli): add `--no-greebles` shortcut — equivalent to `--greeble-density 0`; mutually exclusive with `--greeble-density` (errors with non-zero exit if both passed)
