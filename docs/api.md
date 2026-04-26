@@ -159,6 +159,36 @@ version. Used by the sci-fi console frontend to avoid scraping `/`:
 }
 ```
 
+### `GET /api/spec`
+
+JSON. Hand-written **OpenAPI 3.0.3** document enumerating every public
+`/api/*` route — useful for client codegen, doc browsers (Swagger UI,
+Redoc), and contract testing. Not rate-limited.
+
+The spec's `paths` map mirrors the live route table in
+`src/spaceship_generator/web/blueprints/ship.py`. Each operation carries at
+minimum a `summary`, a 200-case response schema, and (where applicable)
+query / path parameters and request bodies. Top-level shape:
+
+```json
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Spaceship Generator API",
+    "version": "0.2.0",
+    "description": "..."
+  },
+  "paths": {
+    "/api/health": {"get": {"summary": "...", "responses": {"200": {...}}}},
+    "/api/random": {"get": {"summary": "...", "parameters": [...], "responses": {...}}},
+    "...": "..."
+  },
+  "components": {"schemas": {"...": {...}}}
+}
+```
+
+Responses: `200 application/json`.
+
 ## curl examples
 
 ```bash

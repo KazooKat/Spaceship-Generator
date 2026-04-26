@@ -732,6 +732,552 @@ def api_health():
     )
 
 
+# --- /api/spec --------------------------------------------------------------
+# Hand-written OpenAPI 3.0.3 document enumerating every public ``/api/*``
+# route. Flask doesn't ship an auto-generator (FastAPI does, we don't), so
+# this is curated alongside the routes themselves — when you add or remove
+# an ``@ship_bp.route("/api/...")``, update ``_OPENAPI_PATHS`` to match.
+# Two cheap protections against drift:
+#
+# 1. ``test_api_spec_lists_every_route`` walks ``app.url_map`` and asserts
+#    every ``/api/*`` rule appears in the spec's ``paths`` dict (after
+#    Flask-converter → OpenAPI-template normalization).
+# 2. The doc is built at import time (module-level constant) so a typo in
+#    a path-template surfaces as a test failure rather than a runtime 500.
+
+# Map shared response shapes by name. ``$ref`` keeps the paths block
+# readable without exploding into per-endpoint inline schemas.
+_OPENAPI_COMPONENTS: dict = {
+    "schemas": {
+        "ErrorResponse": {
+            "type": "object",
+            "required": ["error"],
+            "properties": {
+                "error": {"type": "string"},
+            },
+        },
+        "RateLimitedResponse": {
+            "type": "object",
+            "required": ["error"],
+            "properties": {
+                "error": {"type": "string", "example": "rate_limited"},
+                "retry_after": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "window_seconds": {"type": "integer"},
+            },
+        },
+        "PalettesList": {
+            "type": "object",
+            "properties": {
+                "palettes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "colors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string"},
+                    },
+                },
+            },
+        },
+        "PaletteDetail": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "roles": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                },
+                "preview_colors": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+        },
+        "Styles": {
+            "type": "object",
+            "properties": {
+                "hull_styles": {"type": "array", "items": {"type": "string"}},
+                "engine_styles": {"type": "array", "items": {"type": "string"}},
+                "wing_styles": {"type": "array", "items": {"type": "string"}},
+                "greeble_types": {"type": "array", "items": {"type": "string"}},
+                "weapon_types": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        "Random": {
+            "type": "object",
+            "required": ["seed", "palette", "preset"],
+            "properties": {
+                "seed": {"type": "integer"},
+                "palette": {"type": "string"},
+                "preset": {"type": "string"},
+            },
+        },
+        "GenerateResult": {
+            "type": "object",
+            "properties": {
+                "seed": {"type": "integer"},
+                "palette": {"type": "string"},
+                "shape": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "minItems": 3,
+                    "maxItems": 3,
+                },
+                "blocks": {"type": "integer"},
+                "download_url": {"type": "string"},
+                "preview_url": {"type": "string"},
+                "gen_id": {"type": "string"},
+            },
+        },
+        "BatchResult": {
+            "type": "object",
+            "properties": {
+                "ships": {
+                    "type": "array",
+                    "items": {"$ref": "#/components/schemas/GenerateResult"},
+                },
+                "count": {"type": "integer"},
+            },
+        },
+        "Health": {
+            "type": "object",
+            "required": ["status", "version"],
+            "properties": {
+                "status": {"type": "string", "example": "ok"},
+                "version": {"type": "string"},
+                "palette_count": {"type": "integer"},
+                "preset_count": {"type": "integer"},
+            },
+        },
+        "Meta": {
+            "type": "object",
+            "properties": {
+                "palettes": {"type": "array", "items": {"type": "string"}},
+                "presets": {"type": "array", "items": {"type": "string"}},
+                "cockpit_styles": {"type": "array", "items": {"type": "string"}},
+                "structure_styles": {"type": "array", "items": {"type": "string"}},
+                "wing_styles": {"type": "array", "items": {"type": "string"}},
+                "hull_styles": {"type": "array", "items": {"type": "string"}},
+                "engine_styles": {"type": "array", "items": {"type": "string"}},
+                "weapon_types": {"type": "array", "items": {"type": "string"}},
+                "param_help": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                },
+                "defaults": {"type": "object"},
+                "version": {"type": "string"},
+                "batch_max": {"type": "integer"},
+            },
+        },
+        "PresetDetail": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "hull_style": {"type": "string"},
+                "engine_style": {"type": "string"},
+                "wing_style": {"type": "string"},
+                "cockpit_style": {"type": "string"},
+                "greeble_density": {"type": "number"},
+                "weapon_count": {"type": "integer"},
+                "weapon_types": {"type": "array", "items": {"type": "string"}},
+                "size": {
+                    "type": "object",
+                    "properties": {
+                        "width": {"type": "integer"},
+                        "height": {"type": "integer"},
+                        "length": {"type": "integer"},
+                    },
+                },
+            },
+        },
+        "PresetsList": {
+            "type": "object",
+            "properties": {
+                "presets": {
+                    "type": "array",
+                    "items": {"$ref": "#/components/schemas/PresetDetail"},
+                },
+            },
+        },
+        "FleetPlan": {
+            "type": "object",
+            "properties": {
+                "seed": {"type": "integer"},
+                "palette": {"type": "string"},
+                "count": {"type": "integer"},
+                "size_tier": {"type": "string"},
+                "coherence": {"type": "number"},
+                "ships": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "index": {"type": "integer"},
+                            "seed": {"type": "integer"},
+                            "hull_style": {"type": "string", "nullable": True},
+                            "engine_style": {"type": "string", "nullable": True},
+                            "wing_style": {"type": "string", "nullable": True},
+                            "cockpit_style": {"type": "string", "nullable": True},
+                            "greeble_density": {"type": "number"},
+                            "weapon_count": {"type": "integer"},
+                            "dims": {
+                                "type": "object",
+                                "properties": {
+                                    "width": {"type": "integer"},
+                                    "height": {"type": "integer"},
+                                    "length": {"type": "integer"},
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "ShipMetadata": {
+            "type": "object",
+            "properties": {
+                "seed": {"type": "integer"},
+                "dimensions": {
+                    "type": "object",
+                    "properties": {
+                        "width": {"type": "integer"},
+                        "height": {"type": "integer"},
+                        "length": {"type": "integer"},
+                    },
+                },
+                "voxel_count": {"type": "integer"},
+                "role_counts": {
+                    "type": "object",
+                    "additionalProperties": {"type": "integer"},
+                },
+            },
+        },
+        "Compare": {
+            "type": "object",
+            "properties": {
+                "palette": {"type": "string"},
+                "ship_a": {"$ref": "#/components/schemas/ShipMetadata"},
+                "ship_b": {"$ref": "#/components/schemas/ShipMetadata"},
+            },
+        },
+        "OpenAPISpec": {
+            "type": "object",
+            "required": ["openapi", "info", "paths"],
+            "properties": {
+                "openapi": {"type": "string"},
+                "info": {"type": "object"},
+                "paths": {"type": "object"},
+            },
+        },
+    }
+}
+
+
+def _json_response(ref: str) -> dict:
+    """Build a 200-case OpenAPI response object referencing a schema."""
+    return {
+        "description": "Successful response",
+        "content": {
+            "application/json": {
+                "schema": {"$ref": f"#/components/schemas/{ref}"}
+            }
+        },
+    }
+
+
+def _error_response(description: str) -> dict:
+    return {
+        "description": description,
+        "content": {
+            "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+            }
+        },
+    }
+
+
+def _rate_limited_response() -> dict:
+    return {
+        "description": "Rate limit exceeded",
+        "content": {
+            "application/json": {
+                "schema": {"$ref": "#/components/schemas/RateLimitedResponse"}
+            }
+        },
+    }
+
+
+# Path-by-path catalog. Keys are OpenAPI-style path templates (``{name}``,
+# not Flask's ``<name>``); values are method → operation maps.
+_OPENAPI_PATHS: dict = {
+    "/api/palettes": {
+        "get": {
+            "summary": "List palette names with preview hex colors",
+            "responses": {"200": _json_response("PalettesList")},
+        },
+    },
+    "/api/palettes/{name}": {
+        "get": {
+            "summary": "Get a single palette's roles, blocks, and preview colors",
+            "parameters": [
+                {
+                    "name": "name",
+                    "in": "path",
+                    "required": True,
+                    "schema": {"type": "string"},
+                }
+            ],
+            "responses": {
+                "200": _json_response("PaletteDetail"),
+                "404": _error_response("Palette not found"),
+            },
+        },
+    },
+    "/api/styles": {
+        "get": {
+            "summary": "List hull/engine/wing/greeble/weapon style names",
+            "responses": {"200": _json_response("Styles")},
+        },
+    },
+    "/api/random": {
+        "get": {
+            "summary": "Random seed/palette/preset triple (spin the wheel)",
+            "parameters": [
+                {
+                    "name": "seed",
+                    "in": "query",
+                    "required": False,
+                    "description": "Optional integer seed; makes palette/preset selection reproducible.",
+                    "schema": {"type": "integer"},
+                }
+            ],
+            "responses": {"200": _json_response("Random")},
+        },
+    },
+    "/api/generate": {
+        "post": {
+            "summary": "Generate a ship from JSON parameters",
+            "requestBody": {
+                "required": False,
+                "content": {
+                    "application/json": {
+                        "schema": {"type": "object"}
+                    }
+                },
+            },
+            "responses": {
+                "200": _json_response("GenerateResult"),
+                "400": _error_response("Invalid parameters"),
+                "429": _rate_limited_response(),
+            },
+        },
+    },
+    "/api/batch": {
+        "post": {
+            "summary": "Generate up to 10 ships in one call",
+            "requestBody": {
+                "required": False,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "count": {"type": "integer", "minimum": 1, "maximum": 10},
+                                "seed": {"type": "integer"},
+                            },
+                        }
+                    }
+                },
+            },
+            "responses": {
+                "200": _json_response("BatchResult"),
+                "400": _error_response("Invalid parameters"),
+                "429": _rate_limited_response(),
+            },
+        },
+    },
+    "/api/result/{gen_id}": {
+        "get": {
+            "summary": "Fetch metadata for a previously generated ship",
+            "parameters": [
+                {
+                    "name": "gen_id",
+                    "in": "path",
+                    "required": True,
+                    "schema": {"type": "string"},
+                }
+            ],
+            "responses": {
+                "200": _json_response("GenerateResult"),
+                "404": _error_response("Unknown or evicted gen_id"),
+            },
+        },
+    },
+    "/api/meta": {
+        "get": {
+            "summary": "UI metadata: palettes, enums, defaults, version",
+            "responses": {"200": _json_response("Meta")},
+        },
+    },
+    "/api/health": {
+        "get": {
+            "summary": "Liveness probe with version + palette/preset counts",
+            "responses": {"200": _json_response("Health")},
+        },
+    },
+    "/api/presets": {
+        "get": {
+            "summary": "List every named preset with full metadata",
+            "responses": {"200": _json_response("PresetsList")},
+        },
+    },
+    "/api/presets/{name}": {
+        "get": {
+            "summary": "Get a single named preset's full metadata",
+            "parameters": [
+                {
+                    "name": "name",
+                    "in": "path",
+                    "required": True,
+                    "schema": {"type": "string"},
+                }
+            ],
+            "responses": {
+                "200": _json_response("PresetDetail"),
+                "404": _error_response("Preset not found"),
+                "503": _error_response("Presets module unavailable"),
+            },
+        },
+    },
+    "/api/fleet/plan": {
+        "get": {
+            "summary": "Plan a fleet of ships and return JSON metadata only",
+            "parameters": [
+                {
+                    "name": "seed",
+                    "in": "query",
+                    "required": False,
+                    "schema": {"type": "integer"},
+                },
+                {
+                    "name": "palette",
+                    "in": "query",
+                    "required": False,
+                    "schema": {"type": "string"},
+                },
+                {
+                    "name": "count",
+                    "in": "query",
+                    "required": False,
+                    "schema": {"type": "integer", "minimum": 1, "maximum": 10},
+                },
+                {
+                    "name": "size_tier",
+                    "in": "query",
+                    "required": False,
+                    "schema": {
+                        "type": "string",
+                        "enum": ["small", "mid", "large", "capital", "mixed"],
+                    },
+                },
+                {
+                    "name": "coherence",
+                    "in": "query",
+                    "required": False,
+                    "schema": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                },
+            ],
+            "responses": {
+                "200": _json_response("FleetPlan"),
+                "400": _error_response("Invalid parameters"),
+            },
+        },
+    },
+    "/api/compare": {
+        "get": {
+            "summary": "Compare two ships by seed without generating files",
+            "parameters": [
+                {
+                    "name": "seed_a",
+                    "in": "query",
+                    "required": True,
+                    "schema": {"type": "integer"},
+                },
+                {
+                    "name": "seed_b",
+                    "in": "query",
+                    "required": True,
+                    "schema": {"type": "integer"},
+                },
+                {
+                    "name": "palette",
+                    "in": "query",
+                    "required": False,
+                    "schema": {"type": "string"},
+                },
+                {
+                    "name": "preset",
+                    "in": "query",
+                    "required": False,
+                    "schema": {"type": "string"},
+                },
+            ],
+            "responses": {
+                "200": _json_response("Compare"),
+                "400": _error_response("Invalid or missing parameters"),
+            },
+        },
+    },
+    "/api/spec": {
+        "get": {
+            "summary": "OpenAPI 3.0 schema for every /api/* route",
+            "responses": {"200": _json_response("OpenAPISpec")},
+        },
+    },
+}
+
+
+def _build_openapi_doc() -> dict:
+    """Assemble the full OpenAPI 3.0.3 document.
+
+    Built per-request rather than cached at import time so the package
+    version (which is read lazily and may be patched in tests) always
+    reflects the current value. The structural cost is negligible since
+    the paths/components are already-built constants.
+    """
+    try:
+        from ... import __version__ as _pkg_version  # type: ignore
+        version = str(_pkg_version) or "dev"
+    except Exception:  # pragma: no cover - defensive
+        version = "dev"
+
+    return {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Spaceship Generator API",
+            "version": version,
+            "description": (
+                "JSON API for the Spaceship Generator Flask app. "
+                "Enumerates every public /api/* route. Generated by hand "
+                "(no codegen) and kept in sync with the route table in "
+                "src/spaceship_generator/web/blueprints/ship.py."
+            ),
+        },
+        "paths": _OPENAPI_PATHS,
+        "components": _OPENAPI_COMPONENTS,
+    }
+
+
+@ship_bp.route("/api/spec", methods=["GET"], endpoint="api_spec")
+def api_spec():
+    """Return the OpenAPI 3.0 schema for every ``/api/*`` route as JSON."""
+    return jsonify(_build_openapi_doc())
+
+
 @ship_bp.route("/api/presets", methods=["GET"], endpoint="api_presets")
 def api_presets():
     """Return full metadata for every named preset as JSON.

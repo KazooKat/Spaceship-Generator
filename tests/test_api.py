@@ -172,3 +172,79 @@ def test_api_random_with_seed_reproducible(client):
     assert b["seed"] == 42
     assert a["palette"] == b["palette"]
     assert a["preset"] == b["preset"]
+
+
+# --- /api/spec --------------------------------------------------------------
+
+
+def _expected_api_paths():
+    """Walk the live Flask url map, return the set of /api/* path templates
+    in OpenAPI form (``<string:name>`` → ``{name}``, ``<gen_id>`` → ``{gen_id}``)."""
+    import re
+
+    from spaceship_generator.web.app import create_app
+
+    app = create_app()
+    out: set[str] = set()
+    for rule in app.url_map.iter_rules():
+        if not rule.rule.startswith("/api/"):
+            continue
+        # Flask's converter syntax ``<conv:name>`` or ``<name>`` → OpenAPI ``{name}``.
+        path = re.sub(r"<(?:[^:>]+:)?([^>]+)>", r"{\1}", rule.rule)
+        out.add(path)
+    return out
+
+
+def test_api_spec_status_and_content_type(client):
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    # Flask's jsonify uses application/json; some servers may suffix
+    # ``; charset=utf-8`` so accept either form.
+    ctype = rv.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json")
+
+
+def test_api_spec_is_json_parseable_openapi_3(client):
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    # get_json() will raise / return None if the body isn't JSON.
+    data = rv.get_json()
+    assert isinstance(data, dict), "spec body must be a JSON object"
+    # Top-level OpenAPI 3.x markers
+    assert "openapi" in data
+    assert isinstance(data["openapi"], str)
+    assert data["openapi"].startswith("3."), data["openapi"]
+    assert "info" in data and isinstance(data["info"], dict)
+    assert "title" in data["info"]
+    assert "version" in data["info"]
+    assert "paths" in data and isinstance(data["paths"], dict)
+
+
+def test_api_spec_lists_every_route(client):
+    """The spec's ``paths`` dict must include every live /api/* endpoint."""
+    rv = client.get("/api/spec")
+    data = rv.get_json()
+    spec_paths = set(data["paths"].keys())
+    expected = _expected_api_paths()
+    missing = expected - spec_paths
+    extra = spec_paths - expected
+    assert not missing, f"OpenAPI spec is missing routes: {sorted(missing)}"
+    # Extras would mean we documented a non-existent endpoint — also a bug.
+    assert not extra, f"OpenAPI spec lists unknown routes: {sorted(extra)}"
+
+
+def test_api_spec_each_path_has_method_summary_and_response(client):
+    rv = client.get("/api/spec")
+    data = rv.get_json()
+    for path, methods in data["paths"].items():
+        assert isinstance(methods, dict) and methods, f"{path} has no methods"
+        for method, op in methods.items():
+            assert method in {"get", "post", "put", "patch", "delete"}, (
+                f"{path}: unexpected method {method!r}"
+            )
+            assert "summary" in op, f"{path} {method}: missing summary"
+            assert isinstance(op["summary"], str) and op["summary"].strip()
+            assert "responses" in op, f"{path} {method}: missing responses"
+            assert "200" in op["responses"], (
+                f"{path} {method}: missing 200 response"
+            )
