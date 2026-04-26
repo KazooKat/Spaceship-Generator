@@ -327,6 +327,27 @@ def build_parser() -> argparse.ArgumentParser:
              "When omitted, the legacy generator hull is used.",
     )
     p.add_argument(
+        "--hull-style-front",
+        choices=[h.value for h in HullStyle],
+        default=None,
+        help="Hull silhouette archetype to blend toward the nose "
+             "(z = L - 1). Pair with --hull-style-rear to enable a "
+             "Z-axis blend between two profiles (cosine-weighted "
+             "crossover centred at z = L/2). Both flags must be "
+             "supplied for the blend to engage; if either is omitted "
+             "the legacy single-style hull selection is used. When "
+             "both are set, the blend overrides --hull-style.",
+    )
+    p.add_argument(
+        "--hull-style-rear",
+        choices=[h.value for h in HullStyle],
+        default=None,
+        help="Hull silhouette archetype to blend toward the engine "
+             "end (z = 0). Pair with --hull-style-front to enable a "
+             "Z-axis blend between two profiles. See --hull-style-front "
+             "for crossover details.",
+    )
+    p.add_argument(
         "--engine-style",
         choices=[e.value for e in EngineStyle],
         default=None,
@@ -578,6 +599,24 @@ def _run_one(
     # New-style params — may not yet be wired on the generator side in which
     # case we gracefully fall back to the legacy signature.
     hull_style = HullStyle(args.hull_style) if args.hull_style else None
+    # Z-axis blend: only engage when *both* front and rear are provided.
+    # When either is missing we silently fall back to the legacy single-
+    # style hull selection (this matches the documented "if either omitted,
+    # behaviour matches current single-style ship" contract).
+    hull_style_front = (
+        HullStyle(args.hull_style_front)
+        if getattr(args, "hull_style_front", None)
+        else None
+    )
+    hull_style_rear = (
+        HullStyle(args.hull_style_rear)
+        if getattr(args, "hull_style_rear", None)
+        else None
+    )
+    if hull_style_front is None or hull_style_rear is None:
+        # Partial pair → don't engage the blend so we keep current behaviour.
+        hull_style_front = None
+        hull_style_rear = None
     engine_style = EngineStyle(args.engine_style) if args.engine_style else None
     # ``--cockpit-style`` is opt-in: when omitted we leave cockpit selection
     # to the legacy ``ShapeParams.cockpit_style`` (driven by ``--cockpit``).
@@ -626,6 +665,9 @@ def _run_one(
             "greeble_density": gen_greeble,
             "greeble_types": greeble_types_arg,
         }
+        if hull_style_front is not None and hull_style_rear is not None:
+            extra_kwargs["hull_style_front"] = hull_style_front
+            extra_kwargs["hull_style_rear"] = hull_style_rear
         if cockpit_style is not None:
             extra_kwargs["cockpit_style"] = cockpit_style
         result = generate(seed, **extra_kwargs, **base_kwargs)

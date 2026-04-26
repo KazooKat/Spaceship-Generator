@@ -23,7 +23,10 @@ import pytest
 from spaceship_generator.palette import Role
 from spaceship_generator.structure_styles import (
     HullStyle,
+    apply_hull_blend,
     apply_hull_style,
+    blended_hull_radii,
+    hull_blend_weight,
     hull_profile_fn,
     hull_style_rx_ry,
 )
@@ -354,4 +357,199 @@ def test_sleek_racing_is_narrow_and_pointed():
     peak_val = int(counts.max())
     assert peak_val > 2 * nose_max + 1, (
         f"SLEEK_RACING nose ({nose_max}) should be <half the peak ({peak_val})"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Hull blend (shapes-B) — mix two HullStyle profiles along Z
+# ---------------------------------------------------------------------------
+
+
+def test_hull_blend_weight_endpoints():
+    """The blend weight must saturate to 0 at the rear and 1 at the nose."""
+    # Outside the midband the weight is exactly 0 or 1 — pure rear/front.
+    assert hull_blend_weight(0.0) == 0.0
+    assert hull_blend_weight(1.0) == 1.0
+    # Centre of the ramp is exactly 0.5 (cosine smoothstep at u=0.5).
+    assert abs(hull_blend_weight(0.5) - 0.5) < 1e-9
+    # Just outside a 25%-wide midband the weight is fully saturated.
+    assert hull_blend_weight(0.36) == 0.0
+    assert hull_blend_weight(0.64) == 1.0
+
+
+def test_hull_blend_weight_monotonic_and_bounded():
+    """The crossover ramp must be non-decreasing and stay within [0, 1]."""
+    samples = [hull_blend_weight(t / 100.0) for t in range(101)]
+    for w in samples:
+        assert 0.0 <= w <= 1.0
+    # Non-decreasing — strictly monotone in the interior of the ramp, flat
+    # outside it. ``<=`` covers both regimes. ``strict=False`` because the
+    # second iterable (``samples[1:]``) is intentionally one element shorter.
+    for prev, cur in zip(samples, samples[1:], strict=False):
+        assert cur >= prev - 1e-12, f"weight non-monotonic: {prev} -> {cur}"
+
+
+def test_blended_hull_radii_endpoints_match_pure_styles():
+    """At t=0 the blended radii match the rear style; at t=1 they match front."""
+    # rx_factor / ry_factor at the saturated endpoints should equal the
+    # corresponding ``profile(t) * scale`` of the pure end style.
+    front, rear = HullStyle.ARROW, HullStyle.SAUCER
+    pf_front = hull_profile_fn(front)
+    pf_rear = hull_profile_fn(rear)
+    rx_f, ry_f = hull_style_rx_ry(front)
+    rx_r, ry_r = hull_style_rx_ry(rear)
+
+    rx0, ry0 = blended_hull_radii(front, rear, 0.0)
+    assert abs(rx0 - pf_rear(0.0) * rx_r) < 1e-9
+    assert abs(ry0 - pf_rear(0.0) * ry_r) < 1e-9
+
+    rx1, ry1 = blended_hull_radii(front, rear, 1.0)
+    assert abs(rx1 - pf_front(1.0) * rx_f) < 1e-9
+    assert abs(ry1 - pf_front(1.0) * ry_f) < 1e-9
+
+
+def test_apply_hull_blend_validates_inputs():
+    grid = np.zeros((10, 8, 20), dtype=np.int8)
+    with pytest.raises(ValueError, match="HullStyle"):
+        apply_hull_blend(grid, "arrow", HullStyle.SAUCER)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="HullStyle"):
+        apply_hull_blend(grid, HullStyle.ARROW, "saucer")  # type: ignore[arg-type]
+    bad = np.zeros((10, 20), dtype=np.int8)
+    with pytest.raises(ValueError, match="3-D"):
+        apply_hull_blend(bad, HullStyle.ARROW, HullStyle.SAUCER)
+
+
+def test_apply_hull_blend_is_deterministic():
+    """Same ``(shape, front, rear, midband)`` must produce identical voxels."""
+    a = _fresh_grid((22, 14, 40))
+    b = _fresh_grid((22, 14, 40))
+    apply_hull_blend(a, HullStyle.ARROW, HullStyle.SAUCER)
+    apply_hull_blend(b, HullStyle.ARROW, HullStyle.SAUCER)
+    assert np.array_equal(a, b)
+
+
+def test_apply_hull_blend_arrow_saucer_touches_both_silhouettes():
+    """ARROW (front) + SAUCER (rear) blend must hit each pure end's footprint.
+
+    Roughly: at the rear (z near 0) the X footprint must be at least as
+    wide as a pure SAUCER's would be at that slice; at the nose (z near
+    L-1) the rear column count must collapse toward a pure ARROW's pointed
+    nose.
+    """
+    shape = (24, 12, 60)
+    blended = _fresh_grid(shape)
+    apply_hull_blend(blended, HullStyle.ARROW, HullStyle.SAUCER)
+
+    # Pure SAUCER and pure ARROW for reference.
+    saucer = _fresh_grid(shape)
+    apply_hull_style(saucer, HullStyle.SAUCER)
+    arrow = _fresh_grid(shape)
+    apply_hull_style(arrow, HullStyle.ARROW)
+
+    # Rear band (first 15%): blended X footprint should match SAUCER's wide
+    # footprint within a small voxel tolerance (saucer is a wide disc, the
+    # blend's rear is fully saturated to the rear style's silhouette).
+    rear_z = shape[2] // 10
+    blended_x_rear = int(np.any(blended[:, :, rear_z] == Role.HULL, axis=1).sum())
+    saucer_x_rear = int(np.any(saucer[:, :, rear_z] == Role.HULL, axis=1).sum())
+    assert blended_x_rear >= saucer_x_rear - 1, (
+        f"blended rear x_extent ({blended_x_rear}) should be ~= "
+        f"SAUCER rear x_extent ({saucer_x_rear})"
+    )
+
+    # Nose band (last 15%): blended slice count should match ARROW's
+    # pointed-nose count within a small voxel tolerance.
+    nose_z = shape[2] - 1 - shape[2] // 10
+    blended_nose = int((blended[:, :, nose_z] == Role.HULL).sum())
+    arrow_nose = int((arrow[:, :, nose_z] == Role.HULL).sum())
+    assert abs(blended_nose - arrow_nose) <= 2, (
+        f"blended nose count ({blended_nose}) should match ARROW nose "
+        f"({arrow_nose}) within tolerance"
+    )
+
+
+def test_apply_hull_blend_smooth_no_one_cell_jump():
+    """The Z-slice profile must not show a one-cell discontinuity at z = L/2.
+
+    A buggy hard switch would put a huge spike exactly at the centre slice
+    (the midband boundary). We pin two properties of a *smooth* blend:
+
+    1. The per-Z absolute deltas inside the crossover band have to stay
+       bounded by the per-Z deltas a pure style produces (a smooth blend
+       can only introduce variation at the rate the underlying ellipse
+       voxelisation already does).
+    2. No single delta dominates — the maximum jump is no more than a
+       small multiple of the median jump in the same band, so the curve
+       is gradual rather than impulsive.
+    """
+    shape = (24, 12, 60)
+    grid = _fresh_grid(shape)
+    apply_hull_blend(grid, HullStyle.ARROW, HullStyle.SAUCER)
+    counts = _slice_counts(grid)
+
+    # Look at the central 40% — entirely inside the cosine ramp.
+    n = len(counts)
+    lo, hi = (3 * n) // 10, (7 * n) // 10
+    deltas = [
+        abs(int(counts[i + 1]) - int(counts[i])) for i in range(lo, hi)
+    ]
+
+    # Pure-style deltas anywhere in the ship form an upper-bound reference
+    # for what counts as "voxelisation noise" — a smooth blend should stay
+    # inside that envelope.
+    saucer = _fresh_grid(shape)
+    apply_hull_style(saucer, HullStyle.SAUCER)
+    arrow = _fresh_grid(shape)
+    apply_hull_style(arrow, HullStyle.ARROW)
+    sc = _slice_counts(saucer)
+    ac = _slice_counts(arrow)
+    pure_max_delta = max(
+        max(abs(int(sc[i + 1]) - int(sc[i])) for i in range(len(sc) - 1)),
+        max(abs(int(ac[i + 1]) - int(ac[i])) for i in range(len(ac) - 1)),
+    )
+    assert max(deltas) <= pure_max_delta + 1, (
+        f"blend midband delta {max(deltas)} exceeds pure-style "
+        f"voxelisation noise {pure_max_delta}; possible discontinuity"
+    )
+
+    # The peak delta must not be a sharp impulse on top of an otherwise-
+    # flat curve — a hard switch would manifest as one big jump in a sea of
+    # zeros. Require the second-largest delta to be within a 3x ratio of
+    # the first so the shape is gradual.
+    sorted_d = sorted(deltas, reverse=True)
+    if sorted_d[0] >= 4:  # only meaningful when there's any variation
+        assert sorted_d[1] >= sorted_d[0] / 3, (
+            f"blend has impulsive midband jump: top deltas {sorted_d[:5]}"
+        )
+
+
+def test_apply_hull_blend_midband_controls_crossover_width():
+    """A wider midband should produce a longer transition — endpoints stay pure.
+
+    A tiny midband acts almost like a hard switch (so the rear half closely
+    matches pure rear and the nose half closely matches pure front), while
+    a wide midband mixes the two over more of the ship's length.
+    """
+    shape = (22, 12, 60)
+    rear_style = HullStyle.SAUCER
+    front_style = HullStyle.ARROW
+    pure_rear = _fresh_grid(shape)
+    apply_hull_style(pure_rear, rear_style)
+
+    narrow = _fresh_grid(shape)
+    apply_hull_blend(narrow, front_style, rear_style, midband=0.05)
+    wide = _fresh_grid(shape)
+    apply_hull_blend(wide, front_style, rear_style, midband=0.9)
+
+    # Compare the rear-half X footprint of each blended hull to pure rear's
+    # X footprint. The narrow-midband blend should match the pure rear
+    # better in the rear half (less mixing) than the wide-midband blend.
+    z_rear_half = shape[2] // 4
+    pure_rear_x = int(np.any(pure_rear[:, :, z_rear_half] == Role.HULL, axis=1).sum())
+    narrow_x = int(np.any(narrow[:, :, z_rear_half] == Role.HULL, axis=1).sum())
+    wide_x = int(np.any(wide[:, :, z_rear_half] == Role.HULL, axis=1).sum())
+    # Narrow midband leaves more of the rear unblended → matches pure rear.
+    assert abs(narrow_x - pure_rear_x) <= abs(wide_x - pure_rear_x), (
+        f"narrow midband ({narrow_x}) should track pure rear ({pure_rear_x}) "
+        f"at least as well as wide midband ({wide_x})"
     )

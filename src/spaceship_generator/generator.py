@@ -90,6 +90,9 @@ def generate(
     with_preview: bool = False,
     preview_size: tuple[int, int] = (800, 800),
     hull_style: HullStyle | None = None,
+    hull_style_front: HullStyle | None = None,
+    hull_style_rear: HullStyle | None = None,
+    hull_blend_midband: float = 0.25,
     engine_style: EngineStyle | None = None,
     greeble_density: float = 0.0,
     greeble_types: Iterable[GreebleType] | None = None,
@@ -121,6 +124,16 @@ def generate(
         Optional :class:`HullStyle` archetype. When ``None`` (default) the
         current hull behavior is preserved. When set, :func:`apply_hull_style`
         stamps the base hull before parts placement inside ``generate_shape``.
+    hull_style_front, hull_style_rear:
+        Optional pair of :class:`HullStyle` archetypes for blending two
+        silhouettes along Z. Both must be set for the blend to engage; when
+        either is ``None`` the legacy hull selection (driven by
+        ``hull_style``/``shape_params.structure_style``) is used unchanged.
+        When both are set the blend takes precedence over ``hull_style``.
+    hull_blend_midband:
+        Fraction of the ship's length over which the front/rear crossover
+        is centred (default ``0.25`` — a 25% midband). Ignored unless both
+        ``hull_style_front`` and ``hull_style_rear`` are provided.
     engine_style:
         Optional :class:`EngineStyle` archetype. When ``None`` (default) the
         built-in engine placer is used. When set, the default ENGINE and
@@ -188,7 +201,14 @@ def generate(
                 )
             allowed_weapon_types.append(t)
 
-    shape_grid = generate_shape(seed, shape_params, hull_style=hull_style)
+    shape_grid = generate_shape(
+        seed,
+        shape_params,
+        hull_style=hull_style,
+        hull_style_front=hull_style_front,
+        hull_style_rear=hull_style_rear,
+        hull_blend_midband=hull_blend_midband,
+    )
 
     # Optional engine override: wipe the default engine cells and rewrite
     # using the chosen EngineStyle. Engines sit at the rear slab (z=0).

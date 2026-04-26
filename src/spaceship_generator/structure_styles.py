@@ -460,6 +460,142 @@ def hull_style_rx_ry(style: HullStyle) -> tuple[float, float]:
     return _HULL_RX_RY_SCALES[style]
 
 
+# ---------------------------------------------------------------------------
+# Hull blend — mix two HullStyle profiles along the Z axis
+# ---------------------------------------------------------------------------
+
+
+def hull_blend_weight(t: float, midband: float = 0.25) -> float:
+    """Weight in ``[0.0, 1.0]`` for the *front* hull at normalized Z ``t``.
+
+    ``t = 0`` is the rear, ``t = 1`` is the nose. The crossover is a smooth
+    cosine ramp confined to a midband centred on ``t = 0.5``. ``midband`` is
+    the fractional length of the ramp; outside the ramp the weight is fully
+    saturated (0 at the rear, 1 at the nose) so the blend reaches each
+    style's pure silhouette at its own end of the ship.
+
+    The cosine ramp avoids the one-cell discontinuity a hard switch would
+    leave at z = L/2 — the radii vary continuously across every Z slice.
+    """
+    # Clamp midband to a sensible range so degenerate inputs don't break
+    # the ramp: too-small bands degenerate toward a hard switch (still OK)
+    # and too-large bands cap at "ramp covers the whole ship".
+    band = max(0.001, min(1.0, float(midband)))
+    half = band * 0.5
+    lo = 0.5 - half
+    hi = 0.5 + half
+    if t <= lo:
+        return 0.0
+    if t >= hi:
+        return 1.0
+    # Cosine smoothstep — value goes 0->1 over [lo, hi] with zero slope at
+    # both endpoints, so the join into the saturated regions is C^1.
+    u = (t - lo) / (hi - lo)
+    return 0.5 - 0.5 * math.cos(math.pi * u)
+
+
+def blended_hull_radii(
+    front: HullStyle,
+    rear: HullStyle,
+    t: float,
+    *,
+    midband: float = 0.25,
+) -> tuple[float, float]:
+    """Return blended ``(rx_factor, ry_factor)`` at normalized Z ``t``.
+
+    The two factors absorb both each style's profile value (a 0..1 taper)
+    and its rx/ry multiplier so a single multiply yields the final radius:
+
+        rx = (W * 0.5 - 0.5) * thickness * rx_factor
+        ry = (H * 0.5 - 0.5) * thickness * 0.7 * ry_factor
+
+    Blending happens on the *final* per-axis factor (profile * scale) rather
+    than on profile and scale separately, so the silhouette transitions
+    smoothly along Z without any cross-term artefacts at the boundary.
+    """
+    pf_front = hull_profile_fn(front)
+    pf_rear = hull_profile_fn(rear)
+    rx_front_scale, ry_front_scale = hull_style_rx_ry(front)
+    rx_rear_scale, ry_rear_scale = hull_style_rx_ry(rear)
+
+    rx_front = pf_front(t) * rx_front_scale
+    rx_rear = pf_rear(t) * rx_rear_scale
+    ry_front = pf_front(t) * ry_front_scale
+    ry_rear = pf_rear(t) * ry_rear_scale
+
+    w = hull_blend_weight(t, midband=midband)
+    rx = (1.0 - w) * rx_rear + w * rx_front
+    ry = (1.0 - w) * ry_rear + w * ry_front
+    return rx, ry
+
+
+def apply_hull_blend(
+    grid: np.ndarray,
+    front: HullStyle,
+    rear: HullStyle,
+    *,
+    midband: float = 0.25,
+) -> None:
+    """Stamp :class:`Role.HULL` voxels onto ``grid`` using a Z-axis blend.
+
+    The hull silhouette transitions from the ``rear`` profile at ``z = 0``
+    to the ``front`` profile at ``z = L - 1`` via a cosine-weighted ramp
+    centred at ``z = L / 2`` and ``midband`` fraction wide (default ``0.25``,
+    i.e. a 25% crossover band). Outside the ramp, each end is the pure
+    style's silhouette, so a long rear/front stays visually identifiable.
+
+    Parameters
+    ----------
+    grid:
+        ``(W, H, L)`` integer array (typically ``np.int8`` filled with
+        :attr:`Role.EMPTY`). Writes happen in place.
+    front, rear:
+        Two :class:`HullStyle` archetypes. ``front`` controls the silhouette
+        at the nose (``z = L - 1``); ``rear`` controls the silhouette at the
+        engine end (``z = 0``).
+    midband:
+        Fraction of the ship's length (``0 < midband <= 1``) over which the
+        crossover ramp is centred. Smaller values produce a sharper visible
+        seam; larger values yield a longer, softer transition.
+
+    The function is deterministic: the same ``(grid.shape, front, rear,
+    midband)`` always yields the same voxel pattern (no RNG dependence).
+    """
+    if not isinstance(front, HullStyle):
+        raise ValueError(
+            f"apply_hull_blend expects HullStyle for front; got "
+            f"{type(front).__name__}"
+        )
+    if not isinstance(rear, HullStyle):
+        raise ValueError(
+            f"apply_hull_blend expects HullStyle for rear; got "
+            f"{type(rear).__name__}"
+        )
+    if grid.ndim != 3:
+        raise ValueError(
+            f"apply_hull_blend expects a 3-D grid; got ndim={grid.ndim}"
+        )
+
+    W, H, L = grid.shape
+    cx, cy = (W - 1) / 2.0, (H - 1) / 2.0
+
+    for z in range(L):
+        t = z / max(L - 1, 1)
+        rx_factor, ry_factor = blended_hull_radii(
+            front, rear, t, midband=midband
+        )
+        rx = max(0.5, (W * 0.5 - 0.5) * rx_factor)
+        # Match the 0.7 "flatter-than-wide" baseline used elsewhere so the
+        # blended silhouette stays consistent with the single-style stamper.
+        ry = max(0.5, (H * 0.5 - 0.5) * 0.7 * ry_factor)
+        for x in range(W):
+            for y in range(H):
+                dx = (x - cx) / rx
+                dy = (y - cy) / ry
+                if dx * dx + dy * dy <= 1.0:
+                    grid[x, y, z] = Role.HULL
+
+
 def apply_hull_style(grid: np.ndarray, style: HullStyle) -> None:
     """Stamp :class:`Role.HULL` voxels onto ``grid`` for the chosen ``style``.
 

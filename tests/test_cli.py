@@ -211,3 +211,139 @@ def test_cli_no_greebles_conflicts_with_density(tmp_path: Path, capsys):
     assert "--no-greebles" in captured.err
     assert "--greeble-density" in captured.err
     assert "mutually exclusive" in captured.err
+
+
+# ---------------------------------------------------------------------------
+# --hull-style-front / --hull-style-rear (shapes-B)
+# ---------------------------------------------------------------------------
+
+
+def test_cli_hull_blend_flags_run(tmp_path: Path):
+    """``--hull-style-front X --hull-style-rear Y`` runs cleanly and writes a file."""
+    rc = main(
+        [
+            "--hull-style-front",
+            "arrow",
+            "--hull-style-rear",
+            "saucer",
+            "--seed",
+            "42",
+            "--out",
+            str(tmp_path),
+        ]
+        + _SMALL_ARGS
+    )
+    assert rc == 0
+    files = list(tmp_path.glob("*.litematic"))
+    assert files, "expected at least one .litematic for the blend run"
+
+
+def test_cli_hull_blend_invalid_choice_rejected(tmp_path: Path, capsys):
+    """An unknown style name on either flag must be rejected by argparse.
+
+    argparse prints to stderr and raises ``SystemExit(2)`` on bad choices.
+    """
+    import pytest
+
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--hull-style-front",
+                "not_a_real_style",
+                "--hull-style-rear",
+                "saucer",
+                "--seed",
+                "1",
+                "--out",
+                str(tmp_path),
+            ]
+            + _SMALL_ARGS
+        )
+    err = capsys.readouterr().err
+    # argparse error mentions the offending flag.
+    assert "--hull-style-front" in err or "invalid choice" in err
+
+
+def test_cli_hull_blend_deterministic_per_seed(tmp_path: Path, capsys):
+    """Same seed + same blend flags emit identical ``--output-json`` summaries.
+
+    The litematic file format embeds a creation timestamp inside its NBT
+    metadata, so byte-comparing two saved schematics will always disagree.
+    Instead we drive the CLI's ``--output-json`` flag — its summary lines
+    are stable for a given (seed, palette, shape, blocks) tuple — and pin
+    that two runs with the same blend flags emit identical JSON payloads.
+    """
+    import json
+
+    args_common = [
+        "--hull-style-front",
+        "arrow",
+        "--hull-style-rear",
+        "saucer",
+        "--seed",
+        "1234",
+        "--quiet",
+        "--output-json",
+    ] + _SMALL_ARGS
+
+    rc_a = main(args_common + ["--out", str(tmp_path / "a")])
+    out_a = capsys.readouterr().out
+    rc_b = main(args_common + ["--out", str(tmp_path / "b")])
+    out_b = capsys.readouterr().out
+    assert rc_a == 0 and rc_b == 0
+
+    obj_a = json.loads(
+        next(line for line in out_a.splitlines() if line.startswith("{"))
+    )
+    obj_b = json.loads(
+        next(line for line in out_b.splitlines() if line.startswith("{"))
+    )
+    # ``path`` differs only by the parent dir; the blend-determined fields
+    # — seed, palette, shape, blocks — must match exactly.
+    for key in ("seed", "palette", "shape", "blocks"):
+        assert obj_a[key] == obj_b[key], (
+            f"blend run is not deterministic on key {key!r}: "
+            f"{obj_a[key]} != {obj_b[key]}"
+        )
+
+
+def test_cli_hull_blend_only_front_falls_back_to_legacy(tmp_path: Path, capsys):
+    """Passing only ``--hull-style-front`` (no rear) must NOT engage the blend.
+
+    Per the documented contract, the run must produce the same generated
+    voxel grid as a fully-default run on the same seed. We compare the
+    summary fields exposed by ``--output-json`` rather than raw schematic
+    bytes (the litematic NBT carries a per-write creation timestamp).
+    """
+    import json
+
+    args_common = [
+        "--seed",
+        "9001",
+        "--quiet",
+        "--output-json",
+    ] + _SMALL_ARGS
+
+    # Front-only: should fall back to legacy hull, identical to no flag.
+    rc_partial = main(
+        args_common
+        + ["--hull-style-front", "arrow", "--out", str(tmp_path / "partial")]
+    )
+    out_partial = capsys.readouterr().out
+    rc_baseline = main(args_common + ["--out", str(tmp_path / "baseline")])
+    out_baseline = capsys.readouterr().out
+    assert rc_partial == 0 and rc_baseline == 0
+
+    obj_p = json.loads(
+        next(line for line in out_partial.splitlines() if line.startswith("{"))
+    )
+    obj_b = json.loads(
+        next(line for line in out_baseline.splitlines() if line.startswith("{"))
+    )
+    # Same shape and same blocks count — proves the legacy hull placer ran
+    # in both cases (a real blend would change the voxel count).
+    for key in ("seed", "palette", "shape", "blocks"):
+        assert obj_p[key] == obj_b[key], (
+            f"partial blend pair must fall back to legacy single-style "
+            f"behaviour, but {key!r} differs: {obj_p[key]} != {obj_b[key]}"
+        )

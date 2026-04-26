@@ -600,3 +600,134 @@ def test_structure_style_shuttle_has_single_engine_group():
     unique_xs = np.unique(engine_positions[:, 0])
     # A single cylinder centered on the ship produces a small X spread.
     assert unique_xs.max() - unique_xs.min() < 20
+
+
+# ----- Hull blend (shapes-B): generate_shape integration ------------------
+
+def test_generate_shape_hull_blend_deterministic():
+    """Same seed + same blend flags must produce byte-identical voxel grids."""
+    from spaceship_generator.structure_styles import HullStyle
+
+    p = ShapeParams(length=40, width_max=20, height_max=12)
+    a = generate_shape(
+        123,
+        p,
+        hull_style_front=HullStyle.ARROW,
+        hull_style_rear=HullStyle.SAUCER,
+    )
+    b = generate_shape(
+        123,
+        p,
+        hull_style_front=HullStyle.ARROW,
+        hull_style_rear=HullStyle.SAUCER,
+    )
+    assert np.array_equal(a, b)
+
+
+def test_generate_shape_hull_blend_no_flags_matches_legacy():
+    """No blend flags ⇒ identical to a call without the kwargs at all.
+
+    Regression guard: adding the new kwargs must not change behaviour for
+    any existing call site that doesn't opt in.
+    """
+    p = ShapeParams(length=40, width_max=20, height_max=12)
+    legacy = generate_shape(7, p)
+    same_with_none = generate_shape(
+        7,
+        p,
+        hull_style_front=None,
+        hull_style_rear=None,
+    )
+    assert np.array_equal(legacy, same_with_none)
+
+
+def test_generate_shape_hull_blend_partial_pair_falls_back_to_legacy():
+    """Passing only one of front/rear must behave exactly like no blend.
+
+    The CLI guarantees this contract by silently dropping a partial pair,
+    but we also exercise the ``generate_shape`` API directly so library
+    callers get the same fall-back: the legacy single-style hull.
+    """
+    from spaceship_generator.structure_styles import HullStyle
+
+    p = ShapeParams(length=40, width_max=20, height_max=12)
+    legacy = generate_shape(11, p)
+    # Both partial pairs (front-only and rear-only) must equal legacy.
+    front_only = generate_shape(11, p, hull_style_front=HullStyle.ARROW)
+    rear_only = generate_shape(11, p, hull_style_rear=HullStyle.SAUCER)
+    # ``generate_shape`` only blends when *both* are set; with one missing
+    # the legacy hull placer runs (RNG state still consumed identically),
+    # so the resulting grids must match the legacy single-style ship.
+    assert np.array_equal(legacy, front_only)
+    assert np.array_equal(legacy, rear_only)
+
+
+def test_generate_shape_hull_blend_arrow_saucer_touches_both_silhouettes():
+    """An ARROW-front + SAUCER-rear blend must hit each pure end's footprint.
+
+    Concrete check: the rear ~15% of the blended hull must be at least as
+    wide (X footprint) as a pure-SAUCER reference, and the nose ~15% must
+    collapse toward a pure-ARROW reference's pointed tip.
+    """
+    from spaceship_generator.structure_styles import HullStyle, apply_hull_style
+
+    W, H, L = 24, 12, 60
+    p = ShapeParams(length=L, width_max=W, height_max=H)
+    blended = generate_shape(
+        2024,
+        p,
+        hull_style_front=HullStyle.ARROW,
+        hull_style_rear=HullStyle.SAUCER,
+    )
+
+    # Reference pure-end silhouettes (no parts placement).
+    saucer = np.zeros((W, H, L), dtype=np.int8)
+    apply_hull_style(saucer, HullStyle.SAUCER)
+    arrow = np.zeros((W, H, L), dtype=np.int8)
+    apply_hull_style(arrow, HullStyle.ARROW)
+
+    # Rear: blended hull's X footprint near z=0 must roughly match SAUCER's.
+    # The blended ship has parts (engines) in the rear so it can be wider
+    # than the pure-style reference. We check that it's at least as wide
+    # rather than equal.
+    rear_z = L // 12
+    blended_x = int(np.any(blended[:, :, rear_z] == Role.HULL, axis=1).sum())
+    saucer_x = int(np.any(saucer[:, :, rear_z] == Role.HULL, axis=1).sum())
+    assert blended_x >= saucer_x - 2, (
+        f"blend rear X footprint ({blended_x}) should match SAUCER's "
+        f"({saucer_x}) within tolerance"
+    )
+
+    # Nose: blended HULL count near z=L-1 must be small (ARROW tapers
+    # nearly to a point).
+    nose_z = L - 1 - L // 12
+    blended_nose = int((blended[:, :, nose_z] == Role.HULL).sum())
+    arrow_nose = int((arrow[:, :, nose_z] == Role.HULL).sum())
+    # Be tolerant of the cockpit slab adding a few extra cells in the
+    # blended ship; we just need the nose to be thin.
+    assert blended_nose <= arrow_nose + 6, (
+        f"blend nose count ({blended_nose}) should be near ARROW's "
+        f"({arrow_nose})"
+    )
+
+
+def test_generate_shape_hull_blend_overrides_hull_style():
+    """When both blend flags are set they override a single ``hull_style``."""
+    from spaceship_generator.structure_styles import HullStyle
+
+    p = ShapeParams(length=40, width_max=20, height_max=12)
+    only_blend = generate_shape(
+        99,
+        p,
+        hull_style=HullStyle.WHALE,  # would normally win
+        hull_style_front=HullStyle.ARROW,
+        hull_style_rear=HullStyle.SAUCER,
+    )
+    pure_blend = generate_shape(
+        99,
+        p,
+        hull_style_front=HullStyle.ARROW,
+        hull_style_rear=HullStyle.SAUCER,
+    )
+    # The blend pair takes precedence — the WHALE single style is ignored.
+    assert np.array_equal(only_blend, pure_blend)

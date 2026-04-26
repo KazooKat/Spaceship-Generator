@@ -120,10 +120,15 @@ def generate_shape(
     params: ShapeParams | None = None,
     *,
     hull_style: HullStyle | None = None,
+    hull_style_front: HullStyle | None = None,
+    hull_style_rear: HullStyle | None = None,
+    hull_blend_midband: float = 0.25,
 ) -> np.ndarray:
     """Return a ``(W, H, L)`` int8 array of :class:`Role` codes.
 
-    Deterministic given ``seed``, ``params``, and ``hull_style``.
+    Deterministic given ``seed``, ``params``, ``hull_style``, and the
+    ``hull_style_front``/``hull_style_rear``/``hull_blend_midband`` blend
+    parameters.
 
     Parameters
     ----------
@@ -133,6 +138,19 @@ def generate_shape(
         :func:`_place_hull`. All downstream parts (cockpit, engines, wings,
         greebles) are then placed on top of that hull. ``None`` (default)
         preserves the original behavior byte-for-byte.
+    hull_style_front, hull_style_rear:
+        Optional pair of :class:`HullStyle` archetypes for blending two
+        silhouettes along Z. **Both** must be provided for the blend to
+        engage; if either is ``None`` the legacy hull selection (driven by
+        ``hull_style`` / :attr:`ShapeParams.structure_style`) is used so
+        existing call-sites are unchanged. When both are set, the blend
+        takes precedence over ``hull_style``. ``rear`` shapes the engine
+        end (``z = 0``); ``front`` shapes the nose (``z = L - 1``); the
+        crossover is a cosine ramp centred at ``z = L/2``.
+    hull_blend_midband:
+        Fraction of the ship's length over which the front/rear crossover
+        is centred. Default ``0.25`` — a 25% midband. Ignored unless both
+        ``hull_style_front`` and ``hull_style_rear`` are set.
     """
     # Local imports so each stage module can safely import from ``core``
     # without creating an import cycle.
@@ -143,7 +161,7 @@ def generate_shape(
     from .cockpit import _place_cockpit
     from .engines import _place_engines
     from .greebles import _place_greebles
-    from .hull import _place_hull
+    from .hull import _place_hull, _place_hull_blend
     from .wings import _place_wings
 
     params = params or ShapeParams()
@@ -151,7 +169,17 @@ def generate_shape(
     W, H, L = params.width_max, params.height_max, params.length
     grid = np.zeros((W, H, L), dtype=np.int8)
 
-    if hull_style is None:
+    if hull_style_front is not None and hull_style_rear is not None:
+        # Z-axis blend wins over both legacy hull and single hull_style so
+        # users opting in to the blend get exactly what they asked for.
+        _place_hull_blend(
+            grid,
+            rng,
+            hull_style_front,
+            hull_style_rear,
+            midband=hull_blend_midband,
+        )
+    elif hull_style is None:
         _place_hull(grid, rng, params)
     else:
         apply_hull_style(grid, hull_style)
