@@ -55,10 +55,15 @@ Land them independently — each is its own design doc + plan.
 
 ## Closed (last cycle)
 
+- [x] feat-api-spec-schema-validate: add CI test that validates `/api/spec` response against an OpenAPI 3.0 schema
+      scope: `tests/test_api.py` (or new `tests/test_api_spec_validate.py`), `requirements-dev.txt` if a validator is added
+      accept: test fetches `/api/spec`, validates with `openapi-schema-validator` or `jsonschema` against OAS 3.0 meta-schema; passes; CHANGELOG bullet
+      notes: shipped 2026-04-27 (this commit); uses `jsonschema.Draft4Validator` against the official OAS 3.0 meta-schema (2021-09-28 release) vendored at `tests/fixtures/openapi-3.0-schema.json` so the test runs offline; `pytest.importorskip("jsonschema")` keeps the suite green if the dep is missing; `requirements-dev.txt` declares `jsonschema>=4.0`
+
 - [x] feat-bench-shape-pipeline: add `scripts/bench_shape.py` micro-bench timing each shape stage (hull/cockpit/wings/engines/greebles)
       scope: `scripts/bench_shape.py` (new), no src changes required
       accept: script runs N iterations, prints per-stage mean/p95 ms, exits 0 on dev box; `tests/test_bench_smoke.py` runs N=2 to ensure script is syntactically healthy
-      notes: shipped 2026-04-27 in <hash>; numpy + stdlib only (no matplotlib/pandas); wraps each public stage helper in `time.perf_counter()` and prints a single mean/p95/total table; assembly stage covers the `_enforce_x_symmetry` -> `_connect_floaters` -> `_enforce_x_symmetry` post-pass; foundation for `shapes-A`..`shapes-E` perf work
+      notes: shipped 2026-04-27 in `713e374`; numpy + stdlib only (no matplotlib/pandas); wraps each public stage helper in `time.perf_counter()` and prints a single mean/p95/total table; assembly stage covers the `_enforce_x_symmetry` -> `_connect_floaters` -> `_enforce_x_symmetry` post-pass; foundation for `shapes-A`..`shapes-E` perf work
 
 - [x] feat-cli-list-shape-styles: add `--list-shape-styles` flag enumerating HullStyle/EngineStyle/WingStyle in one shot
       scope: `src/spaceship_generator/cli/*.py`, `tests/test_cli.py`

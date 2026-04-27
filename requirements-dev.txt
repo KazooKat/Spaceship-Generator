@@ -1,0 +1,9 @@
+# Dev/test deps not declared in pyproject.toml's [project.optional-dependencies].
+# CI installs the project with `[dev]` extras for pytest/ruff/hypothesis; this
+# file is appended on top for tooling that gates on a vendored requirements
+# file.
+#
+# jsonschema: used by tests/test_api_spec_validate.py to validate the live
+# /api/spec response against the vendored OpenAPI 3.0 meta-schema in
+# tests/fixtures/openapi-3.0-schema.json. Pure-Python, no native build.
+jsonschema>=4.0
