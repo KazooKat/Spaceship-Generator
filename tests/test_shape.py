@@ -731,3 +731,97 @@ def test_generate_shape_hull_blend_overrides_hull_style():
     )
     # The blend pair takes precedence — the WHALE single style is ignored.
     assert np.array_equal(only_blend, pure_blend)
+
+
+# ----- Hull noise (shapes-E) ----------------------------------------------
+
+
+def test_shape_params_rejects_negative_hull_noise():
+    """``hull_noise < 0`` is rejected at construction time."""
+    with pytest.raises(ValueError):
+        ShapeParams(hull_noise=-0.1)
+
+
+def test_shape_params_rejects_hull_noise_above_one():
+    """``hull_noise > 1`` is rejected at construction time."""
+    with pytest.raises(ValueError):
+        ShapeParams(hull_noise=1.5)
+
+
+def test_generate_shape_hull_noise_zero_matches_legacy():
+    """``hull_noise == 0`` must be byte-identical to a no-flag run.
+
+    Regression guard: adding the noise field must not alter the legacy
+    pipeline's RNG stream or grid contents for callers who don't opt in.
+    """
+    legacy = generate_shape(
+        2026, ShapeParams(length=30, width_max=16, height_max=10)
+    )
+    explicit_zero = generate_shape(
+        2026,
+        ShapeParams(length=30, width_max=16, height_max=10, hull_noise=0.0),
+    )
+    assert np.array_equal(legacy, explicit_zero)
+
+
+def test_generate_shape_hull_noise_changes_grid():
+    """``hull_noise > 0`` must perturb at least one cell vs the baseline."""
+    p_baseline = ShapeParams(length=30, width_max=16, height_max=10)
+    p_noisy = ShapeParams(
+        length=30, width_max=16, height_max=10, hull_noise=0.5
+    )
+    baseline = generate_shape(2026, p_baseline)
+    noisy = generate_shape(2026, p_noisy)
+    assert not np.array_equal(baseline, noisy)
+    # Distortion stays inside the ship dimensions (no out-of-bounds writes).
+    assert noisy.shape == baseline.shape
+    # Sanity: the ship still has a recognisable hull (not all eroded away).
+    assert (noisy == Role.HULL).sum() > 50
+
+
+def test_generate_shape_hull_noise_deterministic_per_seed():
+    """Same seed + same amplitude → identical voxel grid."""
+    p = ShapeParams(length=30, width_max=16, height_max=10, hull_noise=0.7)
+    a = generate_shape(4242, p)
+    b = generate_shape(4242, p)
+    assert np.array_equal(a, b)
+
+
+def test_generate_shape_hull_noise_amplitude_scaling():
+    """Higher amplitude must perturb more cells than lower amplitude.
+
+    Not a strict mathematical guarantee for every seed, but a healthy sanity
+    check that the amplitude knob actually drives the displacement budget.
+    """
+    p_low = ShapeParams(
+        length=30, width_max=16, height_max=10, hull_noise=0.1
+    )
+    p_high = ShapeParams(
+        length=30, width_max=16, height_max=10, hull_noise=1.0
+    )
+    baseline = generate_shape(
+        13, ShapeParams(length=30, width_max=16, height_max=10)
+    )
+    low = generate_shape(13, p_low)
+    high = generate_shape(13, p_high)
+    diff_low = int((low != baseline).sum())
+    diff_high = int((high != baseline).sum())
+    assert diff_high > diff_low >= 0
+
+
+def test_generate_shape_hull_noise_silhouette_bounded():
+    """Noise must not push the silhouette outside the grid bounding box.
+
+    The post-pass writes to ``grid[mask]`` where ``mask`` is computed from
+    in-bounds neighbour shifts only, so a successful run is itself the
+    proof. This test pins that contract by asserting the perturbed grid
+    keeps its declared shape and contains no role values outside the
+    enum's int range.
+    """
+    p = ShapeParams(length=24, width_max=12, height_max=8, hull_noise=1.0)
+    grid = generate_shape(7, p)
+    assert grid.shape == (12, 8, 24)
+    # All written values land inside the int8 range and the documented
+    # Role enum (no stray sentinels from out-of-bounds memory writes).
+    assert grid.min() >= 0
+    assert grid.max() <= max(int(r) for r in Role)

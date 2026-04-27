@@ -347,3 +347,132 @@ def test_cli_hull_blend_only_front_falls_back_to_legacy(tmp_path: Path, capsys):
             f"partial blend pair must fall back to legacy single-style "
             f"behaviour, but {key!r} differs: {obj_p[key]} != {obj_b[key]}"
         )
+
+
+# ---------------------------------------------------------------------------
+# --hull-noise (shapes-E)
+# ---------------------------------------------------------------------------
+
+
+def test_cli_hull_noise_runs(tmp_path: Path):
+    """``--hull-noise 0.5`` runs cleanly and writes a litematic file."""
+    rc = main(
+        [
+            "--hull-noise",
+            "0.5",
+            "--seed",
+            "42",
+            "--out",
+            str(tmp_path),
+        ]
+        + _SMALL_ARGS
+    )
+    assert rc == 0
+    files = list(tmp_path.glob("*.litematic"))
+    assert files, "expected at least one .litematic for the noise run"
+
+
+def test_cli_hull_noise_rejects_negative(tmp_path: Path, capsys):
+    """``--hull-noise -0.1`` is rejected by argparse (exit code 2)."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "--hull-noise",
+                "-0.1",
+                "--seed",
+                "1",
+                "--out",
+                str(tmp_path),
+            ]
+            + _SMALL_ARGS
+        )
+    assert exc_info.value.code == 2
+    err = capsys.readouterr().err
+    assert "--hull-noise" in err or "[0.0, 1.0]" in err
+
+
+def test_cli_hull_noise_rejects_above_one(tmp_path: Path, capsys):
+    """``--hull-noise 1.5`` is rejected by argparse (exit code 2)."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "--hull-noise",
+                "1.5",
+                "--seed",
+                "1",
+                "--out",
+                str(tmp_path),
+            ]
+            + _SMALL_ARGS
+        )
+    assert exc_info.value.code == 2
+
+
+def test_cli_hull_noise_zero_matches_baseline(tmp_path: Path, capsys):
+    """``--hull-noise 0.0`` must produce the same JSON summary as no flag.
+
+    The .litematic file embeds a creation timestamp so we compare the
+    ``--output-json`` summary fields instead of raw bytes — those are
+    stable for a given (seed, palette, shape, blocks) tuple.
+    """
+    args_common = [
+        "--seed",
+        "9911",
+        "--quiet",
+        "--output-json",
+    ] + _SMALL_ARGS
+
+    rc_zero = main(
+        args_common + ["--hull-noise", "0.0", "--out", str(tmp_path / "z")]
+    )
+    out_zero = capsys.readouterr().out
+    rc_baseline = main(args_common + ["--out", str(tmp_path / "b")])
+    out_baseline = capsys.readouterr().out
+    assert rc_zero == 0 and rc_baseline == 0
+
+    obj_z = json.loads(
+        next(line for line in out_zero.splitlines() if line.startswith("{"))
+    )
+    obj_b = json.loads(
+        next(line for line in out_baseline.splitlines() if line.startswith("{"))
+    )
+    for key in ("seed", "palette", "shape", "blocks"):
+        assert obj_z[key] == obj_b[key], (
+            f"--hull-noise 0.0 must match no-flag baseline, but "
+            f"{key!r} differs: {obj_z[key]} != {obj_b[key]}"
+        )
+
+
+def test_cli_hull_noise_changes_block_count(tmp_path: Path, capsys):
+    """``--hull-noise 0.7`` perturbs the grid → block count differs."""
+    args_common = [
+        "--seed",
+        "9912",
+        "--quiet",
+        "--output-json",
+    ] + _SMALL_ARGS
+
+    rc_noisy = main(
+        args_common + ["--hull-noise", "0.7", "--out", str(tmp_path / "n")]
+    )
+    out_noisy = capsys.readouterr().out
+    rc_baseline = main(args_common + ["--out", str(tmp_path / "b")])
+    out_baseline = capsys.readouterr().out
+    assert rc_noisy == 0 and rc_baseline == 0
+
+    obj_n = json.loads(
+        next(line for line in out_noisy.splitlines() if line.startswith("{"))
+    )
+    obj_b = json.loads(
+        next(line for line in out_baseline.splitlines() if line.startswith("{"))
+    )
+    # Same seed + same dims → seed/palette/shape stay equal, but the noise
+    # post-pass eroded/grew at least one cell so the total block count
+    # cannot match exactly.
+    assert obj_n["seed"] == obj_b["seed"]
+    assert obj_n["shape"] == obj_b["shape"]
+    assert obj_n["blocks"] != obj_b["blocks"]

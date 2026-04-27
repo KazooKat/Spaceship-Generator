@@ -40,11 +40,6 @@ Land them independently — each is its own design doc + plan.
       accept: cargo-pod + bridge + engine-block archetype; segment count + module-type list configurable; greebles still place; tests
       notes: overlaps with B and C — consider whether modular-block (existing `HullStyle.MODULAR_BLOCK`) absorbs this or stays as a stepped-profile cousin
 
-- [ ] shapes-E-noise: procedural-noise hull distortion (asteroid-like / battle-damaged / organic irregularity)
-      scope: `shape/hull.py` post-pass, `texture.py` (optional rivet/panel interplay), CLI flag
-      accept: `--hull-noise AMPLITUDE` toggles 3D-noise displacement on the hull membrane; deterministic per seed; tests; gallery sample
-      notes: cheap perlin/simplex over the cell coords; clamp to keep silhouette legible
-
 - [ ] shapes-F-other: open slot for compound-shape ideas not in A–E
       scope: TBD per concrete proposal
       accept: TBD per concrete proposal
@@ -74,6 +69,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] shapes-E-noise: procedural-noise hull distortion (asteroid-like / battle-damaged / organic irregularity)
+      scope: `shape/hull.py` post-pass, `texture.py` (optional rivet/panel interplay), CLI flag
+      accept: `--hull-noise AMPLITUDE` toggles 3D-noise displacement on the hull membrane; deterministic per seed; tests; gallery sample
+      notes: shipped 2026-04-27 (this commit); deterministic hash-noise post-pass with ±2 cell silhouette clamp; amplitude=0 byte-identical to legacy; gallery sample still pending
 
 - [x] feat-palettes-biome-pack-2026-04-27: add two new biome palettes (soul_sand_valley, savanna_acacia)
       scope: `palettes/*.yaml`, no test changes required

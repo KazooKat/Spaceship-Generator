@@ -41,7 +41,7 @@ from .cockpit import (
 from .core import CockpitStyle, ShapeParams, _body_profile, generate_shape
 from .engines import _engine_x_positions, _place_engines
 from .greebles import _place_greebles, _surface_mask
-from .hull import _place_hull
+from .hull import _apply_hull_noise, _place_hull
 from .wings import _place_wings
 
 __all__ = [
@@ -51,6 +51,7 @@ __all__ = [
     "StructureStyle",
     "generate_shape",
     # Internal helpers consumed by other modules / tests.
+    "_apply_hull_noise",
     "_body_profile",
     "_connect_floaters",
     "_draw_line_hull",

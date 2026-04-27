@@ -355,6 +355,17 @@ def build_parser() -> argparse.ArgumentParser:
              "(single_core, twin_nacelle, quad_cluster, ring, ion_array). "
              "When omitted, the legacy engine placer is used.",
     )
+    p.add_argument(
+        "--hull-noise",
+        type=_parse_unit_float,
+        default=0.0,
+        metavar="AMPLITUDE",
+        help="Procedural-noise hull distortion amplitude in [0.0, 1.0] "
+             "(default 0.0 = off). Higher values displace hull-membrane "
+             "cells via a deterministic 3D hash-noise field for an "
+             "asteroid-pitted / battle-damaged look. Clamped to ±2 cells "
+             "so the silhouette stays legible. Deterministic per seed.",
+    )
 
     # Texture params
     p.add_argument("--window-period", type=int, default=4,
@@ -585,6 +596,7 @@ def _run_one(
         cockpit_style=CockpitStyle(args.cockpit),
         structure_style=StructureStyle(args.structure_style),
         wing_style=WingStyle(args.wing_style),
+        hull_noise=float(getattr(args, "hull_noise", 0.0) or 0.0),
     )
     texture_params = TextureParams(
         window_period_cells=args.window_period,

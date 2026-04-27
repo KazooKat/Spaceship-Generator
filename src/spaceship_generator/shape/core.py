@@ -49,6 +49,14 @@ class ShapeParams:
     # byte-for-byte; new styles (swept, delta, tapered, gull, split)
     # change only the cells written by ``_place_wings``.
     wing_style: WingStyle = WingStyle.STRAIGHT
+    # Procedural-noise hull distortion amplitude in ``[0.0, 1.0]``.
+    # ``0.0`` (default) skips the noise post-pass entirely so the resulting
+    # voxel grid is byte-identical to legacy output. Higher values displace
+    # hull-membrane cells via a deterministic 3D hash-noise field seeded
+    # from the same ``seed`` that drives the rest of the pipeline; the
+    # displacement is clamped to keep the silhouette legible (see
+    # :func:`spaceship_generator.shape.hull._apply_hull_noise`).
+    hull_noise: float = 0.0
 
     def __post_init__(self) -> None:
         if self.length < 8:
@@ -63,6 +71,8 @@ class ShapeParams:
             raise ValueError("wing_prob must be in [0, 1]")
         if not 0.0 <= self.greeble_density <= 0.5:
             raise ValueError("greeble_density must be in [0, 0.5]")
+        if not 0.0 <= self.hull_noise <= 1.0:
+            raise ValueError("hull_noise must be in [0, 1]")
         # Validate structure_style: accept enum or a string value; raise
         # ValueError on anything else (the web layer relies on this).
         if isinstance(self.structure_style, str) and not isinstance(
@@ -161,7 +171,7 @@ def generate_shape(
     from .cockpit import _place_cockpit
     from .engines import _place_engines
     from .greebles import _place_greebles
-    from .hull import _place_hull, _place_hull_blend
+    from .hull import _apply_hull_noise, _place_hull, _place_hull_blend
     from .wings import _place_wings
 
     params = params or ShapeParams()
@@ -183,6 +193,12 @@ def generate_shape(
         _place_hull(grid, rng, params)
     else:
         apply_hull_style(grid, hull_style)
+    # Optional procedural-noise post-pass on the hull membrane. Runs before
+    # cockpit/engines/wings/greebles so those parts always sit on top of the
+    # final perturbed hull silhouette. Skipped entirely when ``hull_noise``
+    # is zero so the legacy pipeline stays byte-identical.
+    if params.hull_noise > 0.0:
+        _apply_hull_noise(grid, rng, params)
     _place_cockpit(grid, rng, params)
     _place_engines(grid, rng, params)
     effective_wing_prob = wing_prob_override(params.structure_style, params.wing_prob)
