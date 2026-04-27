@@ -45,11 +45,6 @@ Land them independently — each is its own design doc + plan.
       accept: TBD per concrete proposal
       notes: must come with a one-paragraph design before opening a new item below this one
 
-- [ ] feat-cli-list-shape-styles: add `--list-shape-styles` flag enumerating HullStyle/EngineStyle/WingStyle in one shot
-      scope: `src/spaceship_generator/cli/*.py`, `tests/test_cli.py`
-      accept: `--list-shape-styles` prints all three style enums grouped, exits 0; deterministic order; test asserts membership; CHANGELOG bullet
-      notes: collapses `--list-hull-styles` + engine + wing into one summary; existing flags kept
-
 - [ ] feat-api-spec-schema-validate: add CI test that validates `/api/spec` response against an OpenAPI 3.0 schema
       scope: `tests/test_api.py` (or new `tests/test_api_spec_validate.py`), `requirements-dev.txt` if a validator is added
       accept: test fetches `/api/spec`, validates with `openapi-schema-validator` or `jsonschema` against OAS 3.0 meta-schema; passes; CHANGELOG bullet
@@ -69,6 +64,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-list-shape-styles: add `--list-shape-styles` flag enumerating HullStyle/EngineStyle/WingStyle in one shot
+      scope: `src/spaceship_generator/cli/*.py`, `tests/test_cli.py`
+      accept: `--list-shape-styles` prints all three style enums grouped, exits 0; deterministic order; test asserts membership; CHANGELOG bullet
+      notes: shipped 2026-04-27 (this commit); emits `Hull styles:` / `Engine styles:` / `Wing styles:` sections in enum-declaration order, indent-by-two members; narrower sibling of `--list-styles` (skips cockpit + weapon types); existing `--list-styles` output unchanged
 
 - [x] shapes-E-noise: procedural-noise hull distortion (asteroid-like / battle-damaged / organic irregularity)
       scope: `shape/hull.py` post-pass, `texture.py` (optional rivet/panel interplay), CLI flag

@@ -242,6 +242,11 @@ def build_parser() -> argparse.ArgumentParser:
                         "Use --list-palettes to see available palette names.")
     p.add_argument("--list-styles", action="store_true",
                    help="List available hull/engine/wing styles and exit.")
+    p.add_argument("--list-shape-styles", action="store_true",
+                   help="List HullStyle / EngineStyle / WingStyle members "
+                        "(grouped, one per line) and exit. Narrower than "
+                        "--list-styles, which also includes cockpit and "
+                        "weapon types.")
     # ``--preset``/``--list-presets`` are only active when the optional
     # ``presets`` module is importable. When it's absent we still register
     # the flags (so ``--help`` documents them) but restrict the choices to
@@ -1082,6 +1087,23 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         for n in names:
             print(n)
+        return 0
+
+    if args.list_shape_styles:
+        # Narrower sibling of --list-styles: only the three "shape" enums
+        # (hull / engine / wing). Same grouped, one-per-line, indent-by-two
+        # format so a user can grep across both flags. Members emit in
+        # enum-declaration order, which is deterministic and stable across
+        # runs for callers piping into other tools.
+        print("Hull styles:")
+        for h in HullStyle:
+            print(f"  {h.value}")
+        print("Engine styles:")
+        for e in EngineStyle:
+            print(f"  {e.value}")
+        print("Wing styles:")
+        for w in WingStyle:
+            print(f"  {w.value}")
         return 0
 
     if args.list_styles:

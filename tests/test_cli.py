@@ -476,3 +476,61 @@ def test_cli_hull_noise_changes_block_count(tmp_path: Path, capsys):
     assert obj_n["seed"] == obj_b["seed"]
     assert obj_n["shape"] == obj_b["shape"]
     assert obj_n["blocks"] != obj_b["blocks"]
+
+
+# ---------------------------------------------------------------------------
+# --list-shape-styles
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_shape_styles(capsys):
+    """``--list-shape-styles`` prints HullStyle / EngineStyle / WingStyle
+    grouped, one member per line, in enum-declaration order, exit 0.
+
+    Membership is asserted via enum iteration (no hard-coded string lists)
+    so the test does not drift when a new style is added.
+    """
+    from spaceship_generator.engine_styles import EngineStyle
+    from spaceship_generator.structure_styles import HullStyle
+    from spaceship_generator.wing_styles import WingStyle
+
+    rc = main(["--list-shape-styles"])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+
+    # All three group headers present.
+    assert "Hull styles:" in lines
+    assert "Engine styles:" in lines
+    assert "Wing styles:" in lines
+
+    # Every enum member appears in the output (indent-by-two format).
+    for h in HullStyle:
+        assert f"  {h.value}" in lines, f"missing HullStyle.{h.name}"
+    for e in EngineStyle:
+        assert f"  {e.value}" in lines, f"missing EngineStyle.{e.name}"
+    for w in WingStyle:
+        assert f"  {w.value}" in lines, f"missing WingStyle.{w.name}"
+
+    # Deterministic order: members appear in enum-declaration order under
+    # their respective headers.
+    def _slice_under(header: str) -> list[str]:
+        i = lines.index(header)
+        # Collect indented lines that follow until the next group header
+        # (or EOF). Headers are unindented, members are indented by two.
+        out: list[str] = []
+        for line in lines[i + 1 :]:
+            if line.startswith("  "):
+                out.append(line[2:])
+            else:
+                break
+        return out
+
+    assert _slice_under("Hull styles:") == [h.value for h in HullStyle]
+    assert _slice_under("Engine styles:") == [e.value for e in EngineStyle]
+    assert _slice_under("Wing styles:") == [w.value for w in WingStyle]
+
+    # Narrower than --list-styles: cockpit/weapon sections must NOT appear.
+    assert "Cockpit styles:" not in lines
+    assert "Weapon types:" not in lines
