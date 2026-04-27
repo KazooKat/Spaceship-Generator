@@ -47,7 +47,10 @@ Land them independently — each is its own design doc + plan.
 
 ## Open — Bugs
 
-(none tracked here yet; daily tick adds them)
+- [ ] bug-weapon-count-decreases-cells-2026-04-27: weapon writer can REMOVE LIGHT/HULL_DARK cells at certain seeds (Hypothesis: seed=93 weapon_count=4 → variant has 11 vs baseline 12)
+      scope: `src/spaceship_generator/` weapon-placement code (likely `assembly.py`, `greebles.py`, or weapon module); `tests/test_properties.py::test_property_weapon_count_scales_weapon_specific_roles`
+      accept: invariant `var_weapon_cells >= base_weapon_cells` holds for all (seed, weapon_count) — fix is either (a) make the writer truly additive (write only into Role.EMPTY) or (b) refine the invariant if the writer legitimately replaces existing LIGHT/HULL_DARK from other systems
+      notes: Hypothesis has cached the falsifying example (seed=93 wc=4) — it now reproduces deterministically. Property test was passing before because Hypothesis hadn't probed this seed range. Run `.venv/Scripts/python -m pytest tests/test_properties.py::test_property_weapon_count_scales_weapon_specific_roles -v` to repro. Pre-existing — not introduced by cycle 1/2 of tick 2026-04-27.
 
 ## Open — Chores / docs
 
