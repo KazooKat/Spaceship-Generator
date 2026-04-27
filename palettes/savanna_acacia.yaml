@@ -1,0 +1,26 @@
+name: savanna_acacia
+description: Savanna acacia — sandstone hull, acacia-plank wings, ochre-froglight glow.
+
+blocks:
+  HULL:          minecraft:smooth_sandstone
+  HULL_DARK:     minecraft:acacia_log
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:stripped_acacia_log
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:acacia_planks
+  GREEBLE:       minecraft:acacia_leaves
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:terracotta
+
+preview_colors:
+  HULL:          "#e0d4a4"
+  HULL_DARK:     "#6b3a24"
+  WINDOW:        "#d87f33"
+  ENGINE:        "#a86b3a"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#ffd84a"
+  WING:          "#a85a32"
+  GREEBLE:       "#5e7028"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#9c5530"

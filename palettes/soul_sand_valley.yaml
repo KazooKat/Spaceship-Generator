@@ -1,0 +1,26 @@
+name: soul_sand_valley
+description: Soul-sand valley nether — soul-soil hull, bone-block wings, soul-lantern glow.
+
+blocks:
+  HULL:          minecraft:soul_soil
+  HULL_DARK:     minecraft:blackstone
+  WINDOW:        minecraft:brown_stained_glass
+  ENGINE:        minecraft:polished_basalt
+  ENGINE_GLOW:   minecraft:soul_lantern
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:bone_block
+  GREEBLE:       minecraft:basalt
+  LIGHT:         minecraft:soul_torch
+  INTERIOR:      minecraft:soul_sand
+
+preview_colors:
+  HULL:          "#4e3826"
+  HULL_DARK:     "#1f1d23"
+  WINDOW:        "#9c6838"
+  ENGINE:        "#5a565c"
+  ENGINE_GLOW:   "#3ad0e0"
+  COCKPIT_GLASS: "#3a3a3a"
+  WING:          "#e6e0c4"
+  GREEBLE:       "#3a363c"
+  LIGHT:         "#3ad0e0"
+  INTERIOR:      "#5a4030"
