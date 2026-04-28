@@ -47,16 +47,18 @@ Land them independently — each is its own design doc + plan.
 
 ## Open — Bugs
 
-- [ ] bug-weapon-count-decreases-cells-2026-04-27: weapon writer can REMOVE LIGHT/HULL_DARK cells at certain seeds (Hypothesis: seed=93 weapon_count=4 → variant has 11 vs baseline 12)
-      scope: `src/spaceship_generator/` weapon-placement code (likely `assembly.py`, `greebles.py`, or weapon module); `tests/test_properties.py::test_property_weapon_count_scales_weapon_specific_roles`
-      accept: invariant `var_weapon_cells >= base_weapon_cells` holds for all (seed, weapon_count) — fix is either (a) make the writer truly additive (write only into Role.EMPTY) or (b) refine the invariant if the writer legitimately replaces existing LIGHT/HULL_DARK from other systems
-      notes: Hypothesis has cached the falsifying example (seed=93 wc=4) — it now reproduces deterministically. Property test was passing before because Hypothesis hadn't probed this seed range. Run `.venv/Scripts/python -m pytest tests/test_properties.py::test_property_weapon_count_scales_weapon_specific_roles -v` to repro. Pre-existing — not introduced by cycle 1/2 of tick 2026-04-27.
+(none tracked here yet)
 
 ## Open — Chores / docs
 
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] bug-weapon-count-decreases-cells-2026-04-27: weapon writer can REMOVE LIGHT/HULL_DARK cells at certain seeds (Hypothesis: seed=93 weapon_count=4 → variant has 11 vs baseline 12)
+      scope: `src/spaceship_generator/generator.py` weapon write loop; `tests/test_generator.py` regression test
+      accept: invariant `var_weapon_cells >= base_weapon_cells` holds for all (seed, weapon_count) — shipped as fix path (a), weapon writer now truly additive end-to-end
+      notes: shipped 2026-04-28 in `921e0b1`; root cause was weapons stamping legitimately-EMPTY cells directly above the centerline nose-tip, which then caused `texture._paint_nose_tip_light` to bail (top cell was a `_PROTECTED_ROLES` member) and silently drop the nose-tip LIGHT; fix added a `_nose_tip_anchor_cells()` helper + shadow-check in the weapon write loop; new regression test `test_generate_weapon_writer_does_not_shadow_nose_tip_light` pinned to seed=93 wc=4
 
 - [x] feat-api-spec-schema-validate: add CI test that validates `/api/spec` response against an OpenAPI 3.0 schema
       scope: `tests/test_api.py` (or new `tests/test_api_spec_validate.py`), `requirements-dev.txt` if a validator is added
