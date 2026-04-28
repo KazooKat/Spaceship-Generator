@@ -55,6 +55,31 @@ Land them independently — each is its own design doc + plan.
 
 ## Closed (last cycle)
 
+- [x] feat-bench-full-pipeline: add `scripts/bench_full_pipeline.py` end-to-end generate() micro-bench
+      scope: `scripts/bench_full_pipeline.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
+      accept: script runs N iterations of `generate()` (full pipeline including .litematic write to tmpdir), prints mean/p95/total ms, exits 0; smoke test runs N=2 to guard against import/argparse regressions; CHANGELOG bullet
+      notes: shipped 2026-04-28 in `83521c4`; mirrors `bench_shape.py` schema (argparse, fixed-width table); single `pipeline` row + `TOTAL`; `tests/test_bench_smoke.py::test_bench_full_pipeline_runs_with_two_iterations` smoke test added
+
+- [x] feat-api-health: add `GET /api/health` endpoint returning `{status, version, uptime_s}`
+      scope: `src/spaceship_generator/web/blueprints/` (extend an existing blueprint or add new), `tests/test_api*.py`
+      accept: route returns 200 with `application/json`; body has `status:"ok"`, `version` from package metadata, `uptime_s` integer; test asserts shape; CHANGELOG bullet
+      notes: shipped 2026-04-28 in `d3a80cb`; existing `api_health` view extended additively (kept legacy `palette_count`/`preset_count` keys); `_START_MONOTONIC` captured at blueprint import; OpenAPI Health schema in `_OPENAPI_COMPONENTS` updated to declare `uptime_s`; `tests/test_api.py::test_api_health_ok` + `test_api_health_no_store_cache_control` cover the contract
+
+- [x] feat-cli-quiet: add `--quiet` flag suppressing all stdout on success (errors still go to stderr)
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--quiet` on a successful generate produces zero stdout bytes; exits 0; errors still print to stderr; mutually compatible with all other flags; CHANGELOG bullet
+      notes: shipped 2026-04-28 in `deae5e7`; `_emit(args, msg)` helper funnels every success-path emitter; silences `--list-*`, `--dry-run`, `--stats`, `--block-summary`, `--palette-info`; `--output-json` deliberately exempt to keep four pre-existing `--quiet --output-json` tests green (documented in help text); 3 new tests cover empty-stdout, regression guard, `-q` short alias + argparse-error path
+
+- [x] feat-docs-palette-catalog: add `docs/palettes.md` listing all palettes with one-line descriptions
+      scope: `docs/palettes.md` (new file)
+      accept: file lists every palette in `palettes/` (currently 46) with one-line description sourced from yaml comment or theme; alphabetical order; CHANGELOG bullet; one-line link from README
+      notes: shipped 2026-04-28 in `36da455`; actual palette count is 49 (todo's "46" was stale); 2-column Markdown table sourced from each yaml's `description:` field; one-line link added to README's `Palettes` section; references `docs/palette_authoring.md` (no `CONTRIBUTING.md` exists in repo)
+
+- [x] feat-palettes-biome-pack-2026-04-28: add 2 new biome palettes (cherry_grove, sparse_jungle)
+      scope: `palettes/cherry_grove.yaml`, `palettes/sparse_jungle.yaml`
+      accept: both pass `test_palette_lint`; hull/wing/glow blocks valid; loadable via `--palette NAME`; CHANGELOG bullet
+      notes: shipped 2026-04-28 in `8fde3c8`; cherry_grove = cherry-planks hull / pink-petals wings / shroomlight glow / lantern lights; sparse_jungle = jungle-log hull / jungle-leaves wings / ochre-froglight glow / lantern lights; both pass strict lint (WINDOW luminance, HULL/HULL_DARK contrast, ENGINE_GLOW emissive)
+
 - [x] bug-weapon-count-decreases-cells-2026-04-27: weapon writer can REMOVE LIGHT/HULL_DARK cells at certain seeds (Hypothesis: seed=93 weapon_count=4 → variant has 11 vs baseline 12)
       scope: `src/spaceship_generator/generator.py` weapon write loop; `tests/test_generator.py` regression test
       accept: invariant `var_weapon_cells >= base_weapon_cells` holds for all (seed, weapon_count) — shipped as fix path (a), weapon writer now truly additive end-to-end
