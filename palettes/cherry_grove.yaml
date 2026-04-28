@@ -1,0 +1,26 @@
+name: cherry_grove
+description: Cherry grove blossom-runner. Cherry-log hull, cherry-planks dark accent, pink-petals wing, shroomlight engine glow, lantern running lights — Minecraft 1.20 cherry grove biome.
+
+blocks:
+  HULL:          minecraft:cherry_planks
+  HULL_DARK:     minecraft:cherry_log
+  WINDOW:        minecraft:pink_stained_glass
+  ENGINE:        minecraft:stripped_cherry_log
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:white_stained_glass
+  WING:          minecraft:pink_petals
+  GREEBLE:       minecraft:stripped_cherry_wood
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:pink_wool
+
+preview_colors:
+  HULL:          "#e8a0b4"
+  HULL_DARK:     "#5c2838"
+  WINDOW:        "#f8b8d0"
+  ENGINE:        "#d8a890"
+  ENGINE_GLOW:   "#ffee88"
+  COCKPIT_GLASS: "#f0f0f0"
+  WING:          "#f4b8d4"
+  GREEBLE:       "#c88888"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#f0a8c0"

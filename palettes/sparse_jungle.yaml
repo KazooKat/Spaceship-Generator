@@ -1,0 +1,26 @@
+name: sparse_jungle
+description: Sparse jungle scout. Jungle-log hull, stripped-jungle-log dark accent, jungle-leaves wing, ochre-froglight engine glow, lantern running lights — Minecraft sparse jungle biome.
+
+blocks:
+  HULL:          minecraft:jungle_log
+  HULL_DARK:     minecraft:stripped_jungle_log
+  WINDOW:        minecraft:lime_stained_glass
+  ENGINE:        minecraft:jungle_planks
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:green_stained_glass
+  WING:          minecraft:jungle_leaves
+  GREEBLE:       minecraft:stripped_jungle_wood
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:moss_block
+
+preview_colors:
+  HULL:          "#3a2818"
+  HULL_DARK:     "#b8945c"
+  WINDOW:        "#a8d870"
+  ENGINE:        "#a87850"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#5aa830"
+  WING:          "#3e7028"
+  GREEBLE:       "#9c8060"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#5a8038"
