@@ -127,6 +127,8 @@ Three independent dials shape the silhouette. Mix and match freely.
 
 Palettes live in `palettes/*.yaml`. Each palette maps semantic roles (e.g. `HULL`, `WINDOW`, `ENGINE_GLOW`) to Minecraft block IDs. Add a new palette by dropping a YAML file in that folder.
 
+See [docs/palettes.md](docs/palettes.md) for the full catalog.
+
 | | | |
 |---|---|---|
 | `abyss_deep` | `alien_bio` | `amethyst_crystal` |
