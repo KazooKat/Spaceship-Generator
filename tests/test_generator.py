@@ -642,3 +642,56 @@ def test_generate_weapon_types_rejects_unknown_member(tmp_path: Path):
             weapon_count=2,
             weapon_types=["not_a_weapon_type"],  # type: ignore[list-item]
         )
+
+
+def test_generate_weapon_writer_does_not_shadow_nose_tip_light(tmp_path: Path):
+    """Regression: bug-weapon-count-decreases-cells-2026-04-27.
+
+    Hypothesis-found falsifying example: with seed=93 and weapon_count=4,
+    a missile_pod / plasma_core lands directly above the nose-tip-light
+    column. Pre-fix, the weapon writer stamped HULL/ENGINE_GLOW above the
+    forward-most centerline cell, which made
+    :func:`texture._paint_nose_tip_light` see a protected role at the
+    topmost slot and silently bail — dropping the nose-tip LIGHT and
+    leaving the variant with *fewer* LIGHT+HULL_DARK cells than the
+    weaponless baseline (11 vs 12), violating the additive contract.
+
+    This test re-asserts the exact failing case directly so future
+    regressions are caught without needing Hypothesis to re-discover them.
+    """
+    import numpy as np
+
+    from spaceship_generator.palette import Role
+
+    params = ShapeParams(length=24, width_max=12, height_max=8)
+    baseline = generate(
+        93, shape_params=params, weapon_count=0, out_dir=tmp_path,
+        filename="base.litematic",
+    )
+    variant = generate(
+        93, shape_params=params, weapon_count=4, out_dir=tmp_path,
+        filename="var.litematic",
+    )
+    base_weapon_cells = int(
+        (baseline.role_grid == Role.LIGHT).sum()
+        + (baseline.role_grid == Role.HULL_DARK).sum()
+    )
+    var_weapon_cells = int(
+        (variant.role_grid == Role.LIGHT).sum()
+        + (variant.role_grid == Role.HULL_DARK).sum()
+    )
+    assert var_weapon_cells >= base_weapon_cells, (
+        f"weapon writer must be additive in LIGHT+HULL_DARK; "
+        f"baseline={base_weapon_cells} variant={var_weapon_cells}"
+    )
+    # Both centerline nose-tip cells (W=12 → x=5,6) must keep their LIGHT.
+    z_tip = 23  # ShapeParams(length=24) → forward-most filled z is 23
+    for x in (5, 6):
+        assert variant.role_grid[x, 4, z_tip] == Role.LIGHT, (
+            f"nose-tip LIGHT at ({x}, 4, {z_tip}) was clobbered by a "
+            f"weapon stamped above it; got "
+            f"{Role(int(variant.role_grid[x, 4, z_tip])).name}"
+        )
+    # Sanity: the variant grid is not byte-equal to the baseline (weapons
+    # actually placed something), so the regression isn't a no-op.
+    assert not np.array_equal(baseline.role_grid, variant.role_grid)

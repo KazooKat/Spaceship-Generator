@@ -77,6 +77,41 @@ class GenerationResult:
         return out
 
 
+def _nose_tip_anchor_cells(
+    shape_grid: np.ndarray, texture_params: TextureParams,
+) -> dict[tuple[int, int], int]:
+    """Return ``{(x, z_tip): y_tip}`` for every centerline nose-tip-light slot.
+
+    Mirrors the geometry rule used by :func:`texture._paint_nose_tip_light`
+    so the weapon writer can refuse to stack cells above a nose tip and
+    silently drop the LIGHT it would otherwise receive. When the
+    ``nose_tip_light`` texture flag is disabled the returned mapping is
+    empty and the writer falls back to the plain "EMPTY-only" gate.
+    """
+    if not texture_params.nose_tip_light:
+        return {}
+    W, H, L = shape_grid.shape
+    if W == 0 or H == 0 or L == 0:
+        return {}
+    if W % 2 == 1:
+        center_xs: tuple[int, ...] = (W // 2,)
+    else:
+        center_xs = (W // 2 - 1, W // 2)
+
+    out: dict[tuple[int, int], int] = {}
+    for x in center_xs:
+        col = shape_grid[x, :, :]
+        filled = col != Role.EMPTY
+        if not filled.any():
+            continue
+        z_tip = int(np.argwhere(filled.any(axis=0))[:, 0].max())
+        ys = np.argwhere(filled[:, z_tip])[:, 0]
+        if ys.size == 0:
+            continue
+        out[(x, z_tip)] = int(ys.max())
+    return out
+
+
 def generate(
     seed: int,
     *,
@@ -248,9 +283,15 @@ def generate(
                     shape_grid[x, y, z] = role
 
     # Optional scattered weapons. Placements are written into empty cells
-    # only so existing hull/cockpit/engine/wing cells are preserved.
+    # only so existing hull/cockpit/engine/wing cells are preserved. We
+    # additionally refuse to stack weapon cells *above* the nose-tip-light
+    # column(s): otherwise a plasma_core / missile_pod stamped near the
+    # forward centerline shadows the topmost cell with ENGINE_GLOW (a
+    # protected role in :func:`assign_roles`), which silently drops the
+    # nose-tip LIGHT and breaks the additive contract of the weapon writer.
     if int(weapon_count) > 0:
         W, H, L = shape_grid.shape
+        nose_tips = _nose_tip_anchor_cells(shape_grid, texture_params)
         weapon_rng = np.random.default_rng(seed ^ 0x7A)
         for x, y, z, role in scatter_weapons(
             shape_grid,
@@ -259,8 +300,14 @@ def generate(
             types=allowed_weapon_types,
         ):
             if 0 <= x < W and 0 <= y < H and 0 <= z < L:
-                if shape_grid[x, y, z] == Role.EMPTY:
-                    shape_grid[x, y, z] = role
+                if shape_grid[x, y, z] != Role.EMPTY:
+                    continue
+                # Skip writes that would shadow a nose-tip-light slot, i.e.
+                # any cell strictly above (y > y_tip) the centerline tip at
+                # the same (x, z_tip).
+                if (x, z) in nose_tips and y > nose_tips[(x, z)]:
+                    continue
+                shape_grid[x, y, z] = role
 
     role_grid = assign_roles(shape_grid, texture_params)
 
