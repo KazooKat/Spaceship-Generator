@@ -18,6 +18,46 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-cli-version: add `--version` / `-V` flag printing package version + exits 0
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--version` prints `spaceship_generator <ver>`, exits 0; `-V` short alias works; tested
+      notes: tiny conventional unix flag; version source = `spaceship_generator.__version__` (matches `/api/health` and OpenAPI doc-builder pattern); useful for bug reports / CI
+
+- [ ] feat-api-palette-detail: add `GET /api/palettes/<name>` single-palette detail endpoint
+      scope: `src/spaceship_generator/web/blueprints/ship.py` (extend), `tests/test_api.py`, `_OPENAPI_COMPONENTS` for spec
+      accept: route returns 200 with full palette doc (name, description, blocks, preview_colors); 404 for unknown name; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: parity with existing `GET /api/presets/<name>` single-detail endpoint (`0f7e769`); avoids clients having to fetch all of `/api/palettes` and filter
+
+- [ ] feat-bench-mem: add `scripts/bench_mem.py` peak-memory micro-bench for `generate()`
+      scope: `scripts/bench_mem.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
+      accept: script runs N iterations of `generate()`, reports peak RSS in MB (via `tracemalloc.peak`) per iteration + mean/p95; exits 0; smoke test runs N=2; CHANGELOG bullet
+      notes: `tracemalloc` only (stdlib); complements `bench_shape.py` (time) and `bench_full_pipeline.py` (time end-to-end) by adding the memory dimension; foundation for `shapes-A`..`shapes-D` mem-budget work
+
+- [ ] feat-docs-cli-reference: add `docs/cli.md` flag-reference catalog
+      scope: `docs/cli.md` (new), one-line link from README
+      accept: file lists every CLI flag with name, type, default, one-line description, in argparse declaration order; auto-extractable from `cli.py` parser is fine but a hand-written doc is also acceptable; CHANGELOG bullet
+      notes: README has a "key flags" table but no full reference; users currently have to run `--help` or read source; complements `docs/palettes.md` catalog
+
+- [ ] feat-tests-property-palette-stability: add property test asserting `generate()` succeeds for every (palette × small-seed-grid) pair
+      scope: `tests/test_properties.py` (extend or new test)
+      accept: Hypothesis test (or simple parametrize) iterates every palette with 5-10 distinct seeds, asserts `generate()` exits cleanly + writes a non-empty `.litematic`; failures should name the offending palette + seed; CHANGELOG bullet
+      notes: would have caught `bug-weapon-count-decreases-cells` style regressions one tick earlier; current Hypothesis tests focus on shape params + weapon_count, not palette coverage
+
+- [ ] feat-palettes-biome-pack-2026-04-28b: add 2 more biome palettes (windswept_hills, ice_spikes)
+      scope: `palettes/windswept_hills.yaml`, `palettes/ice_spikes.yaml`
+      accept: both pass `test_palette_lint`; loadable via `--palette NAME`; CHANGELOG bullet
+      notes: windswept_hills = stone hull, gravel accent, lantern glow (1.18 mountains variant); ice_spikes = packed-ice hull, blue-ice accent, sea-lantern glow (rare cold biome); rounds palette count to 51
+
+- [ ] feat-api-shape-styles: add `GET /api/shape-styles` mirror of CLI `--list-shape-styles`
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
+      accept: route returns `{hull_styles:[...], engine_styles:[...], wing_styles:[...]}` JSON; OpenAPI enumerates it; spec-validate test green; CHANGELOG bullet
+      notes: companion to existing `/api/styles` (which includes cockpit + greeble + weapon types) — narrower endpoint matching the new `--list-shape-styles` CLI flag for UI client convenience
+
+- [ ] feat-cli-stdout-litematic: support `--output -` to write `.litematic` bytes to stdout instead of a file
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--output - --seed 1 > ship.litematic` produces a valid litematic via pipe; exits 0; mutually exclusive with `--repeat`/`--fleet-count` (single-ship only); CHANGELOG bullet
+      notes: enables shell pipelines (`spaceship_generator --output - | mc-server-tool import-schematic`); convention is hyphen-as-stdout; bytes go to `sys.stdout.buffer.write` to preserve binary
+
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
 `HullStyle`. The items below extend the shape pipeline so a single ship
