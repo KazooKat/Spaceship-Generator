@@ -11,6 +11,7 @@ import base64
 import io
 import random
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 from random import Random
@@ -53,6 +54,11 @@ from .ship_support import (
 )
 
 ship_bp = Blueprint("ship", __name__)
+
+# Captured at module import (i.e. app boot) so /api/health can report
+# uptime_s = int(time.monotonic() - _START_MONOTONIC). monotonic() is the
+# right clock for elapsed-time math: immune to wall-clock skew/NTP jumps.
+_START_MONOTONIC: float = time.monotonic()
 
 
 def _ship_metadata(seed: int, shape_params, palette_name: str) -> dict:
@@ -716,20 +722,34 @@ def api_meta():
 
 @ship_bp.route("/api/health", methods=["GET"], endpoint="api_health")
 def api_health():
+    """Liveness probe for containerized deploys.
+
+    Returns ``{status, version, uptime_s}`` plus the legacy ``palette_count``
+    / ``preset_count`` counters (kept for backward-compat with earlier
+    consumers — additive only).
+
+    ``Cache-Control: no-store`` so a CDN or browser can't memoize an "ok"
+    reading from a now-dead process. ``uptime_s`` is integer seconds since
+    module import (i.e. app boot) and will be 0 on the very first request.
+    """
     try:
         from ... import __version__ as _pkg_version  # type: ignore
         version = str(_pkg_version) or "dev"
     except Exception:  # pragma: no cover - defensive
         version = "dev"
 
-    return jsonify(
+    uptime_s = int(time.monotonic() - _START_MONOTONIC)
+    resp = jsonify(
         {
             "status": "ok",
             "version": version,
+            "uptime_s": uptime_s,
             "palette_count": len(list_palettes()),
             "preset_count": len(presets.list_presets()),
         }
     )
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 # --- /api/spec --------------------------------------------------------------
@@ -844,10 +864,15 @@ _OPENAPI_COMPONENTS: dict = {
         },
         "Health": {
             "type": "object",
-            "required": ["status", "version"],
+            "required": ["status", "version", "uptime_s"],
             "properties": {
                 "status": {"type": "string", "example": "ok"},
                 "version": {"type": "string"},
+                "uptime_s": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Seconds since app boot (module import).",
+                },
                 "palette_count": {"type": "integer"},
                 "preset_count": {"type": "integer"},
             },
@@ -1125,7 +1150,7 @@ _OPENAPI_PATHS: dict = {
     },
     "/api/health": {
         "get": {
-            "summary": "Liveness probe with version + palette/preset counts",
+            "summary": "Liveness probe: status, package version, uptime seconds",
             "responses": {"200": _json_response("Health")},
         },
     },

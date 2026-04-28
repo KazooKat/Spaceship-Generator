@@ -248,3 +248,30 @@ def test_api_spec_each_path_has_method_summary_and_response(client):
             assert "200" in op["responses"], (
                 f"{path} {method}: missing 200 response"
             )
+
+
+# --- /api/health ------------------------------------------------------------
+
+
+def test_api_health_ok(client):
+    """Liveness probe: 200 + JSON with status/version/uptime_s keys."""
+    from spaceship_generator import __version__ as pkg_version
+
+    rv = client.get("/api/health")
+    assert rv.status_code == 200
+    ctype = rv.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
+    data = rv.get_json()
+    assert isinstance(data, dict)
+    assert set(data.keys()) >= {"status", "version", "uptime_s"}
+    assert data["status"] == "ok"
+    assert data["version"] == pkg_version
+    assert isinstance(data["uptime_s"], int)
+    assert data["uptime_s"] >= 0
+
+
+def test_api_health_no_store_cache_control(client):
+    """Health must not be cached — every probe sees a fresh reading."""
+    rv = client.get("/api/health")
+    assert rv.status_code == 200
+    assert rv.headers.get("Cache-Control") == "no-store"
