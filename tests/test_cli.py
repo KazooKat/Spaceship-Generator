@@ -534,3 +534,72 @@ def test_cli_list_shape_styles(capsys):
     # Narrower than --list-styles: cockpit/weapon sections must NOT appear.
     assert "Cockpit styles:" not in lines
     assert "Weapon types:" not in lines
+
+
+# ---------------------------------------------------------------------------
+# --quiet / -q
+# ---------------------------------------------------------------------------
+
+
+def test_cli_quiet_dry_run_silences_stdout(capsys):
+    """``--quiet --seed 1 --dry-run`` produces empty stdout (no JSON, no banner).
+
+    --dry-run normally prints a one-line JSON summary; --quiet must suppress
+    that on the success path. Exit code stays 0.
+    """
+    rc = main(["--quiet", "--seed", "1", "--dry-run"])
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert captured.out == "", (
+        f"--quiet --dry-run leaked stdout: {captured.out!r}"
+    )
+
+
+def test_cli_dry_run_without_quiet_emits_stdout(capsys):
+    """Regression guard: plain ``--seed 1 --dry-run`` (no --quiet) still emits
+    JSON on stdout. This pins the baseline that --quiet must silence."""
+    rc = main(["--seed", "1", "--dry-run"])
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert captured.out.strip() != "", (
+        "--dry-run without --quiet should still print JSON to stdout"
+    )
+    # Sanity: it's a single JSON object containing the seed we passed.
+    obj = json.loads(captured.out.strip())
+    assert obj["seed"] == 1
+    assert obj["dry_run"] is True
+
+
+def test_cli_quiet_q_short_flag_argparse_error_keeps_stdout_empty(
+    tmp_path: Path, capsys
+):
+    """Using the ``-q`` short alias with an argparse-rejected flag value
+    routes the error to stderr while stdout stays empty.
+
+    Argparse exits with code 2 when a typed value fails validation
+    (here: ``--hull-noise -0.1`` violates the ``[0.0, 1.0]`` interval).
+    --quiet/-q must not muffle the stderr error message.
+    """
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "-q",
+                "--hull-noise",
+                "-0.1",
+                "--seed",
+                "1",
+                "--out",
+                str(tmp_path),
+            ]
+            + _SMALL_ARGS
+        )
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert captured.out == "", (
+        f"-q must keep stdout empty on argparse error: {captured.out!r}"
+    )
+    assert captured.err.strip() != "", (
+        "argparse error should still surface on stderr under -q"
+    )

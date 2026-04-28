@@ -458,9 +458,15 @@ def build_parser() -> argparse.ArgumentParser:
     # Verbosity
     p.add_argument("--verbose", action="store_true",
                    help="Print per-seed timings. Mutually exclusive with --quiet.")
-    p.add_argument("--quiet", action="store_true",
-                   help="Suppress success lines (errors still go to stderr). "
-                        "Mutually exclusive with --verbose.")
+    p.add_argument("--quiet", "-q", action="store_true",
+                   help="Suppress stdout on the success path — success lines, "
+                        "--list-* output, --dry-run JSON, --stats, "
+                        "--block-summary, and --palette-info are all "
+                        "silenced. --output-json (machine-readable NDJSON "
+                        "side-channel) continues to emit so scripts can pair "
+                        "--quiet --output-json. Errors still go to stderr "
+                        "and the exit code is unchanged. Mutually exclusive "
+                        "with --verbose.")
 
     # Diagnostics
     p.add_argument("--stats", action="store_true",
@@ -804,6 +810,18 @@ def _run_fleet_ship(
     return _run_one(planned.seed, args=ship_args, filename=filename)
 
 
+def _emit(args: argparse.Namespace, msg: str = "") -> None:
+    """Print ``msg`` to stdout unless ``--quiet`` is set.
+
+    Single funnel for every success-path stdout writer in this module so the
+    ``--quiet`` flag has exactly one place to enforce silence. Errors still
+    flow through ``sys.stderr`` directly and are never routed through here.
+    """
+    if getattr(args, "quiet", False):
+        return
+    print(msg)
+
+
 def _print_success(result: GenerationResult, *, elapsed: float | None, args: argparse.Namespace) -> None:
     """Emit the success lines for a single generation, respecting --quiet/--verbose."""
     if args.quiet:
@@ -1083,10 +1101,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.list_palettes:
         names = list_palettes()
         if not names:
-            print("(no palettes found)")
+            _emit(args, "(no palettes found)")
             return 0
         for n in names:
-            print(n)
+            _emit(args, n)
         return 0
 
     if args.list_shape_styles:
@@ -1095,37 +1113,37 @@ def main(argv: list[str] | None = None) -> int:
         # format so a user can grep across both flags. Members emit in
         # enum-declaration order, which is deterministic and stable across
         # runs for callers piping into other tools.
-        print("Hull styles:")
+        _emit(args, "Hull styles:")
         for h in HullStyle:
-            print(f"  {h.value}")
-        print("Engine styles:")
+            _emit(args, f"  {h.value}")
+        _emit(args, "Engine styles:")
         for e in EngineStyle:
-            print(f"  {e.value}")
-        print("Wing styles:")
+            _emit(args, f"  {e.value}")
+        _emit(args, "Wing styles:")
         for w in WingStyle:
-            print(f"  {w.value}")
+            _emit(args, f"  {w.value}")
         return 0
 
     if args.list_styles:
-        print("Hull styles:")
+        _emit(args, "Hull styles:")
         for h in HullStyle:
-            print(f"  {h.value}")
-        print("Engine styles:")
+            _emit(args, f"  {h.value}")
+        _emit(args, "Engine styles:")
         for e in EngineStyle:
-            print(f"  {e.value}")
-        print("Wing styles:")
+            _emit(args, f"  {e.value}")
+        _emit(args, "Wing styles:")
         for w in WingStyle:
-            print(f"  {w.value}")
-        print("Cockpit styles:")
+            _emit(args, f"  {w.value}")
+        _emit(args, "Cockpit styles:")
         for c in CockpitStyle:
-            print(f"  {c.value}")
+            _emit(args, f"  {c.value}")
         # Weapon types only appear when the optional module is available.
         # The fallback message goes to stderr so piping ``--list-styles``
         # into another program still gets clean hull/engine/wing output.
         if _weapon_styles is not None:
-            print("Weapon types:")
+            _emit(args, "Weapon types:")
             for wt in _weapon_styles.WeaponType:
-                print(f"  {wt.value}")
+                _emit(args, f"  {wt.value}")
         else:
             print(
                 f"weapon_styles unavailable: {_weapon_styles_error}",
@@ -1145,15 +1163,15 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         names = _presets.list_presets()
         if not names:
-            print("(no presets found)")
+            _emit(args, "(no presets found)")
             return 0
         for n in names:
             spec = _presets.SHIP_PRESETS[n]
             desc = spec.get("description", "")
             if desc:
-                print(f"  {n} — {desc}")
+                _emit(args, f"  {n} — {desc}")
             else:
-                print(f"  {n}")
+                _emit(args, f"  {n}")
         return 0
 
     if args.list_weapon_types:
@@ -1161,7 +1179,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"weapon_styles unavailable: {_weapon_styles_error}", file=sys.stderr)
             raise SystemExit(1)
         for wt in _weapon_styles.WeaponType:
-            print(f"  {wt.value}")
+            _emit(args, f"  {wt.value}")
         raise SystemExit(0)
 
     if getattr(args, "palette_info", None):
@@ -1171,14 +1189,14 @@ def main(argv: list[str] | None = None) -> int:
         except FileNotFoundError as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        print(f"Palette: {pal.name}")
+        _emit(args, f"Palette: {pal.name}")
         for role in Role:
             if role == Role.EMPTY:
                 continue
             bs = pal.blocks[role]
             r_f, g_f, b_f, _ = pal.preview_colors[role]
             hex_col = f"#{int(r_f * 255):02x}{int(g_f * 255):02x}{int(b_f * 255):02x}"
-            print(f"  {role.name:<16} {bs.id:<40} {hex_col}")
+            _emit(args, f"  {role.name:<16} {bs.id:<40} {hex_col}")
         return 0
 
     # Resolve ``--preset`` → kwargs bundle. Individual flags override.
@@ -1252,7 +1270,7 @@ def main(argv: list[str] | None = None) -> int:
             "preset": getattr(args, "preset", None),
             "dry_run": True,
         }
-        print(_json.dumps(dry_info))
+        _emit(args, _json.dumps(dry_info))
         return 0
 
     # Fleet mode short-circuits the seeds loop: one fleet seed plans N ships
@@ -1307,7 +1325,7 @@ def main(argv: list[str] | None = None) -> int:
             if i > 0 and not args.quiet:
                 print()
             _print_success(result, elapsed=elapsed, args=args)
-            if args.stats:
+            if args.stats and not args.quiet:
                 _print_stats(result)
             if args.output_json:
                 _print_json_summary(result)
@@ -1325,7 +1343,7 @@ def main(argv: list[str] | None = None) -> int:
                 Path(result.litematic_path).with_suffix(".json").write_text(
                     _json.dumps(_manifest, indent=2), encoding="utf-8"
                 )
-            if args.block_summary:
+            if args.block_summary and not args.quiet:
                 _print_block_summary(result)
             successes += 1
 
@@ -1375,7 +1393,7 @@ def main(argv: list[str] | None = None) -> int:
         if bulk_mode and i > 0 and not args.quiet:
             print()
         _print_success(result, elapsed=elapsed, args=args)
-        if args.stats:
+        if args.stats and not args.quiet:
             _print_stats(result)
         if args.output_json:
             _print_json_summary(result)
@@ -1393,7 +1411,7 @@ def main(argv: list[str] | None = None) -> int:
             Path(result.litematic_path).with_suffix(".json").write_text(
                 _json.dumps(_manifest, indent=2), encoding="utf-8"
             )
-        if args.block_summary:
+        if args.block_summary and not args.quiet:
             _print_block_summary(result)
         successes += 1
 
