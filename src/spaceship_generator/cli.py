@@ -9,6 +9,7 @@ import sys
 import time
 from pathlib import Path
 
+from . import __version__ as _pkg_version
 from .engine_styles import EngineStyle
 from .generator import GenerationResult, generate
 from .greeble_styles import GreebleType
@@ -216,6 +217,19 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="spaceship-generator",
         description="Procedurally generate a Minecraft spaceship and export it as a Litematica (.litematic) schematic.",
+    )
+    # ``--version`` / ``-V`` prints ``spaceship_generator <ver>`` to stdout
+    # and exits 0 — argparse's ``version`` action handles the print + exit
+    # before any other flag is processed. Version is sourced from
+    # ``spaceship_generator.__version__`` (matches ``/api/health`` and the
+    # OpenAPI doc-builder pattern). The version string deliberately uses
+    # the underscore form (``spaceship_generator``) to match the module
+    # path users import / pass to ``python -m``.
+    p.add_argument(
+        "--version", "-V",
+        action="version",
+        version=f"spaceship_generator {_pkg_version}",
+        help="Print package version and exit.",
     )
     p.add_argument("--seed", type=int, default=None,
                    help="Integer seed (default: random).")

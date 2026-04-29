@@ -603,3 +603,49 @@ def test_cli_quiet_q_short_flag_argparse_error_keeps_stdout_empty(
     assert captured.err.strip() != "", (
         "argparse error should still surface on stderr under -q"
     )
+
+
+# ---------------------------------------------------------------------------
+# --version / -V
+# ---------------------------------------------------------------------------
+
+
+def test_cli_version_long_flag(capsys):
+    """``--version`` prints exactly ``spaceship_generator <ver>\\n`` to stdout
+    and exits 0. Argparse's ``version`` action raises ``SystemExit`` after
+    printing, so the test catches it explicitly to assert the exit code.
+    """
+    import pytest
+
+    from spaceship_generator import __version__ as pkg_version
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--version"])
+    assert exc_info.value.code == 0
+
+    captured = capsys.readouterr()
+    assert captured.out == f"spaceship_generator {pkg_version}\n", (
+        f"unexpected --version stdout: {captured.out!r}"
+    )
+    assert captured.err == "", (
+        f"--version must not write to stderr: {captured.err!r}"
+    )
+
+
+def test_cli_version_short_flag(capsys):
+    """``-V`` short alias prints the same line and exits 0 as ``--version``."""
+    import pytest
+
+    from spaceship_generator import __version__ as pkg_version
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["-V"])
+    assert exc_info.value.code == 0
+
+    captured = capsys.readouterr()
+    assert captured.out == f"spaceship_generator {pkg_version}\n", (
+        f"unexpected -V stdout: {captured.out!r}"
+    )
+    assert captured.err == "", (
+        f"-V must not write to stderr: {captured.err!r}"
+    )
