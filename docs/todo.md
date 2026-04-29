@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: `--no-weapons` resolves to `weapon_count=0` end-to-end; passing both `--no-weapons` and `--weapon-count` errors with non-zero exit; tested; CHANGELOG bullet
       notes: parallel to existing `--no-greebles` shortcut (commit `e33a3f2`); keeps the parser idiomatic when callers want a quick "no guns" toggle without remembering the integer flag
 
-- [ ] feat-docs-web-ui: add `docs/web_ui.md` covering Flask blueprint endpoints + browser UX
-      scope: `docs/web_ui.md` (new), one-line link from README
-      accept: file documents every `/api/*` route + the HTML pages served by `web/blueprints/`; sourced from `_OPENAPI_PATHS`; CHANGELOG bullet; one-line README link
-      notes: complements `docs/cli.md` flag reference and `docs/palettes.md` catalog; users currently have to read OpenAPI spec or grep blueprints
-
 - [ ] feat-bench-palette: add `scripts/bench_palette.py` per-palette generate() time micro-bench
       scope: `scripts/bench_palette.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
       accept: script iterates all palettes (or a `--limit` subset) running N `generate()` calls each, prints fixed-width palette × mean/p95 ms table, exits 0; smoke runs --limit 2 --iterations 2; CHANGELOG bullet
@@ -74,6 +69,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-web-ui: add `docs/web_ui.md` covering Flask blueprint endpoints + browser UX
+      scope: `docs/web_ui.md` (new), one-line link from README
+      accept: file documents every `/api/*` route + the HTML pages served by `web/blueprints/`; sourced from `_OPENAPI_PATHS`; CHANGELOG bullet; one-line README link
+      notes: shipped 2026-04-29; `docs/web_ui.md` is a 4-section reference (HTML pages / auxiliary binary+JSON routes / `/api/*` JSON API / rate limiting + env tunables) mirroring the table style of `docs/cli.md` and `docs/palettes.md` for consistency; HTML pages enumerated by grepping `render_template(` in `src/spaceship_generator/web/blueprints/ship.py` (`/`, `POST /generate`, `/result/<gen_id>`); auxiliary routes (PNG previews + JSON voxels + block-texture passthrough + `.litematic` download + zipped fleet download) sourced from `ship.py` + `static_ext.py`; `/api/*` table sourced directly from the canonical `_OPENAPI_PATHS` dict in `ship.py` (every key, method, summary, params, and 200 response shape) so the doc and the `GET /api/spec` document stay in lockstep; rate-limited endpoints (`POST /generate`, `POST /api/generate`, `POST /api/batch`, `GET /preview-lite`, `GET /download-fleet`) called out explicitly with their `SHIPFORGE_RATE_LIMIT` / `SHIPFORGE_RATE_WINDOW` / `SHIPFORGE_CSP` env tunables; one-line link added under the existing `## Usage — Web UI` section of `README.md` (no restructure); complements `docs/cli.md` flag reference and `docs/palettes.md` catalog so users no longer have to grep blueprints or read the OpenAPI document by hand
 
 - [x] feat-cli-stdout-litematic: support `--output -` to write `.litematic` bytes to stdout instead of a file
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`

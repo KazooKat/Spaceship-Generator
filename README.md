@@ -87,6 +87,8 @@ flask --app spaceship_generator.web.app run
 
 Open `http://127.0.0.1:5000`, fill in the form, and download your ship. The UI ships with a sci-fi console theme, a light/dark toggle, and keyboard shortcuts for generate / randomize.
 
+See [docs/web_ui.md](docs/web_ui.md) for the full HTML page + `/api/*` route reference.
+
 ## Styles
 
 Three independent dials shape the silhouette. Mix and match freely.
