@@ -33,11 +33,6 @@ for one release cycle, then pruned during release prep.
       accept: script generates a fleet of N ships into a tmpdir, prints fixed-width table with per-ship mean/p95 ms + total fleet ms; exits 0; smoke test runs --fleet-count 2 --iterations 2; CHANGELOG bullet
       notes: complements `bench_full_pipeline.py` (one ship) and `bench_palette.py` (per-palette one-ship); covers the fleet path which goes through different code (--fleet-count + manifest aggregation)
 
-- [ ] feat-docs-quickstart: add `docs/quickstart.md` — 5-minute getting-started guide
-      scope: `docs/quickstart.md` (new), one-line link from README near top
-      accept: file walks through install → first ship → palette swap → preset use → web UI launch in ≤80 lines; sourced from existing CLI flags and README content; CHANGELOG bullet
-      notes: fills gap between README intro paragraph and the dense `docs/cli.md` reference; new-user friendly entry point
-
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
 `HullStyle`. The items below extend the shape pipeline so a single ship
@@ -74,6 +69,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-quickstart: add `docs/quickstart.md` — 5-minute getting-started guide
+      scope: `docs/quickstart.md` (new), one-line link from README near top
+      accept: file walks through install → first ship → palette swap → preset use → web UI launch in ≤80 lines; sourced from existing CLI flags and README content; CHANGELOG bullet
+      notes: shipped 2026-04-29; new `docs/quickstart.md` is a 55-line (excluding code-fence delimiters; 65 total) walkthrough with five numbered steps in the order specified by the brief (install → first ship → palette swap → preset use → web UI launch) plus a short "Next steps" footer; every command is copy-pasteable and sourced from `docs/cli.md` flag declarations (so the doc and the CLI stay in lockstep) — `spaceship-generator --seed 42` for the first ship, `--palette NAME` / `--palette random` for the palette swap (links to `docs/palettes.md`), `--preset NAME` for the preset (links to `docs/presets.md`), `flask --app spaceship_generator.web.app run` for the web UI (links to `docs/web_ui.md`); install snippet copied verbatim from the README's existing `## Install` section so the two stay in sync; cross-link header at the top points to `cli.md`/`palettes.md`/`presets.md`/`web_ui.md` so users land in the right reference doc one click away from any step; one-line README link added directly under the existing intro paragraph and above the `## Pipeline` heading (no restructure — the new line reads "New here? See [docs/quickstart.md](docs/quickstart.md) for a 5-minute getting-started guide.") so first-time visitors hit the guide before they scroll past the dense Features/Install/CLI sections; full `pytest -q` (1971 tests) + `ruff check .` both green (docs-only change, but run for safety per the brief)
 
 - [x] feat-docs-presets: add `docs/presets.md` catalog listing every preset with one-line description
       scope: `docs/presets.md` (new), one-line link from README
