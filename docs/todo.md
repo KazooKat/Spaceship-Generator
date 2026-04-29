@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-cli-no-weapons: add `--no-weapons` shortcut equivalent to `--weapon-count 0`, mutually exclusive with `--weapon-count`
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--no-weapons` resolves to `weapon_count=0` end-to-end; passing both `--no-weapons` and `--weapon-count` errors with non-zero exit; tested; CHANGELOG bullet
-      notes: parallel to existing `--no-greebles` shortcut (commit `e33a3f2`); keeps the parser idiomatic when callers want a quick "no guns" toggle without remembering the integer flag
-
 - [ ] feat-bench-palette: add `scripts/bench_palette.py` per-palette generate() time micro-bench
       scope: `scripts/bench_palette.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
       accept: script iterates all palettes (or a `--limit` subset) running N `generate()` calls each, prints fixed-width palette × mean/p95 ms table, exits 0; smoke runs --limit 2 --iterations 2; CHANGELOG bullet
@@ -69,6 +64,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-no-weapons: add `--no-weapons` shortcut equivalent to `--weapon-count 0`, mutually exclusive with `--weapon-count`
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--no-weapons` resolves to `weapon_count=0` end-to-end; passing both `--no-weapons` and `--weapon-count` errors with non-zero exit; tested; CHANGELOG bullet
+      notes: shipped 2026-04-29; parallels the existing `--no-greebles` / `--greeble-density` mutual-exclusion pattern from `e33a3f2`; because `--weapon-count` defaults to `0`, the mutex check uses the `_explicit_flags(argv)` set (mirrors how `--from-manifest` distinguishes "user typed `--seed`" from "argparse filled in the default") rather than a `None`-sentinel comparison; downstream plumbing reads only `args.weapon_count` so no special-case threading is needed; three new tests in `tests/test_cli.py` cover (a) end-to-end resolution by asserting `--no-weapons` produces the same `--output-json` block count as `--weapon-count 0` while a `--weapon-count 5` run produces strictly more (sanity-checks that weapon scatter would have fired absent the shortcut), (b) the mutual-exclusion exit-non-zero + stderr message, and (c) the help text mentions both `--no-weapons` and `--weapon-count`
 
 - [x] feat-docs-web-ui: add `docs/web_ui.md` covering Flask blueprint endpoints + browser UX
       scope: `docs/web_ui.md` (new), one-line link from README
