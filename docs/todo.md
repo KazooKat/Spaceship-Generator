@@ -18,16 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-docs-presets: add `docs/presets.md` catalog listing every preset with one-line description
-      scope: `docs/presets.md` (new), one-line link from README
-      accept: file lists every preset shipped under `presets/` (or wherever the YAML lives) in alphabetical order with one-line description sourced from yaml; CHANGELOG bullet; one-line README link
-      notes: parallel to `docs/palettes.md` (commit `36da455`); presets are user-facing curated configs but no catalog page exists today
-
-- [ ] feat-cli-stats-json: add `--stats-json` flag — machine-readable variant of `--stats`
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--stats-json` prints a single JSON document (block counts, dims, role tallies) to stdout instead of human-formatted; exits 0 after writing; mutually compatible with `--quiet` (output-json carve-out behavior); tested; CHANGELOG bullet
-      notes: parallels `--output-json` (already exempt from `--quiet`) but pinned to the `--stats` summary surface; avoids parsers having to scrape the human format
-
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
 `HullStyle`. The items below extend the shape pipeline so a single ship
@@ -64,6 +54,16 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-presets: add `docs/presets.md` catalog listing every preset with one-line description
+      scope: `docs/presets.md` (new), one-line link from README
+      accept: file lists every preset shipped under `presets/` (or wherever the YAML lives) in alphabetical order with one-line description sourced from yaml; CHANGELOG bullet; one-line README link
+      notes: shipped 2026-04-29; presets live in Python (`SHIP_PRESETS` dict in `src/spaceship_generator/presets.py`), not YAML — the task brief assumed a `presets/` YAML directory parallel to `palettes/` but the actual loader is the in-source dict (`--list-presets` enumerates `list_presets()` which sorts `SHIP_PRESETS.keys()`); rewrote the existing partial doc (which only enumerated 6 of the 9 archetypes in a hand-curated table and predated the per-preset `description:` field that landed alongside the 3 newer presets `scout`, `battlecruiser`, `capital_carrier`) into a full 9-row catalog (`battlecruiser`, `capital_carrier`, `corvette`, `dropship`, `freighter_heavy`, `gunship`, `interceptor`, `science_vessel`, `scout`) sourced directly from each preset's `description:` field so the doc, the `--list-presets` CLI output, and `SHIP_PRESETS` stay in lockstep without manual translation; 2-column Markdown table style matches `docs/palettes.md` (commit `36da455`) exactly; companion sections preserved verbatim where possible (Python usage with `apply_preset(...)` / `list_presets()`, raw-table inspection via `SHIP_PRESETS` + `PRESET_KEYS`, "Adding a new preset" checklist updated to require a `description:` line and alphabetical-by-name placement); the older `## Scope and roadmap` section was dropped because the CLI integration it deferred has long-since shipped (`--preset` flag is documented in `docs/cli.md`); one-line link added to the existing `--preset` bullet in README's `### Key flags` (no restructure — the bullet now reads "...; run `--list-presets` to list all (see [docs/presets.md](docs/presets.md) for the full catalog)"); full `pytest -q` + `ruff check .` both green (no code changes — docs-only)
+
+- [x] feat-cli-stats-json: add `--stats-json` flag — machine-readable variant of `--stats`
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--stats-json` prints a single JSON document (block counts, dims, role tallies) to stdout instead of human-formatted; exits 0 after writing; mutually compatible with `--quiet` (output-json carve-out behavior); tested; CHANGELOG bullet
+      notes: shipped 2026-04-29; new `--stats-json` argparse flag emits a single JSON document via `_print_stats_json(result)`; refactored `_print_stats` to consume a shared `_compute_stats(result)` helper that returns a dict with `seed`, `palette`, `shape` (`[W, H, L]`), `total_blocks`, `density`, `total_cells`, and a `roles` array of `{role, count, pct}` entries (sorted by count desc, EMPTY skipped, unknown role ids surface as `ROLE_<int>`) so the human and JSON paths can never drift on the underlying numbers; mutually exclusive with `--stats` (rejected via `parser.error` → exit 2 + `mutually exclusive` stderr message, mirroring the `--no-greebles` vs `--greeble-density` pattern from `e33a3f2`); deliberately NOT silenced by `--quiet` so scripts can pair `--quiet --stats-json` (same carve-out as `--output-json`, documented in the help text); wired into both the fleet branch and the seeds-loop branch so bulk runs (`--seeds` / `--repeat` / `--fleet-count`) emit one JSON document per ship newline-delimited (NDJSON), parallelling `--output-json`; three new tests in `tests/test_cli.py` cover (a) happy path `--stats-json --seed 1001` produces exactly one parseable JSON document with the required keys + sorted-desc role counts + summed counts equal to `total_blocks` + density in `(0, 1)`, (b) `--quiet --stats-json` still emits exactly one JSON line (no `Role distribution:` header, no `Seed:` success lines), and (c) `--stats --stats-json` errors non-zero with both flag names and `mutually exclusive` in stderr; full `pytest -q` (1914 tests) + `ruff check .` both green
 
 - [x] feat-tests-property-shape-styles: add property test asserting `generate()` succeeds for every (HullStyle × seed) pair
       scope: `tests/test_properties.py` (extend)
