@@ -18,20 +18,10 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-tests-property-greeble-types: add property test asserting `generate()` succeeds for every (`GreebleType` × seed) pair via `--greeble-style` plumbing
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over each `GreebleType` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending greeble-type + seed; CHANGELOG bullet
-      notes: companion to `feat-tests-property-shape-styles` (closed cycle 3); pins the `--greeble-style TYPE` plumbing per-type
-
 - [ ] feat-palettes-biome-pack-2026-04-29: add 2 more biome palettes (e.g. `desert_temple` + `nether_wastes`)
       scope: `palettes/desert_temple.yaml`, `palettes/nether_wastes.yaml`, `docs/palettes.md`
       accept: both pass `test_palette_lint`; loadable via `--palette NAME`; alphabetical row insert in `docs/palettes.md`; CHANGELOG bullet
       notes: rounds palette count toward 53; desert_temple = sandstone hull / chiseled-sandstone accent / orange-stained-glass windows; nether_wastes = netherrack hull / nether-bricks accent / glowstone glow
-
-- [ ] feat-bench-fleet: add `scripts/bench_fleet.py` micro-bench timing fleet generation across N ships
-      scope: `scripts/bench_fleet.py` (new), `tests/test_bench_smoke.py` (extend)
-      accept: script generates a fleet of N ships into a tmpdir, prints fixed-width table with per-ship mean/p95 ms + total fleet ms; exits 0; smoke test runs --fleet-count 2 --iterations 2; CHANGELOG bullet
-      notes: complements `bench_full_pipeline.py` (one ship) and `bench_palette.py` (per-palette one-ship); covers the fleet path which goes through different code (--fleet-count + manifest aggregation)
 
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
@@ -69,6 +59,16 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-bench-fleet: add `scripts/bench_fleet.py` micro-bench timing fleet generation across N ships
+      scope: `scripts/bench_fleet.py` (new), `tests/test_bench_smoke.py` (extend), `docs/CHANGELOG.md`
+      accept: script generates a fleet of N ships into a tmpdir, prints fixed-width table with per-ship mean/p95 ms + total fleet ms; exits 0; smoke test runs --fleet-count 2 --iterations 2; CHANGELOG bullet
+      notes: complements `bench_full_pipeline.py` (one ship) and `bench_palette.py` (per-palette one-ship); covers the fleet path which goes through different code (--fleet-count + manifest aggregation); shipped 2026-04-29 — bench calls the in-process Python API (`generate_fleet()` plan + per-ship `generate()`) rather than shelling out so timing reflects only the build cost; warm-up iteration runs untimed so import-time caching/palette-load doesn't skew the first sample; per-ship row in the printed table is `fleet_total_ms / fleet_count` (the average per-ship cost — a true per-ship distribution would require timing each `generate()` call individually and is intentionally out of scope); `pytest -q` (1972 tests) + `ruff check .` both green
+
+- [x] feat-tests-property-greeble-types: add property test asserting `generate()` succeeds for every (`GreebleType` × seed) pair via `--greeble-style` plumbing
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each `GreebleType` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending greeble-type + seed; CHANGELOG bullet
+      notes: shipped 2026-04-29; chose `pytest.mark.parametrize` over Hypothesis (same rationale as the hull/engine companions in `3dbeea9` and the palette one in `3321b88` — deterministic, faster, parametrize IDs self-name failures as `[seed-greeble_type]`) with `ids=lambda t: t.value` so failure node IDs read e.g. `[7-circuit_board]` rather than the noisy `<GreebleType.CIRCUIT_BOARD: 'circuit_board'>` repr; `GreebleType` has 11 members today (TURRET, DISH, VENT, ANTENNA, PANEL_LINE, SENSOR_POD, CIRCUIT_BOARD, BATTLE_DAMAGE, PIPE_CLUSTER, ORGANIC_GROWTH, NANO_MESH) × 3 seeds = 33 test nodes; mirrors how the `--greeble-style TYPE` CLI flag plumbs into `generate()` (`cli.py:687-691` builds `[GreebleType(args.greeble_style)]` and forwards as `greeble_types=` to `generate()` at `generator.py:133`) so the per-type CLI plumbing is exercised end-to-end per enum member; `greeble_density=0.3` is set on `ShapeParams` so the scatter actually fires and the restricted-type list has a chance to matter (a zero-density run would yield identical grids regardless of `greeble_types=`); test asserts `litematic_path.exists()`, `os.path.getsize(...) > 0`, `block_count > 0` with explicit `pytest.fail(f"...{greeble_type.value}...{seed}...")` messages on the missing/zero-byte paths so failures are unambiguous in either the node ID or the message; 33 new test nodes run in ~0.7 s on the dev box at `length=16/width=8/height=6` (well under the 30 s acceptance budget); complements the Hypothesis-based shape tests (which sample `greeble_density` but never restrict to a single `GreebleType`) and the existing hull/engine parametrize tests, so a regression in any single greeble builder now surfaces deterministically as a self-named failure node; full `pytest -q` (1971 tests) + `ruff check .` both green
 
 - [x] feat-docs-quickstart: add `docs/quickstart.md` — 5-minute getting-started guide
       scope: `docs/quickstart.md` (new), one-line link from README near top
