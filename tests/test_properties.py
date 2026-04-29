@@ -595,6 +595,93 @@ def test_property_palette_seed_grid_generates_non_empty_litematic(
     )
 
 
+# ----------- shape-style × seed-grid stability (every enum member, small seed set) -----------
+#
+# Companion to ``test_property_palette_seed_grid_generates_non_empty_litematic``.
+# The Hypothesis-based ``test_property_hull_x_engine_matrix_produces_valid_grid``
+# above samples 20 random pairs and may legitimately skip enum members on any
+# given run; these parametrize tests deterministically pin *every* HullStyle
+# (and EngineStyle) member against a small fixed seed grid so a regression in
+# any single style is guaranteed to surface as a self-named ``[style-seed]``
+# failure node.
+
+_SHAPE_STYLE_STABILITY_SEEDS = [0, 1, 7]
+
+
+@pytest.mark.parametrize("hull_style", list(HullStyle), ids=lambda s: s.value)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_hull_style_seed_grid_generates_non_empty_litematic(
+    tmp_path, hull_style, seed
+):
+    """Every ``HullStyle`` × small seed grid → ``generate()`` writes a non-empty file.
+
+    Catches hull-style-driven regressions (silhouette helper crash, empty
+    grid, missing ``.litematic`` write) one tick earlier than the
+    Hypothesis-sampled ``hull_x_engine_matrix`` test would, since this
+    explicitly visits every member rather than sampling. Failure messages
+    name both the offending hull style and seed via the parametrize IDs,
+    plus an explicit ``pytest.fail`` message if the file is missing or
+    zero-bytes.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        shape_params=params,
+        hull_style=hull_style,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for hull_style={hull_style.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for hull_style={hull_style.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"hull_style={hull_style.value} seed={seed} produced 0 blocks"
+    )
+
+
+@pytest.mark.parametrize("engine_style", list(EngineStyle), ids=lambda s: s.value)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_engine_style_seed_grid_generates_non_empty_litematic(
+    tmp_path, engine_style, seed
+):
+    """Every ``EngineStyle`` × small seed grid → ``generate()`` writes a non-empty file.
+
+    Companion to the HullStyle parametrize above — ``EngineStyle`` is the
+    other shape-style enum exposed directly on ``generate()``'s public
+    signature (``engine_style=``), so it gets the same deterministic
+    every-member coverage. ``WingStyle`` flows only via ``ShapeParams`` and
+    is exercised by the Hypothesis ``all_style_combos_symmetric`` test
+    plus the ``StructureStyle × HullStyle`` cross-product test, so it's
+    not duplicated here.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        shape_params=params,
+        engine_style=engine_style,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for engine_style={engine_style.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for engine_style={engine_style.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"engine_style={engine_style.value} seed={seed} produced 0 blocks"
+    )
+
+
 @pytest.mark.parametrize(
     "palette_name",
     ["sci_fi_industrial", "sleek_modern", "cyberpunk_neon", "neon_arcade"],

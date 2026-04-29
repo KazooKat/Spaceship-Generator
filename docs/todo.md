@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: file lists every preset shipped under `presets/` (or wherever the YAML lives) in alphabetical order with one-line description sourced from yaml; CHANGELOG bullet; one-line README link
       notes: parallel to `docs/palettes.md` (commit `36da455`); presets are user-facing curated configs but no catalog page exists today
 
-- [ ] feat-tests-property-shape-styles: add property test asserting `generate()` succeeds for every (HullStyle × seed) pair
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over each `HullStyle` enum member × small seed grid (`[0, 1, 7]` is fine — 3 seeds keeps runtime down); assert `generate()` exits cleanly + writes a non-empty `.litematic`; failure message names the offending hull-style + seed; CHANGELOG bullet
-      notes: companion to `feat-tests-property-palette-stability` (closed cycle 2); current Hypothesis tests don't pin every shape style × seed combination
-
 - [ ] feat-cli-stats-json: add `--stats-json` flag — machine-readable variant of `--stats`
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
       accept: `--stats-json` prints a single JSON document (block counts, dims, role tallies) to stdout instead of human-formatted; exits 0 after writing; mutually compatible with `--quiet` (output-json carve-out behavior); tested; CHANGELOG bullet
@@ -69,6 +64,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-property-shape-styles: add property test asserting `generate()` succeeds for every (HullStyle × seed) pair
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each `HullStyle` enum member × small seed grid (`[0, 1, 7]` is fine — 3 seeds keeps runtime down); assert `generate()` exits cleanly + writes a non-empty `.litematic`; failure message names the offending hull-style + seed; CHANGELOG bullet
+      notes: shipped 2026-04-29; chose `pytest.mark.parametrize` over Hypothesis (same rationale as the palette companion in `3321b88` — deterministic, faster, parametrize IDs self-name failures as `[seed-style]`) with `ids=lambda s: s.value` so failure node IDs read e.g. `[7-blocky_freighter]` rather than the noisy `<HullStyle.BLOCKY_FREIGHTER: 'blocky_freighter'>` repr; HullStyle has 10 members today (ARROW, SAUCER, WHALE, DAGGER, BLOCKY_FREIGHTER, ORGANIC_BIO, HEXAGONAL_LATTICE, ASYMMETRIC_SCAVENGER, MODULAR_BLOCK, SLEEK_RACING) × 3 seeds = 30 hull test nodes; companion `test_property_engine_style_seed_grid_generates_non_empty_litematic` covers every `EngineStyle` member (9) since `EngineStyle` is the only other shape-style enum exposed directly on `generate()`'s public signature (`engine_style=`) — 27 more nodes for 57 total; `WingStyle` is intentionally not duplicated here since it flows only via `ShapeParams` and is already exercised by the Hypothesis `test_property_all_style_combos_symmetric` test plus the `StructureStyle × HullStyle` cross-product test (`test_property_structure_x_hull_cross_product_no_crash`); 57 new test nodes run in ~1.2 s on the dev box at `length=16/width=8/height=6` (well under the 30 s acceptance budget); test asserts `litematic_path.exists()`, `os.path.getsize(...) > 0`, `block_count > 0` with explicit `pytest.fail(f"...{style}...{seed}...")` messages on the missing/zero-byte paths so failures are unambiguous in either the node ID or the message; complements the Hypothesis-based `test_property_hull_x_engine_matrix_produces_valid_grid` which samples 20 random pairs and may legitimately skip enum members on any given run, so a regression in any single style now surfaces deterministically as a self-named failure node
 
 - [x] feat-bench-palette: add `scripts/bench_palette.py` per-palette generate() time micro-bench
       scope: `scripts/bench_palette.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
