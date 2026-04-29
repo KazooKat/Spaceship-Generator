@@ -18,6 +18,16 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-docs-presets: add `docs/presets.md` catalog listing every preset with one-line description
+      scope: `docs/presets.md` (new), one-line link from README
+      accept: file lists every preset shipped under `presets/` (or wherever the YAML lives) in alphabetical order with one-line description sourced from yaml; CHANGELOG bullet; one-line README link
+      notes: parallel to `docs/palettes.md` (commit `36da455`); presets are user-facing curated configs but no catalog page exists today
+
+- [ ] feat-tests-property-shape-styles: add property test asserting `generate()` succeeds for every (HullStyle × seed) pair
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each `HullStyle` enum member × small seed grid (`[0, 1, 7]` is fine — 3 seeds keeps runtime down); assert `generate()` exits cleanly + writes a non-empty `.litematic`; failure message names the offending hull-style + seed; CHANGELOG bullet
+      notes: companion to `feat-tests-property-palette-stability` (closed cycle 2); current Hypothesis tests don't pin every shape style × seed combination
+
 - [ ] feat-bench-palette: add `scripts/bench_palette.py` per-palette generate() time micro-bench
       scope: `scripts/bench_palette.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
       accept: script iterates all palettes (or a `--limit` subset) running N `generate()` calls each, prints fixed-width palette × mean/p95 ms table, exits 0; smoke runs --limit 2 --iterations 2; CHANGELOG bullet
