@@ -407,7 +407,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--weapon-count", type=_parse_nonneg_int, default=0,
                    help="Number of weapons to scatter onto the ship "
                         "(0 disables, default 0). Requires the weapon_styles "
-                        "module.")
+                        "module. Shortcut: --no-weapons is equivalent to "
+                        "--weapon-count 0 (mutually exclusive).")
+    p.add_argument("--no-weapons", action="store_true",
+                   help="Shortcut for --weapon-count 0 (disables weapon "
+                        "scatter entirely). Mutually exclusive with "
+                        "--weapon-count.")
     p.add_argument("--weapon-types", type=_parse_weapon_types, default=None,
                    help="Comma-separated list of weapon types to restrict "
                         "placement to (e.g. 'turret_large,missile_pod'). "
@@ -447,6 +452,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--filename", type=str, default=None,
                    help="Output filename (default: ship_<seed>.litematic). "
                         "Ignored in --seeds bulk mode.")
+    # ``--output -`` streams the raw .litematic bytes to ``sys.stdout.buffer``
+    # so callers can pipe directly into another tool (``spaceship-generator
+    # --output - --seed 1 > ship.litematic``). Single-ship only — mutually
+    # exclusive with --repeat/--fleet-count/--seeds. The success-path stdout
+    # lines (Seed/Palette/...) are suppressed so the binary payload isn't
+    # corrupted; --quiet behaviour is unaffected (stderr still flows).
+    p.add_argument("--output", type=str, default=None, metavar="PATH",
+                   help="When set to '-', stream the .litematic bytes to "
+                        "stdout instead of writing a file (single ship only; "
+                        "mutually exclusive with --repeat/--fleet-count/--seeds). "
+                        "Useful for shell pipelines.")
     p.add_argument("--author", type=str, default="spaceship-generator",
                    help="Schematic author metadata.")
     p.add_argument("--name", type=str, default=None,
@@ -985,6 +1001,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.no_greebles:
         args.greeble_density = 0.0
 
+    # ``--no-weapons`` is a shortcut for ``--weapon-count 0``. Reject the
+    # ambiguous case where both flags are passed; otherwise materialize the
+    # shortcut by setting weapon_count to 0 so downstream plumbing
+    # (which only reads ``args.weapon_count``) needs no special-case.
+    # ``--weapon-count`` defaults to 0, so we use the explicit-flags set to
+    # tell "user typed --weapon-count" apart from "argparse filled in the
+    # default" (mirrors the pattern used by ``--from-manifest`` for ``--seed``).
+    if args.no_weapons and "--weapon-count" in explicit:
+        parser.error("--no-weapons and --weapon-count are mutually exclusive")
+    if args.no_weapons:
+        args.weapon_count = 0
+
     if args.verbose and args.quiet:
         print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
         return 2
@@ -994,6 +1022,26 @@ def main(argv: list[str] | None = None) -> int:
     if args.seeds is not None and args.repeat > 1:
         print("Error: --seeds and --repeat are mutually exclusive.", file=sys.stderr)
         return 2
+
+    # ``--output -`` streams the raw .litematic bytes to stdout. It only
+    # makes sense for a single ship (the binary payload has no framing) so
+    # we reject every multi-ship knob up front. Errors flow through
+    # ``parser.error`` (exit 2 + message on stderr) so the failure mode
+    # matches argparse's other rejections.
+    stream_stdout = args.output == "-"
+    if stream_stdout:
+        conflicts: list[str] = []
+        if args.repeat > 1:
+            conflicts.append("--repeat")
+        if int(getattr(args, "fleet_count", 1) or 1) > 1:
+            conflicts.append("--fleet-count")
+        if args.seeds is not None:
+            conflicts.append("--seeds")
+        if conflicts:
+            parser.error(
+                "--output - is single-ship only; mutually exclusive with "
+                + ", ".join(conflicts)
+            )
     if args.seed_phrase is not None and (args.seed is not None or args.seeds is not None):
         print(
             "Error: --seed-phrase is mutually exclusive with --seed and --seeds.",
@@ -1365,6 +1413,33 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         if failures > 0:
             return 1
+        return 0
+
+    # ``--output -`` short-circuit: generate one ship into a temp dir, then
+    # write the raw .litematic bytes to ``sys.stdout.buffer``. The success-
+    # path success-lines (Seed/Palette/...) MUST stay off here regardless of
+    # ``--quiet`` so we don't corrupt the binary payload. Errors still flow
+    # through stderr via the existing handlers below; we re-use ``_run_one``
+    # by pointing ``args.out`` at the temp dir before invoking it.
+    if stream_stdout:
+        import tempfile
+
+        seed = args.seed if args.seed is not None else random.randint(0, 2**31 - 1)
+        with tempfile.TemporaryDirectory(prefix="spaceship-stdout-") as tmpdir:
+            args.out = Path(tmpdir)
+            try:
+                result = _run_one(seed, args=args, filename=args.filename)
+            except FileNotFoundError as exc:
+                print(f"Error (seed={seed}): {exc}", file=sys.stderr)
+                print("Available palettes:", ", ".join(list_palettes()), file=sys.stderr)
+                return 2
+            except ValueError as exc:
+                print(f"Error (seed={seed}): {exc}", file=sys.stderr)
+                return 2
+
+            payload = Path(result.litematic_path).read_bytes()
+            sys.stdout.buffer.write(payload)
+            sys.stdout.buffer.flush()
         return 0
 
     # Determine the seed list (legacy single + --seeds bulk + --repeat modes).

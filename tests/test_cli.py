@@ -214,6 +214,142 @@ def test_cli_no_greebles_conflicts_with_density(tmp_path: Path, capsys):
 
 
 # ---------------------------------------------------------------------------
+# --no-weapons shortcut
+# ---------------------------------------------------------------------------
+
+
+def test_cli_no_weapons_resolves_to_weapon_count_zero(tmp_path: Path, capsys):
+    """``--no-weapons`` end-to-end resolves to ``weapon_count=0`` — the
+    written ``.litematic`` matches a baseline run with ``--weapon-count 0``
+    in block count, and a separate ``--weapon-count 5`` armed run produces
+    strictly more blocks (proves the weapon pass would have fired absent
+    the shortcut)."""
+    import json as _json
+
+    # ``--no-weapons`` run: capture --output-json so we can read the block
+    # count without poking at the .litematic.
+    out_no = tmp_path / "no_weapons"
+    out_no.mkdir()
+    rc = main(
+        [
+            "--no-weapons",
+            "--seed",
+            "42",
+            "--output-json",
+            "--out",
+            str(out_no),
+        ]
+        + _SMALL_ARGS
+    )
+    assert rc == 0
+    captured = capsys.readouterr()
+    no_lines = [
+        line for line in captured.out.splitlines() if line.strip().startswith("{")
+    ]
+    assert len(no_lines) == 1, (
+        f"expected one --output-json line under --no-weapons, got "
+        f"{len(no_lines)}:\n{captured.out}"
+    )
+    no_blocks = _json.loads(no_lines[0])["blocks"]
+    files = list(out_no.glob("*.litematic"))
+    assert files, "expected at least one .litematic written under --no-weapons"
+
+    # Equivalent ``--weapon-count 0`` run — must produce the same block count
+    # (the shortcut is byte-equivalent, modulo filename, to passing 0 explicitly).
+    out_zero = tmp_path / "weapon_count_zero"
+    out_zero.mkdir()
+    rc = main(
+        [
+            "--weapon-count",
+            "0",
+            "--seed",
+            "42",
+            "--output-json",
+            "--out",
+            str(out_zero),
+        ]
+        + _SMALL_ARGS
+    )
+    assert rc == 0
+    captured = capsys.readouterr()
+    zero_lines = [
+        line for line in captured.out.splitlines() if line.strip().startswith("{")
+    ]
+    assert len(zero_lines) == 1
+    zero_blocks = _json.loads(zero_lines[0])["blocks"]
+    assert no_blocks == zero_blocks, (
+        f"--no-weapons ({no_blocks}) must produce same block count as "
+        f"--weapon-count 0 ({zero_blocks})"
+    )
+
+    # Sanity check: a ``--weapon-count 5`` run must add cells, otherwise
+    # the equivalence check above would be vacuously satisfied (e.g. if
+    # ``--no-weapons`` silently failed and weapon scatter never fired).
+    out_armed = tmp_path / "armed"
+    out_armed.mkdir()
+    rc = main(
+        [
+            "--weapon-count",
+            "5",
+            "--seed",
+            "42",
+            "--output-json",
+            "--out",
+            str(out_armed),
+        ]
+        + _SMALL_ARGS
+    )
+    assert rc == 0
+    captured = capsys.readouterr()
+    armed_lines = [
+        line for line in captured.out.splitlines() if line.strip().startswith("{")
+    ]
+    assert len(armed_lines) == 1
+    armed_blocks = _json.loads(armed_lines[0])["blocks"]
+    assert armed_blocks > no_blocks, (
+        f"weapon scatter should add cells; armed={armed_blocks} "
+        f"no_weapons={no_blocks}"
+    )
+
+
+def test_cli_no_weapons_conflicts_with_weapon_count(tmp_path: Path, capsys):
+    """Passing both ``--no-weapons`` and ``--weapon-count`` exits non-zero
+    via ``parser.error`` with the mutual-exclusion message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as excinfo:
+        main(
+            [
+                "--no-weapons",
+                "--weapon-count",
+                "3",
+                "--seed",
+                "1",
+                "--out",
+                str(tmp_path),
+            ]
+            + _SMALL_ARGS
+        )
+    # argparse's parser.error() exits with status 2.
+    assert excinfo.value.code != 0
+    captured = capsys.readouterr()
+    # Error message lands on stderr.
+    assert "--no-weapons" in captured.err
+    assert "--weapon-count" in captured.err
+    assert "mutually exclusive" in captured.err
+
+
+def test_cli_no_weapons_help_mentions_both_flags():
+    """``--help`` text must document both ``--no-weapons`` and
+    ``--weapon-count`` so users can discover the shortcut."""
+    from spaceship_generator.cli import build_parser
+
+    help_text = build_parser().format_help()
+    assert "--no-weapons" in help_text
+    assert "--weapon-count" in help_text
+
+
+# ---------------------------------------------------------------------------
 # --hull-style-front / --hull-style-rear (shapes-B)
 # ---------------------------------------------------------------------------
 
@@ -649,3 +785,83 @@ def test_cli_version_short_flag(capsys):
     assert captured.err == "", (
         f"-V must not write to stderr: {captured.err!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# --output - (stdout streaming)
+# ---------------------------------------------------------------------------
+
+
+def test_cli_output_dash_streams_litematic_bytes(tmp_path: Path, capfdbinary):
+    """``--output -`` writes the raw .litematic payload to ``sys.stdout.buffer``.
+
+    The litematic format is gzipped NBT — payload starts with the gzip magic
+    bytes ``\\x1f\\x8b`` — so we assert non-empty + magic-prefix on the
+    captured binary stdout. ``--out`` is unused (generation lands in a temp
+    dir under the hood) but supplying it keeps the test parallel to the other
+    CLI tests.
+    """
+    # Use a small ship to keep the test fast.
+    rc = main(
+        ["--seed", "1", "--output", "-", "--out", str(tmp_path)] + _SMALL_ARGS
+    )
+    assert rc == 0
+
+    captured = capfdbinary.readouterr()
+    payload = captured.out
+    # Non-empty binary payload landed on stdout.
+    assert len(payload) > 0, "expected --output - to emit non-empty bytes"
+    # Litematic = NBT inside gzip → starts with the gzip magic.
+    assert payload[:2] == b"\x1f\x8b", (
+        f"expected gzip magic at start of .litematic stream, "
+        f"got {payload[:2]!r}"
+    )
+
+
+def test_cli_output_dash_conflicts_with_repeat(tmp_path: Path, capsys):
+    """``--output - --repeat 2`` is rejected with a clear stderr message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "--output",
+                "-",
+                "--repeat",
+                "2",
+                "--seed",
+                "1",
+                "--out",
+                str(tmp_path),
+            ]
+            + _SMALL_ARGS
+        )
+    # parser.error() exits with code 2.
+    assert exc_info.value.code == 2
+    err = capsys.readouterr().err
+    assert "--output -" in err
+    assert "--repeat" in err
+
+
+def test_cli_output_dash_conflicts_with_fleet_count(tmp_path: Path, capsys):
+    """``--output - --fleet-count 2`` is rejected with a clear stderr message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "--output",
+                "-",
+                "--fleet-count",
+                "2",
+                "--seed",
+                "1",
+                "--out",
+                str(tmp_path),
+            ]
+            + _SMALL_ARGS
+        )
+    assert exc_info.value.code == 2
+    err = capsys.readouterr().err
+    assert "--output -" in err
+    assert "--fleet-count" in err

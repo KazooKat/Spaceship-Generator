@@ -38,11 +38,6 @@ for one release cycle, then pruned during release prep.
       accept: `--stats-json` prints a single JSON document (block counts, dims, role tallies) to stdout instead of human-formatted; exits 0 after writing; mutually compatible with `--quiet` (output-json carve-out behavior); tested; CHANGELOG bullet
       notes: parallels `--output-json` (already exempt from `--quiet`) but pinned to the `--stats` summary surface; avoids parsers having to scrape the human format
 
-- [ ] feat-cli-stdout-litematic: support `--output -` to write `.litematic` bytes to stdout instead of a file
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--output - --seed 1 > ship.litematic` produces a valid litematic via pipe; exits 0; mutually exclusive with `--repeat`/`--fleet-count` (single-ship only); CHANGELOG bullet
-      notes: enables shell pipelines (`spaceship_generator --output - | mc-server-tool import-schematic`); convention is hyphen-as-stdout; bytes go to `sys.stdout.buffer.write` to preserve binary
-
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
 `HullStyle`. The items below extend the shape pipeline so a single ship
@@ -79,6 +74,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-stdout-litematic: support `--output -` to write `.litematic` bytes to stdout instead of a file
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--output - --seed 1 > ship.litematic` produces a valid litematic via pipe; exits 0; mutually exclusive with `--repeat`/`--fleet-count` (single-ship only); CHANGELOG bullet
+      notes: shipped 2026-04-29; new `--output PATH` argparse flag (`metavar=PATH`) — when set to `-` we generate one ship into a `tempfile.TemporaryDirectory`, read the resulting `.litematic` bytes, and emit them on `sys.stdout.buffer.write(...)` (NOT `print`, so the binary payload survives round-trip); single-ship-only enforced via `parser.error` (exit 2) when paired with `--repeat > 1`, `--fleet-count > 1`, or `--seeds`; success-path informational stdout lines (Seed/Palette/Wrote/...) are unconditionally suppressed in this mode so the binary stream isn't corrupted (regardless of `--quiet`); errors and warnings still flow through stderr; three new tests in `tests/test_cli.py` cover happy path (non-empty bytes + gzip-magic `\x1f\x8b` prefix verifying litematic = NBT-in-gzip, captured via pytest's `capfdbinary`) and the two conflict paths; convention is hyphen-as-stdout (`spaceship-generator --output - | mc-server-tool import-schematic`)
 
 - [x] feat-tests-property-palette-stability: add property test asserting `generate()` succeeds for every (palette × small-seed-grid) pair
       scope: `tests/test_properties.py` (extend or new test)
