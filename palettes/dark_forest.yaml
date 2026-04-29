@@ -1,0 +1,26 @@
+name: dark_forest
+description: Dark forest biome runner. Dark-oak-log hull, dark-oak-planks HULL_DARK accent, yellow-stained-glass canopy-shaft windows, stripped-dark-oak-log engines, shroomlight engine glow, brown-mushroom-block wings, stripped-dark-oak-wood greebles, lantern running lights — Minecraft dark forest (roofed forest) biome theme.
+
+blocks:
+  HULL:          minecraft:dark_oak_log
+  HULL_DARK:     minecraft:dark_oak_planks
+  WINDOW:        minecraft:yellow_stained_glass
+  ENGINE:        minecraft:stripped_dark_oak_log
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:brown_mushroom_block
+  GREEBLE:       minecraft:stripped_dark_oak_wood
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:moss_block
+
+preview_colors:
+  HULL:          "#3a2614"
+  HULL_DARK:     "#180f08"
+  WINDOW:        "#e5e533"
+  ENGINE:        "#4a3220"
+  ENGINE_GLOW:   "#f09246"
+  COCKPIT_GLASS: "#2c262e"
+  WING:          "#7a5230"
+  GREEBLE:       "#5a3e26"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#596d2d"

@@ -1,6 +1,6 @@
 # Palettes
 
-All 53 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
+All 55 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
 
 | Palette | Description |
 |---|---|
@@ -19,6 +19,7 @@ All 53 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `coral_reef` | Aquatic coral cruiser. Prismarine plating, coral-glow engines. |
 | `crimson_nether` | Infernal corsair. Crimson planks, magma block engines, shroomlight glow. |
 | `cyberpunk_neon` | Night-city runner. Matte black concrete hull, magenta/cyan neon glass, sea-lantern engine wash and soul-lantern running lights. |
+| `dark_forest` | Dark forest biome runner. Dark-oak-log hull, dark-oak-planks HULL_DARK accent, yellow-stained-glass canopy-shaft windows, stripped-dark-oak-log engines, shroomlight engine glow, brown-mushroom-block wings, stripped-dark-oak-wood greebles, lantern running lights — Minecraft dark forest (roofed forest) biome theme. |
 | `deepslate_drone` | Stealth drone. Cobbled/polished deepslate plating, moss wing pads, froglight thrusters. (blockpalettes.com-inspired) |
 | `desert_sandstone` | Desert-world dhow. Sandstone hull, amber glass, torches along the spine. |
 | `desert_temple` | Desert temple raider. Sandstone hull, chiseled-sandstone HULL_DARK accent, orange-stained-glass windows, smooth-sandstone wings, torch engine glow, cut-sandstone greebles, redstone-lamp running lights — Minecraft desert pyramid temple theme. |
@@ -52,6 +53,7 @@ All 53 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `sparse_jungle` | Sparse jungle scout. Jungle-log hull, stripped-jungle-log dark accent, jungle-leaves wing, ochre-froglight engine glow, lantern running lights — Minecraft sparse jungle biome. |
 | `stealth_black` | Matte-black stealth fighter. Smoky tinted glass, sparse cyan glow, blackstone greebles. |
 | `steampunk_brass` | Victorian airship. Copper plating, weathered verdigris trim, blackstone engine housings, redstone-lamp rivets. |
+| `swamp` | Swamp biome runner. Mossy-cobblestone hull, oak-log HULL_DARK accent, lime-stained-glass windows, stripped-oak-log engines, ochre-froglight engine glow, oak-leaves vine-canopy wings, stripped-oak-wood greebles, lantern running lights — Minecraft swamp biome theme. |
 | `swamp_bog` | Swamp bog hauler. Mangrove hull, mud underframe, verdant froglight engine glow. |
 | `void_walker` | Deep-space surveyor. Obsidian hull, blue ice viewports, amethyst glow — built for the void. |
 | `volcanic_ash` | Post-eruption volcanic surveyor. Tuff hull, smooth-basalt panels, glowstone ember glow through an ashen atmosphere. |

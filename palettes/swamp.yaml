@@ -1,0 +1,26 @@
+name: swamp
+description: Swamp biome runner. Mossy-cobblestone hull, oak-log HULL_DARK accent, lime-stained-glass windows, stripped-oak-log engines, ochre-froglight engine glow, oak-leaves vine-canopy wings, stripped-oak-wood greebles, lantern running lights — Minecraft swamp biome theme.
+
+blocks:
+  HULL:          minecraft:mossy_cobblestone
+  HULL_DARK:     minecraft:oak_log
+  WINDOW:        minecraft:lime_stained_glass
+  ENGINE:        minecraft:stripped_oak_log
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:oak_leaves
+  GREEBLE:       minecraft:stripped_oak_wood
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:moss_block
+
+preview_colors:
+  HULL:          "#6e7a52"
+  HULL_DARK:     "#3a2818"
+  WINDOW:        "#a8d870"
+  ENGINE:        "#a8845a"
+  ENGINE_GLOW:   "#faf5ce"
+  COCKPIT_GLASS: "#2c262e"
+  WING:          "#3e6028"
+  GREEBLE:       "#9c8060"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#596d2d"
