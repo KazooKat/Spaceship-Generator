@@ -57,6 +57,8 @@ spaceship-generator --seed 42 --palette sci_fi_industrial \
 
 ### Key flags
 
+See [docs/cli.md](docs/cli.md) for the full CLI flag reference.
+
 - `--preset <role>` — apply a named archetype (corvette, scout, battlecruiser, …); run `--list-presets` to list all
 - `--repeat N` — generate N ships with consecutive seeds
 - `--seeds A,B,C` or `--seeds A-Z` — generate from a list or range of seeds
