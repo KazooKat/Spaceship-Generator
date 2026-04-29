@@ -673,6 +673,46 @@ def test_cli_list_shape_styles(capsys):
 
 
 # ---------------------------------------------------------------------------
+# --list-greeble-types
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_greeble_types(capsys):
+    """``--list-greeble-types`` prints every ``GreebleType`` value on its
+    own line in enum-declaration order, exit 0.
+
+    Membership is asserted via enum iteration (no hard-coded string list)
+    so the test does not drift when a new greeble type is added. Narrower
+    sibling of ``--list-shape-styles`` — no group header/indent prefix
+    since there's only one enum to emit.
+    """
+    from spaceship_generator.greeble_styles import GreebleType
+
+    rc = main(["--list-greeble-types"])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+
+    # Every enum member appears on its own line, no prefix/indent.
+    for g in GreebleType:
+        assert g.value in lines, f"missing GreebleType.{g.name}"
+
+    # Deterministic enum-declaration order — the printed lines (modulo any
+    # blank trailers) match the enum's own iteration order exactly.
+    expected = [g.value for g in GreebleType]
+    assert [line for line in lines if line] == expected
+
+    # Narrower than --list-styles: hull/engine/wing/cockpit/weapon section
+    # headers must NOT appear.
+    assert "Hull styles:" not in lines
+    assert "Engine styles:" not in lines
+    assert "Wing styles:" not in lines
+    assert "Cockpit styles:" not in lines
+    assert "Weapon types:" not in lines
+
+
+# ---------------------------------------------------------------------------
 # --quiet / -q
 # ---------------------------------------------------------------------------
 
@@ -957,6 +997,62 @@ def test_cli_stats_json_not_silenced_by_quiet(tmp_path: Path, capsys):
     obj = json.loads(json_lines[0])
     assert obj["seed"] == 1002
     assert _STATS_JSON_REQUIRED_KEYS <= obj.keys()
+
+
+# ---------------------------------------------------------------------------
+# --help snapshot: every declared flag must be referenced in --help text
+# ---------------------------------------------------------------------------
+
+
+def test_cli_help_text_mentions_every_declared_flag():
+    """Snapshot-style guard: ``build_parser().format_help()`` must reference
+    every long/short flag declared on the parser.
+
+    Walks ``parser._actions`` (the canonical list of registered argparse
+    actions) so the test auto-discovers new flags — adding a new
+    ``add_argument`` to ``cli.py`` automatically widens this assertion
+    instead of needing a hand-edited list. Catches the silent-removal /
+    silent-rename failure mode where someone deletes an ``add_argument``
+    or renames its ``--flag`` string and the help text drifts out of sync.
+
+    Each flag's ``option_strings`` (e.g. ``["--quiet", "-q"]``) must each
+    appear verbatim in the help string. On miss the assertion lists the
+    offending flag(s) so the failure is unambiguous.
+    """
+    from spaceship_generator.cli import build_parser
+
+    parser = build_parser()
+    help_text = parser.format_help()
+
+    # Sanity: help is non-empty and mentions the package / program name.
+    assert help_text.strip(), "build_parser().format_help() returned empty string"
+    assert "spaceship" in help_text.lower(), (
+        "help text should mention the package/program name 'spaceship'; "
+        f"got prog={parser.prog!r}"
+    )
+
+    # Walk every registered action; an action with non-empty option_strings
+    # is a flag (positionals have option_strings == []). Collect every
+    # declared flag name (long form, short alias, etc.) so renames surface.
+    declared_flags: list[str] = []
+    for action in parser._actions:
+        for flag in action.option_strings:
+            declared_flags.append(flag)
+
+    # Defensive sanity check: the parser must declare at least a few flags
+    # (--help is always there, and this CLI declares dozens). If this trips
+    # the test itself is broken, not the help text.
+    assert len(declared_flags) >= 5, (
+        f"expected build_parser() to declare many flags, got only "
+        f"{declared_flags!r} — test logic is wrong"
+    )
+
+    missing = [flag for flag in declared_flags if flag not in help_text]
+    assert not missing, (
+        f"--help text is missing references to declared flag(s): {missing}. "
+        f"Either the flag was silently renamed/removed, or its help= string "
+        f"was suppressed. Re-check build_parser() in cli.py."
+    )
 
 
 def test_cli_stats_json_conflicts_with_stats(tmp_path: Path, capsys):

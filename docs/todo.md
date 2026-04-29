@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: `--list-greeble-types` prints one greeble type per line in enum-declaration order, exits 0; tested; CHANGELOG bullet
       notes: mirrors existing `--list-shape-styles` (commit `c9aefd8`) and `--list-palettes`/`--list-presets` flags; narrower sibling of `--list-styles` that pins just greeble types; `--quiet` carve-out unchanged
 
-- [ ] feat-tests-cli-help-snapshot: add a snapshot-style test pinning `--help` output references every public flag
-      scope: `tests/test_cli.py`
-      accept: test runs `build_parser().format_help()` and asserts every CLI flag declared in `cli.py` is mentioned by name in the help string; failure names the missing flag; CHANGELOG bullet
-      notes: catches silent removal/rename of CLI flags by anyone editing the parser; cheap defensive test; reuses the parser already exercised by other test_cli tests
-
 - [ ] feat-bench-summary: add `scripts/bench_summary.py` umbrella driver running all bench scripts and tabulating results
       scope: `scripts/bench_summary.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
       accept: script invokes `bench_full_pipeline.py`, `bench_shape.py`, `bench_palette.py`, `bench_mem.py`, `bench_fleet.py` via subprocess (each with `--iterations 2 --limit 2` where applicable), captures their TOTAL row, prints an aggregate fixed-width table; exits 0; CHANGELOG bullet
@@ -74,6 +69,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-cli-help-snapshot: add a snapshot-style test pinning `--help` output references every public flag
+      scope: `tests/test_cli.py`
+      accept: test runs `build_parser().format_help()` and asserts every CLI flag declared in `cli.py` is mentioned by name in the help string; failure names the missing flag; CHANGELOG bullet
+      notes: shipped 2026-04-29; new `tests/test_cli.py::test_cli_help_text_mentions_every_declared_flag` walks `build_parser()._actions` (the canonical argparse list of registered actions) and for every action with non-empty `option_strings` (skipping positionals, which have empty `option_strings`) collects every flag string (long form, short alias, etc.) into a flat list, then asserts each one appears verbatim in `parser.format_help()`; discovery is dynamic — adding a new `add_argument` to `cli.py` automatically widens the assertion so the test never goes stale and won't be the test you have to update when shipping a new flag; failure mode caught is silent removal/rename of a flag (e.g. someone deletes the `add_argument` for `--quiet` or renames it to `--silent` and forgets to update one of the docs/CLI ref tables) or `help=argparse.SUPPRESS` slips; on miss the assertion message lists the offending flag name(s) directly so the failure is unambiguous; also asserts `format_help()` returns a non-empty string and mentions `spaceship` (case-insensitive substring match against `parser.prog`) so a parser that's been gutted entirely also fails fast; defensive `len(declared_flags) >= 5` sanity check catches the case where the test logic itself broke (e.g. `parser._actions` access changed in a future argparse) so a green test always means the help string really does mention every flag; complements the narrower per-flag help assertions in this same file (`test_cli_no_weapons_help_mentions_both_flags`) by giving catalog-wide coverage of every flag in one cheap defensive test (~0.5 s); full `pytest -q` (1973 tests) + `ruff check .` both green
 
 - [x] feat-palettes-biome-pack-2026-04-29: add 2 more biome palettes (`desert_temple`, `nether_wastes`)
       scope: `palettes/desert_temple.yaml`, `palettes/nether_wastes.yaml`, `docs/palettes.md`, `docs/CHANGELOG.md`
