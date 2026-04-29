@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-cli-version: add `--version` / `-V` flag printing package version + exits 0
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--version` prints `spaceship_generator <ver>`, exits 0; `-V` short alias works; tested
-      notes: tiny conventional unix flag; version source = `spaceship_generator.__version__` (matches `/api/health` and OpenAPI doc-builder pattern); useful for bug reports / CI
-
 - [ ] feat-bench-mem: add `scripts/bench_mem.py` peak-memory micro-bench for `generate()`
       scope: `scripts/bench_mem.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
       accept: script runs N iterations of `generate()`, reports peak RSS in MB (via `tracemalloc.peak`) per iteration + mean/p95; exits 0; smoke test runs N=2; CHANGELOG bullet
@@ -79,6 +74,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-version: add `--version` / `-V` flag printing package version + exits 0
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--version` prints `spaceship_generator <ver>`, exits 0; `-V` short alias works; tested
+      notes: tiny conventional unix flag; version source = `spaceship_generator.__version__` (matches `/api/health` and OpenAPI doc-builder pattern); useful for bug reports / CI
 
 - [x] feat-api-palette-detail: add `GET /api/palettes/<name>` single-palette detail endpoint
       scope: `src/spaceship_generator/web/blueprints/ship.py` (extend), `tests/test_api.py`, `_OPENAPI_COMPONENTS` for spec

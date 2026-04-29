@@ -19,6 +19,11 @@ def client(tmp_path, monkeypatch):
 def test_api_palette_detail_ok(client):
     rv = client.get("/api/palettes/sci_fi_industrial")
     assert rv.status_code == 200
+    # Flask's jsonify uses application/json; some servers may suffix
+    # ``; charset=utf-8`` so accept either form (mirrors the assertion
+    # style in test_api_health_ok / test_api_spec_status_and_content_type).
+    ctype = rv.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
     data = rv.get_json()
     assert data["name"] == "sci_fi_industrial"
     assert "roles" in data
@@ -31,8 +36,28 @@ def test_api_palette_detail_ok(client):
 def test_api_palette_detail_not_found(client):
     rv = client.get("/api/palettes/nonexistent_xyz_palette")
     assert rv.status_code == 404
+    ctype = rv.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
     data = rv.get_json()
     assert "error" in data
+
+
+def test_api_palette_detail_listed_in_openapi_spec(client):
+    """``/api/spec`` must enumerate the single-palette detail path.
+
+    Belt-and-braces alongside ``test_api_spec_lists_every_route`` (which
+    walks the url_map): pin the exact OpenAPI path-template here so a
+    refactor that drops the entry fails this test by name rather than the
+    generic "missing routes" diff.
+    """
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    data = rv.get_json()
+    assert "/api/palettes/{name}" in data["paths"]
+    op = data["paths"]["/api/palettes/{name}"].get("get")
+    assert op is not None, "GET method missing for /api/palettes/{name}"
+    assert "200" in op["responses"]
+    assert "404" in op["responses"]
 
 
 def test_api_preset_detail_known(client):
@@ -135,6 +160,42 @@ def test_api_styles_greeble_types_contains_known_values(client):
     data = resp.get_json()
     assert "turret" in data["greeble_types"]
     assert "dish" in data["greeble_types"]
+
+
+def test_api_shape_styles_returns_three_keys(client):
+    """``GET /api/shape-styles`` mirrors the ``--list-shape-styles`` CLI flag:
+    only hull/engine/wing — no greeble/weapon types."""
+    resp = client.get("/api/shape-styles")
+    assert resp.status_code == 200
+    ctype = resp.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
+    data = resp.get_json()
+    assert set(data.keys()) == {"hull_styles", "engine_styles", "wing_styles"}
+    for key in data:
+        assert isinstance(data[key], list), f"{key} should be a list"
+        assert len(data[key]) > 0, f"{key} should be non-empty"
+
+
+def test_api_shape_styles_matches_styles_subset(client):
+    """The three shape-style arrays must equal the matching arrays in
+    ``/api/styles`` — same enum source, same serialization, same order."""
+    full = client.get("/api/styles").get_json()
+    narrow = client.get("/api/shape-styles").get_json()
+    for key in ("hull_styles", "engine_styles", "wing_styles"):
+        assert narrow[key] == full[key], f"{key} drifts between endpoints"
+
+
+def test_api_shape_styles_in_openapi_spec(client):
+    """The new ``/api/shape-styles`` path must appear in ``/api/spec``."""
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    spec = rv.get_json()
+    assert "/api/shape-styles" in spec["paths"], (
+        "OpenAPI spec must enumerate /api/shape-styles"
+    )
+    op = spec["paths"]["/api/shape-styles"]["get"]
+    assert "summary" in op
+    assert "200" in op["responses"]
 
 
 def test_api_random_returns_keys(client):

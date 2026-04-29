@@ -501,6 +501,25 @@ def api_styles():
     })
 
 
+@ship_bp.route("/api/shape-styles", methods=["GET"], endpoint="api_shape_styles")
+def api_shape_styles():
+    """Return only the three core "shape" enum lists: hull/engine/wing.
+
+    Narrower JSON sibling of ``/api/styles`` mirroring the CLI
+    ``--list-shape-styles`` flag — clients that only need the three core
+    shape pickers (e.g. the sidebar style dropdowns) can fetch this
+    endpoint instead of pulling the larger ``/api/styles`` payload that
+    also includes greeble + weapon types. Values are the enum ``.value``
+    strings emitted in enum-declaration order (deterministic + stable
+    across runs), matching the serialization used by ``/api/styles``.
+    """
+    return jsonify({
+        "hull_styles": [s.value for s in HullStyle],
+        "engine_styles": [s.value for s in EngineStyle],
+        "wing_styles": [s.value for s in WingStyle],
+    })
+
+
 @ship_bp.route("/api/random", methods=["GET"], endpoint="api_random")
 def api_random():
     """Return a random seed/palette/preset combo as JSON.
@@ -826,6 +845,15 @@ _OPENAPI_COMPONENTS: dict = {
                 "weapon_types": {"type": "array", "items": {"type": "string"}},
             },
         },
+        "ShapeStyles": {
+            "type": "object",
+            "required": ["hull_styles", "engine_styles", "wing_styles"],
+            "properties": {
+                "hull_styles": {"type": "array", "items": {"type": "string"}},
+                "engine_styles": {"type": "array", "items": {"type": "string"}},
+                "wing_styles": {"type": "array", "items": {"type": "string"}},
+            },
+        },
         "Random": {
             "type": "object",
             "required": ["seed", "palette", "preset"],
@@ -1066,6 +1094,12 @@ _OPENAPI_PATHS: dict = {
         "get": {
             "summary": "List hull/engine/wing/greeble/weapon style names",
             "responses": {"200": _json_response("Styles")},
+        },
+    },
+    "/api/shape-styles": {
+        "get": {
+            "summary": "List only the core shape enums: hull/engine/wing",
+            "responses": {"200": _json_response("ShapeStyles")},
         },
     },
     "/api/random": {
