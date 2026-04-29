@@ -18,6 +18,26 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-cli-no-weapons: add `--no-weapons` shortcut equivalent to `--weapon-count 0`, mutually exclusive with `--weapon-count`
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--no-weapons` resolves to `weapon_count=0` end-to-end; passing both `--no-weapons` and `--weapon-count` errors with non-zero exit; tested; CHANGELOG bullet
+      notes: parallel to existing `--no-greebles` shortcut (commit `e33a3f2`); keeps the parser idiomatic when callers want a quick "no guns" toggle without remembering the integer flag
+
+- [ ] feat-docs-web-ui: add `docs/web_ui.md` covering Flask blueprint endpoints + browser UX
+      scope: `docs/web_ui.md` (new), one-line link from README
+      accept: file documents every `/api/*` route + the HTML pages served by `web/blueprints/`; sourced from `_OPENAPI_PATHS`; CHANGELOG bullet; one-line README link
+      notes: complements `docs/cli.md` flag reference and `docs/palettes.md` catalog; users currently have to read OpenAPI spec or grep blueprints
+
+- [ ] feat-bench-palette: add `scripts/bench_palette.py` per-palette generate() time micro-bench
+      scope: `scripts/bench_palette.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
+      accept: script iterates all palettes (or a `--limit` subset) running N `generate()` calls each, prints fixed-width palette × mean/p95 ms table, exits 0; smoke runs --limit 2 --iterations 2; CHANGELOG bullet
+      notes: complements `bench_full_pipeline.py` (one palette) by surfacing per-palette cost variance; foundation for catching palette-driven slow paths early
+
+- [ ] feat-cli-stats-json: add `--stats-json` flag — machine-readable variant of `--stats`
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--stats-json` prints a single JSON document (block counts, dims, role tallies) to stdout instead of human-formatted; exits 0 after writing; mutually compatible with `--quiet` (output-json carve-out behavior); tested; CHANGELOG bullet
+      notes: parallels `--output-json` (already exempt from `--quiet`) but pinned to the `--stats` summary surface; avoids parsers having to scrape the human format
+
 - [ ] feat-tests-property-palette-stability: add property test asserting `generate()` succeeds for every (palette × small-seed-grid) pair
       scope: `tests/test_properties.py` (extend or new test)
       accept: Hypothesis test (or simple parametrize) iterates every palette with 5-10 distinct seeds, asserts `generate()` exits cleanly + writes a non-empty `.litematic`; failures should name the offending palette + seed; CHANGELOG bullet
