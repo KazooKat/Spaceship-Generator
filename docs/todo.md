@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-04-29: add 2 more biome palettes (e.g. `desert_temple` + `nether_wastes`)
-      scope: `palettes/desert_temple.yaml`, `palettes/nether_wastes.yaml`, `docs/palettes.md`
-      accept: both pass `test_palette_lint`; loadable via `--palette NAME`; alphabetical row insert in `docs/palettes.md`; CHANGELOG bullet
-      notes: rounds palette count toward 53; desert_temple = sandstone hull / chiseled-sandstone accent / orange-stained-glass windows; nether_wastes = netherrack hull / nether-bricks accent / glowstone glow
-
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
 `HullStyle`. The items below extend the shape pipeline so a single ship
@@ -59,6 +54,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palettes-biome-pack-2026-04-29: add 2 more biome palettes (`desert_temple`, `nether_wastes`)
+      scope: `palettes/desert_temple.yaml`, `palettes/nether_wastes.yaml`, `docs/palettes.md`, `docs/CHANGELOG.md`
+      accept: both pass `test_palette_lint`; loadable via `--palette NAME`; alphabetical row insert in `docs/palettes.md`; CHANGELOG bullet
+      notes: shipped 2026-04-29; rounds palette count to 53; `desert_temple` = sandstone hull / chiseled-sandstone HULL_DARK accent / orange-stained-glass windows / polished-granite engines / torch ENGINE_GLOW (known-emissive list) / yellow-stained-glass cockpit / smooth-sandstone wings / cut-sandstone greebles / redstone-lamp running lights / orange-terracotta interior — chose `redstone_lamp` for LIGHT (instead of torch) to avoid the duplicate-mapping warning that `windswept_hills` and `desert_sandstone` both ship with; `nether_wastes` = netherrack hull / nether-bricks HULL_DARK accent / red-stained-glass windows (preview hex `#c85a3a`, Y≈0.467 well above the 0.35 floor) / magma-block engines / glowstone ENGINE_GLOW (known-emissive list) / tinted-glass cockpit / red-nether-bricks wings / basalt greebles / soul-torch running lights / blackstone interior — every role maps to a distinct block id so no duplicate warnings; both `--strict` lint clean (WINDOW luminance ≥ 0.35, HULL/HULL_DARK contrast ≥ 1.5, ENGINE_GLOW emissive, no role duplicates); catalog rows inserted alphabetically in `docs/palettes.md` between `desert_sandstone`/`diamond_tech` and between `neon_arcade`/`nordic_scout` respectively; header count bumped from 51 to 53; full `pytest -q` + `ruff check .` both green
 
 - [x] feat-bench-fleet: add `scripts/bench_fleet.py` micro-bench timing fleet generation across N ships
       scope: `scripts/bench_fleet.py` (new), `tests/test_bench_smoke.py` (extend), `docs/CHANGELOG.md`

@@ -28,6 +28,7 @@ from hypothesis import strategies as st
 from spaceship_generator.engine_styles import EngineStyle
 from spaceship_generator.fleet import FleetParams, generate_fleet
 from spaceship_generator.generator import generate
+from spaceship_generator.greeble_styles import GreebleType
 from spaceship_generator.palette import Palette, Role, load_palette, palettes_dir
 from spaceship_generator.presets import SHIP_PRESETS, apply_preset
 from spaceship_generator.shape import (
@@ -679,6 +680,62 @@ def test_property_engine_style_seed_grid_generates_non_empty_litematic(
         )
     assert res.block_count > 0, (
         f"engine_style={engine_style.value} seed={seed} produced 0 blocks"
+    )
+
+
+# ----------- greeble-type × seed-grid stability (every enum member, small seed set) -----------
+#
+# Companion to ``test_property_hull_style_seed_grid_generates_non_empty_litematic``
+# and the engine-style sibling above. The Hypothesis-based shape tests sample
+# greeble density but never restrict to a single ``GreebleType``, and the CLI
+# ``--greeble-style TYPE`` plumbing (``cli.py:687`` → ``[GreebleType(args.greeble_style)]``
+# → ``generate(..., greeble_types=[that_type])``) is exercised end-to-end nowhere
+# else. This parametrize test deterministically pins *every* GreebleType member
+# against the small fixed seed grid so a regression in any single greeble
+# builder is guaranteed to surface as a self-named ``[seed-greeble_type]``
+# failure node.
+
+
+@pytest.mark.parametrize("greeble_type", list(GreebleType), ids=lambda t: t.value)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_greeble_type_seed_grid_generates_non_empty_litematic(
+    tmp_path, greeble_type, seed
+):
+    """Every ``GreebleType`` × small seed grid → ``generate()`` writes a non-empty file.
+
+    Mirrors how the ``--greeble-style TYPE`` CLI flag plumbs into ``generate()``
+    — the CLI passes ``greeble_types=[GreebleType(args.greeble_style)]``, so we
+    do the same here per enum member to catch greeble-builder-driven regressions
+    (turret/dish/vent/antenna/panel_line/sensor_pod/circuit_board/battle_damage/
+    pipe_cluster/organic_growth/nano_mesh) one tick earlier than the
+    Hypothesis-sampled shape tests would, since this explicitly visits every
+    member rather than sampling. A non-zero ``greeble_density`` is required so
+    the scatter actually fires and the restricted-type list has a chance to
+    matter. Failure messages name both the offending greeble type and seed via
+    the parametrize IDs, plus an explicit ``pytest.fail`` message if the file
+    is missing or zero-bytes.
+    """
+    params = ShapeParams(
+        length=16, width_max=8, height_max=6, greeble_density=0.3,
+    )
+    res = generate(
+        seed,
+        shape_params=params,
+        greeble_types=[greeble_type],
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for greeble_type={greeble_type.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for greeble_type={greeble_type.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"greeble_type={greeble_type.value} seed={seed} produced 0 blocks"
     )
 
 

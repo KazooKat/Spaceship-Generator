@@ -1,0 +1,26 @@
+name: desert_temple
+description: Desert temple raider. Sandstone hull, chiseled-sandstone HULL_DARK accent, orange-stained-glass windows, smooth-sandstone wings, torch engine glow, cut-sandstone greebles, redstone-lamp running lights — Minecraft desert pyramid temple theme.
+
+blocks:
+  HULL:          minecraft:sandstone
+  HULL_DARK:     minecraft:chiseled_sandstone
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:polished_granite
+  ENGINE_GLOW:   minecraft:torch
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:smooth_sandstone
+  GREEBLE:       minecraft:cut_sandstone
+  LIGHT:         minecraft:redstone_lamp
+  INTERIOR:      minecraft:orange_terracotta
+
+preview_colors:
+  HULL:          "#d7c99c"
+  HULL_DARK:     "#7a6840"
+  WINDOW:        "#d87f33"
+  ENGINE:        "#9a5c4a"
+  ENGINE_GLOW:   "#ffce5e"
+  COCKPIT_GLASS: "#ffd84a"
+  WING:          "#cfc196"
+  GREEBLE:       "#d1c59a"
+  LIGHT:         "#f4a050"
+  INTERIOR:      "#a44e22"

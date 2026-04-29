@@ -1,0 +1,26 @@
+name: nether_wastes
+description: Nether wastes raider. Netherrack hull, nether-bricks HULL_DARK accent, red-stained-glass windows, red-nether-bricks wings, glowstone engine glow, basalt greebles — Minecraft nether wastes biome theme.
+
+blocks:
+  HULL:          minecraft:netherrack
+  HULL_DARK:     minecraft:nether_bricks
+  WINDOW:        minecraft:red_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:glowstone
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:red_nether_bricks
+  GREEBLE:       minecraft:basalt
+  LIGHT:         minecraft:soul_torch
+  INTERIOR:      minecraft:blackstone
+
+preview_colors:
+  HULL:          "#724040"
+  HULL_DARK:     "#2d1818"
+  WINDOW:        "#c85a3a"
+  ENGINE:        "#8a3018"
+  ENGINE_GLOW:   "#fbe26b"
+  COCKPIT_GLASS: "#3a2020"
+  WING:          "#3c1414"
+  GREEBLE:       "#4a4452"
+  LIGHT:         "#3c8c80"
+  INTERIOR:      "#1e1418"

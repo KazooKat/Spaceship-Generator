@@ -1,6 +1,6 @@
 # Palettes
 
-All 51 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
+All 53 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
 
 | Palette | Description |
 |---|---|
@@ -21,6 +21,7 @@ All 51 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `cyberpunk_neon` | Night-city runner. Matte black concrete hull, magenta/cyan neon glass, sea-lantern engine wash and soul-lantern running lights. |
 | `deepslate_drone` | Stealth drone. Cobbled/polished deepslate plating, moss wing pads, froglight thrusters. (blockpalettes.com-inspired) |
 | `desert_sandstone` | Desert-world dhow. Sandstone hull, amber glass, torches along the spine. |
+| `desert_temple` | Desert temple raider. Sandstone hull, chiseled-sandstone HULL_DARK accent, orange-stained-glass windows, smooth-sandstone wings, torch engine glow, cut-sandstone greebles, redstone-lamp running lights — Minecraft desert pyramid temple theme. |
 | `diamond_tech` | Advanced tech cruiser. Diamond plating, cyan accents, froglight drives. |
 | `dripstone_cave` | Dripstone cave runner. Dripstone-block hull, pointed-dripstone dark accents, cut-copper engines with copper-bulb warm glow, tuff greebles. |
 | `end_city` | End-dimension city runner. Purpur hull, end stone brick accent, end rod glow. |
@@ -37,6 +38,7 @@ All 51 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `mushroom_islands` | Mycelium hull, red mushroom cap wings, shroomlight engine glow — Minecraft mushroom island biome theme. |
 | `nebula_drift` | Cosmic nebula drifter. Deep purple hull, magenta glass windows, amethyst engines with shroomlight glow. |
 | `neon_arcade` | Neon arcade racer. Black body, cyan/magenta glazed panels, glowstone trim. |
+| `nether_wastes` | Nether wastes raider. Netherrack hull, nether-bricks HULL_DARK accent, red-stained-glass windows, red-nether-bricks wings, glowstone engine glow, basalt greebles — Minecraft nether wastes biome theme. |
 | `nordic_scout` | Nordic scout. Birch & quartz hull, diorite trim, clean and bright. (blockpalettes.com-inspired) |
 | `pale_garden` | Pale garden ghost ship. Pale-oak-log hull, pale-moss-block dark accent, pale-oak-planks wings, lantern engine glow, creaking-heart cockpit — Minecraft 1.21 pale garden biome. |
 | `prismarine_sea` | Prismarine-brick hull, dark prismarine underframe, sea-lantern engine glow — underwater ocean monument theme. |
