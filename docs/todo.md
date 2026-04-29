@@ -18,6 +18,26 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-cli-list-greeble-types: add `--list-greeble-types` flag — prints every `GreebleType` enum value, exits 0
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-greeble-types` prints one greeble type per line in enum-declaration order, exits 0; tested; CHANGELOG bullet
+      notes: mirrors existing `--list-shape-styles` (commit `c9aefd8`) and `--list-palettes`/`--list-presets` flags; narrower sibling of `--list-styles` that pins just greeble types; `--quiet` carve-out unchanged
+
+- [ ] feat-tests-cli-help-snapshot: add a snapshot-style test pinning `--help` output references every public flag
+      scope: `tests/test_cli.py`
+      accept: test runs `build_parser().format_help()` and asserts every CLI flag declared in `cli.py` is mentioned by name in the help string; failure names the missing flag; CHANGELOG bullet
+      notes: catches silent removal/rename of CLI flags by anyone editing the parser; cheap defensive test; reuses the parser already exercised by other test_cli tests
+
+- [ ] feat-bench-summary: add `scripts/bench_summary.py` umbrella driver running all bench scripts and tabulating results
+      scope: `scripts/bench_summary.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
+      accept: script invokes `bench_full_pipeline.py`, `bench_shape.py`, `bench_palette.py`, `bench_mem.py`, `bench_fleet.py` via subprocess (each with `--iterations 2 --limit 2` where applicable), captures their TOTAL row, prints an aggregate fixed-width table; exits 0; CHANGELOG bullet
+      notes: turns the five micro-benches into one "perf snapshot" command useful before/after a refactor; complements per-script depth with cross-script breadth
+
+- [ ] feat-palettes-biome-pack-2026-04-29b: add 2 more biome palettes (`swamp` + `dark_forest`)
+      scope: `palettes/swamp.yaml`, `palettes/dark_forest.yaml`, `docs/palettes.md`
+      accept: both pass `test_palette_lint`; loadable via `--palette NAME`; alphabetical row insert in `docs/palettes.md`; CHANGELOG bullet
+      notes: rounds palette count to 55; swamp = mossy-cobblestone hull / oak-log accent / lily-pad-ish wing; dark_forest = dark-oak-log hull / dark-oak-planks accent / mushroom-block wing — both fill remaining vanilla biomes
+
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
 `HullStyle`. The items below extend the shape pipeline so a single ship
