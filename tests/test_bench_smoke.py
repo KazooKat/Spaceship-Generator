@@ -22,6 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "bench_shape.py"
 FULL_PIPELINE_SCRIPT = REPO_ROOT / "scripts" / "bench_full_pipeline.py"
 MEM_SCRIPT = REPO_ROOT / "scripts" / "bench_mem.py"
+PALETTE_SCRIPT = REPO_ROOT / "scripts" / "bench_palette.py"
 
 EXPECTED_STAGES = ("hull", "cockpit", "engines", "wings", "greebles", "assembly")
 
@@ -111,3 +112,35 @@ def test_bench_mem_runs_with_two_iterations() -> None:
     assert "mean_mb" in out
     assert "p95_mb" in out
     assert "max_mb" in out
+
+
+def test_bench_palette_runs_with_two_palettes_two_iterations() -> None:
+    """Per-palette bench exits 0 and prints the column headers + TOTAL row."""
+    assert PALETTE_SCRIPT.is_file(), f"missing bench script: {PALETTE_SCRIPT}"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PALETTE_SCRIPT),
+            "--limit",
+            "2",
+            "--iterations",
+            "2",
+            "--seed",
+            "0",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"bench_palette.py exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    out = result.stdout
+    assert out.strip(), f"bench_palette.py produced empty stdout:\n{out!r}"
+    # Header columns we promised in the docstring + spec.
+    assert "palette" in out, f"'palette' header missing from stdout:\n{out}"
+    assert "mean_ms" in out
+    assert "p95_ms" in out
+    assert "TOTAL" in out, f"TOTAL row missing from stdout:\n{out}"

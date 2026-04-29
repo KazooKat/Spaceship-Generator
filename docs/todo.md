@@ -28,11 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: parametrize over each `HullStyle` enum member × small seed grid (`[0, 1, 7]` is fine — 3 seeds keeps runtime down); assert `generate()` exits cleanly + writes a non-empty `.litematic`; failure message names the offending hull-style + seed; CHANGELOG bullet
       notes: companion to `feat-tests-property-palette-stability` (closed cycle 2); current Hypothesis tests don't pin every shape style × seed combination
 
-- [ ] feat-bench-palette: add `scripts/bench_palette.py` per-palette generate() time micro-bench
-      scope: `scripts/bench_palette.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
-      accept: script iterates all palettes (or a `--limit` subset) running N `generate()` calls each, prints fixed-width palette × mean/p95 ms table, exits 0; smoke runs --limit 2 --iterations 2; CHANGELOG bullet
-      notes: complements `bench_full_pipeline.py` (one palette) by surfacing per-palette cost variance; foundation for catching palette-driven slow paths early
-
 - [ ] feat-cli-stats-json: add `--stats-json` flag — machine-readable variant of `--stats`
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
       accept: `--stats-json` prints a single JSON document (block counts, dims, role tallies) to stdout instead of human-formatted; exits 0 after writing; mutually compatible with `--quiet` (output-json carve-out behavior); tested; CHANGELOG bullet
@@ -74,6 +69,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-bench-palette: add `scripts/bench_palette.py` per-palette generate() time micro-bench
+      scope: `scripts/bench_palette.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
+      accept: script iterates all palettes (or a `--limit` subset) running N `generate()` calls each, prints fixed-width palette × mean/p95 ms table, exits 0; smoke runs --limit 2 --iterations 2; CHANGELOG bullet
+      notes: shipped 2026-04-29; argparse mirrors `bench_full_pipeline.py` / `bench_mem.py` (`--iterations` default 3, `--limit` default 0 = all, `--seed` default 0); palettes discovered dynamically via `spaceship_generator.palette.list_palettes()` (same enumeration `tests/test_palette_lint.py::test_all_shipped_palettes_have_zero_errors` + `tests/test_properties.py::test_property_palette_seed_grid_generates_non_empty_litematic` use, so adding a YAML auto-widens the matrix); fixed-width table is `palette | mean_ms | p95_ms` with column width auto-fit to the longest palette name (16 chars today, future-proofs for longer names) + a TOTAL summary row that aggregates *per-iter* samples across all palettes (not the row-level means) so a regression in any single palette also surfaces in the catalog-wide p95; one untimed warm-up iteration on the first palette before the timed loop, mirroring `bench_full_pipeline` / `bench_mem`; numpy + stdlib only (np.percentile for p95, np.float64 buffer per palette — no pandas/matplotlib); writes each iteration's `.litematic` into a `tempfile.TemporaryDirectory` so nothing leaks; `tests/test_bench_smoke.py::test_bench_palette_runs_with_two_palettes_two_iterations` runs `subprocess.run([..., bench_palette.py, --limit 2, --iterations 2, --seed 0])` and asserts exit 0 + presence of `palette`/`mean_ms`/`p95_ms`/`TOTAL` in stdout; complements `bench_full_pipeline.py` (one palette deep) by surfacing per-palette cost variance and giving a catalog-wide p95 baseline that future palette PRs can be benched against; full `pytest -q` (1854 tests) + `ruff check .` both green
 
 - [x] feat-cli-no-weapons: add `--no-weapons` shortcut equivalent to `--weapon-count 0`, mutually exclusive with `--weapon-count`
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
