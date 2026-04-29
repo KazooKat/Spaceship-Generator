@@ -261,6 +261,11 @@ def build_parser() -> argparse.ArgumentParser:
                         "(grouped, one per line) and exit. Narrower than "
                         "--list-styles, which also includes cockpit and "
                         "weapon types.")
+    p.add_argument("--list-greeble-types", action="store_true",
+                   help="List GreebleType members (one per line) in "
+                        "enum-declaration order and exit. Narrower sibling "
+                        "of --list-styles, which also includes hull / engine "
+                        "/ wing / cockpit / weapon types.")
     # ``--preset``/``--list-presets`` are only active when the optional
     # ``presets`` module is importable. When it's absent we still register
     # the flags (so ``--help`` documents them) but restrict the choices to
@@ -1251,6 +1256,15 @@ def main(argv: list[str] | None = None) -> int:
         _emit(args, "Wing styles:")
         for w in WingStyle:
             _emit(args, f"  {w.value}")
+        return 0
+
+    if args.list_greeble_types:
+        # Narrower sibling of --list-styles: only the GreebleType enum.
+        # One member per line in enum-declaration order (no header/indent
+        # prefix) so callers can pipe straight into another tool. Members
+        # emit deterministically and stably across runs.
+        for g in GreebleType:
+            _emit(args, g.value)
         return 0
 
     if args.list_styles:

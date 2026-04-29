@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-cli-list-greeble-types: add `--list-greeble-types` flag — prints every `GreebleType` enum value, exits 0
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--list-greeble-types` prints one greeble type per line in enum-declaration order, exits 0; tested; CHANGELOG bullet
-      notes: mirrors existing `--list-shape-styles` (commit `c9aefd8`) and `--list-palettes`/`--list-presets` flags; narrower sibling of `--list-styles` that pins just greeble types; `--quiet` carve-out unchanged
-
 - [ ] feat-bench-summary: add `scripts/bench_summary.py` umbrella driver running all bench scripts and tabulating results
       scope: `scripts/bench_summary.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
       accept: script invokes `bench_full_pipeline.py`, `bench_shape.py`, `bench_palette.py`, `bench_mem.py`, `bench_fleet.py` via subprocess (each with `--iterations 2 --limit 2` where applicable), captures their TOTAL row, prints an aggregate fixed-width table; exits 0; CHANGELOG bullet
@@ -69,6 +64,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-list-greeble-types: add `--list-greeble-types` flag — prints every `GreebleType` enum value, exits 0
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-greeble-types` prints one greeble type per line in enum-declaration order, exits 0; tested; CHANGELOG bullet
+      notes: shipped 2026-04-29; new `args.list_greeble_types` short-circuit handler in `cli.main` placed directly after the `--list-shape-styles` handler — it iterates `GreebleType` (declaration order is the StrEnum's natural iteration order, deterministic and stable) and emits each `.value` on its own line via the existing `_emit(args, ...)` helper so the `--quiet` carve-out keeps working without a special case (suppresses stdout same as the other `--list-*` flags); deliberately no group header / indent prefix (only one enum to emit, so the indent-by-two grouping `--list-shape-styles` uses would be noise) — output is the bare value list suitable for piping straight into another tool; existing `--list-styles` / `--list-shape-styles` behavior unchanged (the new flag short-circuits before either handler so adding it doesn't perturb the grouped paths); new `tests/test_cli.py::test_cli_list_greeble_types` covers exit 0 + every member's `.value` present + deterministic enum-declaration order via direct `[line for line in lines if line] == [g.value for g in GreebleType]` list comparison (no hard-coded string list, so the test doesn't drift when a new greeble type is added) + asserts none of the `--list-styles` group headers leak into the output; full `pytest -q` (1974 tests) + `ruff check .` both green
 
 - [x] feat-tests-cli-help-snapshot: add a snapshot-style test pinning `--help` output references every public flag
       scope: `tests/test_cli.py`
