@@ -1,0 +1,26 @@
+name: windswept_hills
+description: Windswept hills surveyor. Stone hull, gravel dark accent, spruce-plank wings, lantern engine glow, andesite greebles — Minecraft 1.18 windswept hills mountains variant.
+
+blocks:
+  HULL:          minecraft:stone
+  HULL_DARK:     minecraft:gravel
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:smooth_stone
+  ENGINE_GLOW:   minecraft:lantern
+  COCKPIT_GLASS: minecraft:glass
+  WING:          minecraft:spruce_planks
+  GREEBLE:       minecraft:andesite
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:stone_bricks
+
+preview_colors:
+  HULL:          "#a0a0a0"
+  HULL_DARK:     "#5e5448"
+  WINDOW:        "#90c8e8"
+  ENGINE:        "#b8b8b8"
+  ENGINE_GLOW:   "#f4c060"
+  COCKPIT_GLASS: "#d8e8f4"
+  WING:          "#7a5a3a"
+  GREEBLE:       "#888888"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#9c9c9c"

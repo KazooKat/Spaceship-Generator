@@ -18,20 +18,10 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-bench-mem: add `scripts/bench_mem.py` peak-memory micro-bench for `generate()`
-      scope: `scripts/bench_mem.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
-      accept: script runs N iterations of `generate()`, reports peak RSS in MB (via `tracemalloc.peak`) per iteration + mean/p95; exits 0; smoke test runs N=2; CHANGELOG bullet
-      notes: `tracemalloc` only (stdlib); complements `bench_shape.py` (time) and `bench_full_pipeline.py` (time end-to-end) by adding the memory dimension; foundation for `shapes-A`..`shapes-D` mem-budget work
-
 - [ ] feat-tests-property-palette-stability: add property test asserting `generate()` succeeds for every (palette × small-seed-grid) pair
       scope: `tests/test_properties.py` (extend or new test)
       accept: Hypothesis test (or simple parametrize) iterates every palette with 5-10 distinct seeds, asserts `generate()` exits cleanly + writes a non-empty `.litematic`; failures should name the offending palette + seed; CHANGELOG bullet
       notes: would have caught `bug-weapon-count-decreases-cells` style regressions one tick earlier; current Hypothesis tests focus on shape params + weapon_count, not palette coverage
-
-- [ ] feat-palettes-biome-pack-2026-04-28b: add 2 more biome palettes (windswept_hills, ice_spikes)
-      scope: `palettes/windswept_hills.yaml`, `palettes/ice_spikes.yaml`
-      accept: both pass `test_palette_lint`; loadable via `--palette NAME`; CHANGELOG bullet
-      notes: windswept_hills = stone hull, gravel accent, lantern glow (1.18 mountains variant); ice_spikes = packed-ice hull, blue-ice accent, sea-lantern glow (rare cold biome); rounds palette count to 51
 
 - [ ] feat-cli-stdout-litematic: support `--output -` to write `.litematic` bytes to stdout instead of a file
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
@@ -74,6 +64,16 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palettes-biome-pack-2026-04-28b: add 2 more biome palettes (windswept_hills, ice_spikes)
+      scope: `palettes/windswept_hills.yaml`, `palettes/ice_spikes.yaml`, `docs/palettes.md`, `docs/CHANGELOG.md`
+      accept: both pass `test_palette_lint`; loadable via `--palette NAME`; CHANGELOG bullet
+      notes: shipped 2026-04-29; windswept_hills = stone hull / gravel HULL_DARK accent / spruce-plank wings / lantern engine glow / andesite greebles (1.18 mountains windswept variant); ice_spikes = packed-ice hull / blue-ice HULL_DARK accent / snow-block wings / sea-lantern engine glow / prismarine-brick engines / dripstone-block greebles (rare cold biome); both pass strict lint (WINDOW luminance, HULL/HULL_DARK contrast, ENGINE_GLOW emissive); rounds palette count to 51; catalog rows added to `docs/palettes.md` in alphabetical order
+
+- [x] feat-bench-mem: add `scripts/bench_mem.py` peak-memory micro-bench for `generate()`
+      scope: `scripts/bench_mem.py` (new), `tests/test_bench_smoke.py` (extend with N=2 smoke)
+      accept: script runs N iterations of `generate()`, reports peak RSS in MB (via `tracemalloc.peak`) per iteration + mean/p95; exits 0; smoke test runs N=2; CHANGELOG bullet
+      notes: shipped 2026-04-29 (this commit); `tracemalloc` only (stdlib) — no `psutil`/`pympler`; mirrors `bench_full_pipeline.py` schema (argparse `--iterations N` default 5, `--seed`, `--palette`; fixed-width `pipeline / TOTAL` table); reports mean/p95/max MB (peak Python heap, not RSS — sufficient to spot regressions cross-OS); `tracemalloc.reset_peak()` between iterations isolates per-iter peak; `tests/test_bench_smoke.py::test_bench_mem_runs_with_two_iterations` smoke test added; foundation for `shapes-A`..`shapes-D` mem-budget work
 
 - [x] feat-cli-version: add `--version` / `-V` flag printing package version + exits 0
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`

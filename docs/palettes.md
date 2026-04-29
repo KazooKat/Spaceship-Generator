@@ -1,6 +1,6 @@
 # Palettes
 
-All 49 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
+All 51 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
 
 | Palette | Description |
 |---|---|
@@ -29,6 +29,7 @@ All 49 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `frozen_tundra` | Arctic tundra runner. Calcite-and-dripstone hull, packed-ice engines, soul-lantern cold-blue glow, snow-panel wings. |
 | `gold_imperial` | Imperial flagship. Gold plating, blackstone accents, froglight running lights. |
 | `ice_crystal` | Glacial cruiser. Blue-ice hull with packed-ice highlights and sea-lantern glow. |
+| `ice_spikes` | Ice spikes glacier-runner. Packed-ice hull, blue-ice dark accent, snow-block wings, sea-lantern engine glow, prismarine-brick engines — rare Minecraft ice spikes cold biome. |
 | `jungle_canopy` | Jungle canopy runner. Jungle log hull, mossy stone underframe, ochre froglight engine wash. |
 | `lava_forge` | Volcanic dreadnought. Blackstone hull with magma veins, shroomlight thruster glow. |
 | `lush_caves` | Lush caves bio-cruiser. Moss-block hull, flowering-azalea-leaves accent, verdant-froglight engine glow, glow-lichen running lights — Minecraft 1.18 lush caves biome. |
@@ -52,6 +53,7 @@ All 49 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `swamp_bog` | Swamp bog hauler. Mangrove hull, mud underframe, verdant froglight engine glow. |
 | `void_walker` | Deep-space surveyor. Obsidian hull, blue ice viewports, amethyst glow — built for the void. |
 | `volcanic_ash` | Post-eruption volcanic surveyor. Tuff hull, smooth-basalt panels, glowstone ember glow through an ashen atmosphere. |
+| `windswept_hills` | Windswept hills surveyor. Stone hull, gravel dark accent, spruce-plank wings, lantern engine glow, andesite greebles — Minecraft 1.18 windswept hills mountains variant. |
 | `wooden_frigate` | Rustic wooden frigate. Oak + dark-oak hull, iron hardpoints, lantern lights. |
 
 Run `spaceship-generator --list-palettes` to see this list from the CLI, or `spaceship-generator --palette-info NAME` for role → block ID and hex preview color details for any single palette.

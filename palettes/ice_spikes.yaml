@@ -1,0 +1,26 @@
+name: ice_spikes
+description: Ice spikes glacier-runner. Packed-ice hull, blue-ice dark accent, snow-block wings, sea-lantern engine glow, prismarine-brick engines — rare Minecraft ice spikes cold biome.
+
+blocks:
+  HULL:          minecraft:packed_ice
+  HULL_DARK:     minecraft:blue_ice
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:prismarine_bricks
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:white_stained_glass
+  WING:          minecraft:snow_block
+  GREEBLE:       minecraft:dripstone_block
+  LIGHT:         minecraft:sea_lantern
+  INTERIOR:      minecraft:smooth_quartz
+
+preview_colors:
+  HULL:          "#c0e8f8"
+  HULL_DARK:     "#4090c0"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#5a7a78"
+  ENGINE_GLOW:   "#eaf4ff"
+  COCKPIT_GLASS: "#eaf4ff"
+  WING:          "#f4fbff"
+  GREEBLE:       "#9c8878"
+  LIGHT:         "#c8e8ff"
+  INTERIOR:      "#eae6d8"
