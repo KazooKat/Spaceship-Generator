@@ -865,3 +865,121 @@ def test_cli_output_dash_conflicts_with_fleet_count(tmp_path: Path, capsys):
     err = capsys.readouterr().err
     assert "--output -" in err
     assert "--fleet-count" in err
+
+
+# ---------------------------------------------------------------------------
+# --stats-json
+# ---------------------------------------------------------------------------
+
+_STATS_JSON_REQUIRED_KEYS = {
+    "seed",
+    "palette",
+    "shape",
+    "total_blocks",
+    "density",
+    "total_cells",
+    "roles",
+}
+
+
+def test_cli_stats_json_emits_parseable_json(tmp_path: Path, capsys):
+    """``--stats-json`` prints exactly one JSON document with the expected
+    keys (block counts, dims, role tallies) and exits 0."""
+    rc = main(
+        ["--stats-json", "--seed", "1001", "--out", str(tmp_path)] + _SMALL_ARGS
+    )
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    json_lines = [
+        line for line in captured.out.splitlines() if line.strip().startswith("{")
+    ]
+    assert len(json_lines) == 1, (
+        f"Expected exactly 1 JSON line for --stats-json, got "
+        f"{len(json_lines)}:\n{captured.out}"
+    )
+
+    obj = json.loads(json_lines[0])
+    missing = _STATS_JSON_REQUIRED_KEYS - obj.keys()
+    assert not missing, f"Missing keys {missing} in --stats-json output: {obj}"
+
+    # Spot-check every field's shape so a regression in _compute_stats
+    # surfaces here rather than via parsers downstream.
+    assert obj["seed"] == 1001
+    assert isinstance(obj["palette"], str) and obj["palette"]
+    assert isinstance(obj["shape"], list) and len(obj["shape"]) == 3
+    assert all(isinstance(d, int) and d > 0 for d in obj["shape"])
+    assert isinstance(obj["total_blocks"], int) and obj["total_blocks"] > 0
+    assert isinstance(obj["total_cells"], int) and obj["total_cells"] > 0
+    assert obj["total_blocks"] <= obj["total_cells"]
+    assert isinstance(obj["density"], float) and 0.0 < obj["density"] < 1.0
+    assert isinstance(obj["roles"], list) and obj["roles"]
+    # Every role entry has the role name + count + pct, and counts are
+    # sorted descending (mirrors --stats human-format ordering).
+    role_names = {r["role"] for r in obj["roles"]}
+    assert "EMPTY" not in role_names, "EMPTY must be skipped from roles list"
+    counts = [r["count"] for r in obj["roles"]]
+    assert counts == sorted(counts, reverse=True), (
+        f"roles must be sorted by count desc, got {counts}"
+    )
+    assert sum(counts) == obj["total_blocks"]
+
+
+def test_cli_stats_json_not_silenced_by_quiet(tmp_path: Path, capsys):
+    """``--quiet --stats-json`` must still emit the JSON document on stdout
+    (carve-out parallels ``--quiet --output-json``)."""
+    rc = main(
+        [
+            "--quiet",
+            "--stats-json",
+            "--seed",
+            "1002",
+            "--out",
+            str(tmp_path),
+        ]
+        + _SMALL_ARGS
+    )
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    # Under --quiet, the only thing on stdout should be the JSON document —
+    # no Seed:/Palette:/Wrote: success lines, no "Role distribution:" header.
+    json_lines = [
+        line for line in captured.out.splitlines() if line.strip().startswith("{")
+    ]
+    assert len(json_lines) == 1, (
+        f"Expected exactly 1 JSON line under --quiet --stats-json, got "
+        f"{len(json_lines)}:\n{captured.out}"
+    )
+    assert "Role distribution:" not in captured.out
+    assert "Seed:" not in captured.out
+
+    obj = json.loads(json_lines[0])
+    assert obj["seed"] == 1002
+    assert _STATS_JSON_REQUIRED_KEYS <= obj.keys()
+
+
+def test_cli_stats_json_conflicts_with_stats(tmp_path: Path, capsys):
+    """Passing both ``--stats`` and ``--stats-json`` exits non-zero via
+    ``parser.error`` with a clear stderr message (mirrors the
+    ``--no-greebles`` vs ``--greeble-density`` pattern)."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "--stats",
+                "--stats-json",
+                "--seed",
+                "1",
+                "--out",
+                str(tmp_path),
+            ]
+            + _SMALL_ARGS
+        )
+    # argparse's parser.error() exits with status 2.
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--stats" in err
+    assert "--stats-json" in err
+    assert "mutually exclusive" in err

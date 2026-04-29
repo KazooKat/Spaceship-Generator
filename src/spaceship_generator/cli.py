@@ -505,6 +505,13 @@ def build_parser() -> argparse.ArgumentParser:
                         "block count and grid density. Useful for verifying "
                         "palette + style choices produced the desired "
                         "material distribution.")
+    p.add_argument("--stats-json", action="store_true",
+                   help="Machine-readable variant of --stats: prints a "
+                        "single JSON document (block counts, dims, role "
+                        "tallies) to stdout instead of the human-formatted "
+                        "table. Mutually exclusive with --stats. Like "
+                        "--output-json, this is NOT silenced by --quiet so "
+                        "scripts can pair --quiet --stats-json.")
     p.add_argument("--output-json", action="store_true",
                    help="Print a JSON summary of each generated ship to stdout.")
     p.add_argument("--export-manifest", action="store_true",
@@ -867,26 +874,34 @@ def _print_success(result: GenerationResult, *, elapsed: float | None, args: arg
         print(f"Elapsed: {elapsed:.3f}s")
 
 
-def _print_stats(result: GenerationResult) -> None:
-    """Print a role → cell-count table for ``result.role_grid``.
+def _compute_stats(result: GenerationResult) -> dict:
+    """Compute the stats data structure shared by ``--stats`` and ``--stats-json``.
 
-    Format::
+    Returns a dict with the same numbers both code paths consume:
 
-        Role distribution:
-          HULL: 1234 (45.2%)
-          WINDOW: 321 (11.8%)
-          ...
-        Total blocks: 2728
-        Density: 0.284
+        {
+            "seed": int,
+            "palette": str,
+            "shape": [W, H, L],
+            "total_blocks": int,         # non-EMPTY cells
+            "density": float,            # filled / total_cells
+            "total_cells": int,          # W * H * L
+            "roles": [
+                {"role": "HULL", "count": 1234, "pct": 45.2},
+                ...                      # sorted by count desc, EMPTY skipped
+            ],
+        }
 
-    - EMPTY is skipped (it's the dominant role and makes the table noisy).
+    - EMPTY is skipped from ``roles`` (it dominates the grid and makes the
+      table noisy). Its contribution still surfaces via the gap between
+      ``total_blocks`` and ``total_cells``.
     - Percentages are against non-EMPTY blocks (so they sum to ~100% modulo
       rounding).
     - Density is ``filled / total_cells`` in the **full** grid (EMPTY
       included in the denominator) so it measures how "packed" the ship is
       in its bounding box.
-
-    Always writes to stdout; callers gate on ``--stats`` before invoking.
+    - Unknown role ids (e.g. a custom weapon role beyond the enum) surface as
+      ``ROLE_<int>`` rather than crashing.
     """
     import numpy as np
 
@@ -911,18 +926,63 @@ def _print_stats(result: GenerationResult) -> None:
     ]
     non_empty.sort(key=lambda rc: (-rc[1], rc[0]))
 
-    print("Role distribution:")
+    roles_list = []
     for role_int, c in non_empty:
         try:
             name = Role(role_int).name
         except ValueError:
-            # Unknown role id (e.g. a custom weapon role beyond the enum):
-            # surface its numeric value rather than crashing.
             name = f"ROLE_{role_int}"
         pct = (c / filled * 100.0) if filled > 0 else 0.0
-        print(f"  {name}: {c} ({pct:.1f}%)")
-    print(f"Total blocks: {filled}")
-    print(f"Density: {density:.3f}")
+        roles_list.append({"role": name, "count": int(c), "pct": round(pct, 1)})
+
+    return {
+        "seed": result.seed,
+        "palette": result.palette_name,
+        "shape": list(result.shape),
+        "total_blocks": filled,
+        "density": round(density, 3),
+        "total_cells": total_cells,
+        "roles": roles_list,
+    }
+
+
+def _print_stats(result: GenerationResult) -> None:
+    """Print a role → cell-count table for ``result.role_grid``.
+
+    Format::
+
+        Role distribution:
+          HULL: 1234 (45.2%)
+          WINDOW: 321 (11.8%)
+          ...
+        Total blocks: 2728
+        Density: 0.284
+
+    Reads the same data structure as :func:`_print_stats_json` (via
+    :func:`_compute_stats`) so the human and machine paths can never drift.
+    Always writes to stdout; callers gate on ``--stats`` before invoking.
+    """
+    stats = _compute_stats(result)
+    print("Role distribution:")
+    for entry in stats["roles"]:
+        print(f"  {entry['role']}: {entry['count']} ({entry['pct']:.1f}%)")
+    print(f"Total blocks: {stats['total_blocks']}")
+    print(f"Density: {stats['density']:.3f}")
+
+
+def _print_stats_json(result: GenerationResult) -> None:
+    """Print a single JSON document of ``result``'s role tallies to stdout.
+
+    Machine-readable variant of :func:`_print_stats` — same data structure,
+    via :func:`_compute_stats`, so the two outputs can never drift. One
+    ``json.dumps(...)`` per call; in bulk runs (``--seeds`` / ``--repeat``
+    / ``--fleet-count``) the result is one JSON document per ship,
+    newline-delimited (NDJSON), mirroring how ``--output-json`` behaves.
+    Always writes to stdout; callers gate on ``--stats-json`` before invoking.
+    """
+    import json
+
+    print(json.dumps(_compute_stats(result)), file=sys.stdout)
 
 
 def _print_json_summary(result: GenerationResult) -> None:
@@ -1012,6 +1072,13 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--no-weapons and --weapon-count are mutually exclusive")
     if args.no_weapons:
         args.weapon_count = 0
+
+    # ``--stats`` and ``--stats-json`` produce the same data in two formats;
+    # passing both is ambiguous (which one wins?), so reject up front via
+    # ``parser.error`` (exit 2 + stderr message) — mirrors the
+    # ``--no-greebles`` vs ``--greeble-density`` mutual-exclusion pattern.
+    if getattr(args, "stats", False) and getattr(args, "stats_json", False):
+        parser.error("--stats and --stats-json are mutually exclusive")
 
     if args.verbose and args.quiet:
         print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
@@ -1389,6 +1456,8 @@ def main(argv: list[str] | None = None) -> int:
             _print_success(result, elapsed=elapsed, args=args)
             if args.stats and not args.quiet:
                 _print_stats(result)
+            if getattr(args, "stats_json", False):
+                _print_stats_json(result)
             if args.output_json:
                 _print_json_summary(result)
             if args.export_manifest:
@@ -1484,6 +1553,8 @@ def main(argv: list[str] | None = None) -> int:
         _print_success(result, elapsed=elapsed, args=args)
         if args.stats and not args.quiet:
             _print_stats(result)
+        if getattr(args, "stats_json", False):
+            _print_stats_json(result)
         if args.output_json:
             _print_json_summary(result)
         if args.export_manifest:
