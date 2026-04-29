@@ -38,11 +38,6 @@ for one release cycle, then pruned during release prep.
       accept: `--stats-json` prints a single JSON document (block counts, dims, role tallies) to stdout instead of human-formatted; exits 0 after writing; mutually compatible with `--quiet` (output-json carve-out behavior); tested; CHANGELOG bullet
       notes: parallels `--output-json` (already exempt from `--quiet`) but pinned to the `--stats` summary surface; avoids parsers having to scrape the human format
 
-- [ ] feat-tests-property-palette-stability: add property test asserting `generate()` succeeds for every (palette × small-seed-grid) pair
-      scope: `tests/test_properties.py` (extend or new test)
-      accept: Hypothesis test (or simple parametrize) iterates every palette with 5-10 distinct seeds, asserts `generate()` exits cleanly + writes a non-empty `.litematic`; failures should name the offending palette + seed; CHANGELOG bullet
-      notes: would have caught `bug-weapon-count-decreases-cells` style regressions one tick earlier; current Hypothesis tests focus on shape params + weapon_count, not palette coverage
-
 - [ ] feat-cli-stdout-litematic: support `--output -` to write `.litematic` bytes to stdout instead of a file
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
       accept: `--output - --seed 1 > ship.litematic` produces a valid litematic via pipe; exits 0; mutually exclusive with `--repeat`/`--fleet-count` (single-ship only); CHANGELOG bullet
@@ -84,6 +79,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-property-palette-stability: add property test asserting `generate()` succeeds for every (palette × small-seed-grid) pair
+      scope: `tests/test_properties.py` (extend or new test)
+      accept: Hypothesis test (or simple parametrize) iterates every palette with 5-10 distinct seeds, asserts `generate()` exits cleanly + writes a non-empty `.litematic`; failures should name the offending palette + seed; CHANGELOG bullet
+      notes: shipped 2026-04-29; chose `pytest.mark.parametrize` over Hypothesis (deterministic, faster, parametrize IDs self-name failures as `[palette-seed]`); palette list discovered dynamically via `palettes_dir().glob('*.yaml')` (mirrors `tests/test_palette_lint.py::test_all_shipped_palettes_have_zero_errors` style — no hard-coded names, so adding a YAML auto-widens the matrix); seed grid `[0, 1, 7, 42, 99]` (5 seeds) × 51 palettes = 255 generate() calls in ~2.2 s on the dev box at `length=16/width=8/height=6` (well under the 60 s budget — no `slow` marker needed, and pyproject.toml only declares `ui` anyway); test asserts `litematic_path.exists()`, `os.path.getsize(...) > 0`, `block_count > 0` with explicit `pytest.fail(f"...palette={...} seed={...}")` messages on the missing/zero-byte paths so failures are unambiguous in either the node ID or the message; fills the gap that would have caught `bug-weapon-count-decreases-cells` style palette-driven regressions one tick earlier (current Hypothesis tests focus on shape params + weapon_count, not palette coverage)
 
 - [x] feat-palettes-biome-pack-2026-04-28b: add 2 more biome palettes (windswept_hills, ice_spikes)
       scope: `palettes/windswept_hills.yaml`, `palettes/ice_spikes.yaml`, `docs/palettes.md`, `docs/CHANGELOG.md`

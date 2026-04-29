@@ -18,6 +18,8 @@ connected-components walk for larger grids.
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import pytest
 from hypothesis import HealthCheck, given, settings
@@ -541,6 +543,56 @@ def test_property_structure_x_hull_cross_product_no_crash(seed, structure, hull)
     # All cells must still be legal Role values.
     valid = {int(r) for r in Role}
     assert {int(v) for v in np.unique(grid).tolist()}.issubset(valid)
+
+
+# ----------- palette × seed-grid stability (every palette, small seed set) -----------
+#
+# Discover palettes dynamically (matches ``tests/test_palette_lint.py`` style)
+# so adding a new YAML to ``palettes/`` automatically widens the matrix.
+# The seed grid is fixed (deterministic + fast); five seeds × ~50 palettes is
+# ~250 generate() calls, which runs in well under 60 s on the dev box (~20 ms
+# per call at length=16/width=8/height=6). pytest's parametrize IDs make any
+# failure self-naming as ``[palette-seed]``.
+
+_PALETTE_NAMES = sorted(p.stem for p in palettes_dir().glob("*.yaml"))
+_PALETTE_STABILITY_SEEDS = [0, 1, 7, 42, 99]
+
+
+@pytest.mark.parametrize("palette_name", _PALETTE_NAMES)
+@pytest.mark.parametrize("seed", _PALETTE_STABILITY_SEEDS)
+def test_property_palette_seed_grid_generates_non_empty_litematic(
+    tmp_path, palette_name, seed
+):
+    """Every shipped palette × small seed grid → ``generate()`` writes a non-empty file.
+
+    Catches palette-driven regressions (missing role, malformed block id,
+    pipeline crash on a specific palette × seed combo) one tick earlier
+    than a pure shape-property test would. Failure messages name both the
+    offending palette and seed via the parametrize IDs, plus an explicit
+    ``pytest.fail`` message if the file is missing or zero-bytes.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        palette=palette_name,
+        shape_params=params,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for palette={palette_name} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for palette={palette_name} seed={seed}"
+        )
+    # Sanity: block_count should also be > 0 — a non-empty file with no
+    # blocks would imply a corrupted palette → litematic mapping.
+    assert res.block_count > 0, (
+        f"palette={palette_name} seed={seed} produced 0 blocks"
+    )
 
 
 @pytest.mark.parametrize(
