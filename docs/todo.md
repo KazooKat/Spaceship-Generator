@@ -18,6 +18,26 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-tests-property-greeble-types: add property test asserting `generate()` succeeds for every (`GreebleType` × seed) pair via `--greeble-style` plumbing
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each `GreebleType` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending greeble-type + seed; CHANGELOG bullet
+      notes: companion to `feat-tests-property-shape-styles` (closed cycle 3); pins the `--greeble-style TYPE` plumbing per-type
+
+- [ ] feat-palettes-biome-pack-2026-04-29: add 2 more biome palettes (e.g. `desert_temple` + `nether_wastes`)
+      scope: `palettes/desert_temple.yaml`, `palettes/nether_wastes.yaml`, `docs/palettes.md`
+      accept: both pass `test_palette_lint`; loadable via `--palette NAME`; alphabetical row insert in `docs/palettes.md`; CHANGELOG bullet
+      notes: rounds palette count toward 53; desert_temple = sandstone hull / chiseled-sandstone accent / orange-stained-glass windows; nether_wastes = netherrack hull / nether-bricks accent / glowstone glow
+
+- [ ] feat-bench-fleet: add `scripts/bench_fleet.py` micro-bench timing fleet generation across N ships
+      scope: `scripts/bench_fleet.py` (new), `tests/test_bench_smoke.py` (extend)
+      accept: script generates a fleet of N ships into a tmpdir, prints fixed-width table with per-ship mean/p95 ms + total fleet ms; exits 0; smoke test runs --fleet-count 2 --iterations 2; CHANGELOG bullet
+      notes: complements `bench_full_pipeline.py` (one ship) and `bench_palette.py` (per-palette one-ship); covers the fleet path which goes through different code (--fleet-count + manifest aggregation)
+
+- [ ] feat-docs-quickstart: add `docs/quickstart.md` — 5-minute getting-started guide
+      scope: `docs/quickstart.md` (new), one-line link from README near top
+      accept: file walks through install → first ship → palette swap → preset use → web UI launch in ≤80 lines; sourced from existing CLI flags and README content; CHANGELOG bullet
+      notes: fills gap between README intro paragraph and the dense `docs/cli.md` reference; new-user friendly entry point
+
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
 `HullStyle`. The items below extend the shape pipeline so a single ship
