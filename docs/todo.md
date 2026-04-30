@@ -33,11 +33,6 @@ for one release cycle, then pruned during release prep.
       accept: route returns `{weapon_types:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
       notes: narrower JSON sibling of `/api/shape-styles`; companion to `feat-api-greeble-types`
 
-- [ ] feat-palettes-biome-pack-2026-04-30: add 2 more biome palettes (`deep_dark`, `jagged_peaks`)
-      scope: `palettes/deep_dark.yaml`, `palettes/jagged_peaks.yaml`, `docs/palettes.md`, `docs/CHANGELOG.md`
-      accept: both pass `test_palette_lint --strict`; loadable via `--palette NAME`; alphabetical row insert in `docs/palettes.md`; CHANGELOG bullet
-      notes: rounds palette count to 57; `deep_dark` = sculk biome (sculk + deepslate + soul-flame ENGINE_GLOW); `jagged_peaks` = snowy mountain peaks (snow-block hull + ice + powder-snow theming); each role must map to a distinct block id; HULL/HULL_DARK contrast ≥ 1.5; WINDOW luminance ≥ 0.35; ENGINE_GLOW emissive
-
 - [ ] feat-cli-list-presets-json: add `--list-presets-json` flag — machine-readable variant of `--list-presets`
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
       accept: `--list-presets-json` emits a single JSON array of `{name, description, ...}` entries to stdout in alphabetical order, exits 0; not silenced by `--quiet`; mutually exclusive with `--list-presets`; tested; CHANGELOG bullet
@@ -84,6 +79,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palettes-biome-pack-2026-04-30: add 2 more biome palettes (`deep_dark`, `jagged_peaks`)
+      scope: `palettes/deep_dark.yaml`, `palettes/jagged_peaks.yaml`, `docs/palettes.md`, `docs/CHANGELOG.md`
+      accept: both pass `test_palette_lint --strict`; loadable via `--palette NAME`; alphabetical row insert in `docs/palettes.md`; CHANGELOG bullet
+      notes: shipped 2026-04-30; rounds palette count to 57; `deep_dark` = Minecraft 1.19 deep dark sculk biome (sculk hull / deepslate HULL_DARK accent / cyan-stained-glass windows / deepslate-tile engines / soul-lantern ENGINE_GLOW (chose `soul_lantern` because `sculk_catalyst` is not in the strict-lint known-emissive list — `ancient_city` already ships with that warning under strict, so `deep_dark` deliberately diverges to stay strict-clean) / tinted-glass cockpit / cobbled-deepslate wings / chiseled-deepslate greebles / soul-torch running lights (distinct from soul-lantern ENGINE_GLOW) / polished-deepslate interior); `jagged_peaks` = Minecraft 1.18 snowy mountain peaks biome (snow-block hull / blue-ice HULL_DARK accent (chose `blue_ice` over `packed_ice` because canonical packed-ice preview hex is too close to snow-block to clear the 1.5 contrast floor — preview hex `#5a90b8` gives Y≈0.520, contrast vs HULL Y≈0.97 ≈ 1.79 well above the 1.5 floor) / light-blue-stained-glass windows (preview hex `#a8d4f0`, Y≈0.78 well above the 0.35 floor) / polished-diorite engines / sea-lantern ENGINE_GLOW (known-emissive list) / glass cockpit / powder-snow wings / stone greebles / lantern running lights (distinct from sea-lantern ENGINE_GLOW so no duplicate-mapping warning) / gravel interior); every role maps to a distinct block id in both palettes so no duplicate-role warnings; both `--strict` lint clean (WINDOW luminance ≥ 0.35, HULL/HULL_DARK contrast ≥ 1.5, ENGINE_GLOW emissive) — verified via `.venv/Scripts/python scripts/palette_lint.py --file palettes/deep_dark.yaml --strict` and same for `jagged_peaks.yaml` (both print `OK`); both load via `--palette deep_dark` / `--palette jagged_peaks` (verified via end-to-end `--seed 0 --output-json` round-trip); catalog rows inserted alphabetically in `docs/palettes.md` (`deep_dark` between `dark_forest`/`deepslate_drone`, `jagged_peaks` between `ice_spikes`/`jungle_canopy`); header count bumped from 55 to 57; full `pytest -q` + `ruff check .` both green
 
 - [x] feat-palettes-biome-pack-2026-04-29b: add 2 more biome palettes (`swamp` + `dark_forest`)
       scope: `palettes/swamp.yaml`, `palettes/dark_forest.yaml`, `docs/palettes.md`, `docs/CHANGELOG.md`

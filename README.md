@@ -6,7 +6,7 @@ Procedurally generate Minecraft spaceships and export them as Litematica schemat
 
 Pick a seed, pick a block palette, get a ship you can paste into your world with the [Litematica mod](https://www.curseforge.com/minecraft/mc-mods/litematica).
 
-New here? See [docs/quickstart.md](docs/quickstart.md) for a 5-minute getting-started guide.
+New here? See [docs/quickstart.md](docs/quickstart.md) for a 5-minute getting-started guide. Hit an error? See [docs/troubleshooting.md](docs/troubleshooting.md) for common failures and one-line fixes.
 
 ## Pipeline
 
