@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-cli-list-weapon-types: add `--list-weapon-types` flag — prints every `WeaponType` enum value, exits 0
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-weapon-types` prints one weapon type per line in enum-declaration order, exits 0; tested; CHANGELOG bullet
+      notes: parallel to existing `--list-greeble-types` flag; short-circuit handler placed alongside the other `--list-*` handlers; respects `--quiet` carve-out via shared `_emit` helper
+
+- [ ] feat-api-greeble-types: add `GET /api/greeble-types` JSON endpoint mirroring `--list-greeble-types`
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
+      accept: route returns `{greeble_types:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: narrower JSON sibling of `/api/shape-styles`; new `GreebleTypes` schema in `_OPENAPI_COMPONENTS` + path entry in `_OPENAPI_PATHS`
+
+- [ ] feat-api-weapon-types: add `GET /api/weapon-types` JSON endpoint mirroring weapon enum discovery
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
+      accept: route returns `{weapon_types:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: narrower JSON sibling of `/api/shape-styles`; companion to `feat-api-greeble-types`
+
+- [ ] feat-palettes-biome-pack-2026-04-30: add 2 more biome palettes (`deep_dark`, `jagged_peaks`)
+      scope: `palettes/deep_dark.yaml`, `palettes/jagged_peaks.yaml`, `docs/palettes.md`, `docs/CHANGELOG.md`
+      accept: both pass `test_palette_lint --strict`; loadable via `--palette NAME`; alphabetical row insert in `docs/palettes.md`; CHANGELOG bullet
+      notes: rounds palette count to 57; `deep_dark` = sculk biome (sculk + deepslate + soul-flame ENGINE_GLOW); `jagged_peaks` = snowy mountain peaks (snow-block hull + ice + powder-snow theming); each role must map to a distinct block id; HULL/HULL_DARK contrast ≥ 1.5; WINDOW luminance ≥ 0.35; ENGINE_GLOW emissive
+
+- [ ] feat-cli-list-presets-json: add `--list-presets-json` flag — machine-readable variant of `--list-presets`
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-presets-json` emits a single JSON array of `{name, description, ...}` entries to stdout in alphabetical order, exits 0; not silenced by `--quiet`; mutually exclusive with `--list-presets`; tested; CHANGELOG bullet
+      notes: parallels `--stats-json` carve-out (machine-readable variant exempt from `--quiet`); source from `SHIP_PRESETS` dict; one entry per `list_presets()` key
+
+- [ ] feat-docs-troubleshooting: add `docs/troubleshooting.md` covering common errors and fixes
+      scope: `docs/troubleshooting.md` (new), one-line link from README
+      accept: file documents at least 5 common failure modes (palette not found, invalid hull style, weapon-count mutex collision, web rate-limit hit, missing optional deps) with one-line cause + one-line fix each; CHANGELOG bullet; one-line README link
+      notes: companion to `docs/quickstart.md`; reference `--list-palettes`, `--list-shape-styles`, `--list-greeble-types` for discovery; sourced from existing argparse error messages and known env tunables (`SHIPFORGE_RATE_LIMIT` etc.)
+
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
 `HullStyle`. The items below extend the shape pipeline so a single ship
