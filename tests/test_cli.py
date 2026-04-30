@@ -713,6 +713,47 @@ def test_cli_list_greeble_types(capsys):
 
 
 # ---------------------------------------------------------------------------
+# --list-weapon-types
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_weapon_types(capsys):
+    """``--list-weapon-types`` prints every ``WeaponType`` value on its
+    own line in enum-declaration order, exit 0.
+
+    Membership is asserted via enum iteration (no hard-coded string list)
+    so the test does not drift when a new weapon type is added. Narrower
+    sibling of ``--list-shape-styles`` — no group header/indent prefix
+    since there's only one enum to emit. Mirrors
+    ``test_cli_list_greeble_types`` exactly.
+    """
+    from spaceship_generator.weapon_styles import WeaponType
+
+    rc = main(["--list-weapon-types"])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+
+    # Every enum member appears on its own line, no prefix/indent.
+    for w in WeaponType:
+        assert w.value in lines, f"missing WeaponType.{w.name}"
+
+    # Deterministic enum-declaration order — the printed lines (modulo any
+    # blank trailers) match the enum's own iteration order exactly.
+    expected = [w.value for w in WeaponType]
+    assert [line for line in lines if line] == expected
+
+    # Narrower than --list-styles: hull/engine/wing/cockpit/weapon section
+    # headers must NOT appear.
+    assert "Hull styles:" not in lines
+    assert "Engine styles:" not in lines
+    assert "Wing styles:" not in lines
+    assert "Cockpit styles:" not in lines
+    assert "Weapon types:" not in lines
+
+
+# ---------------------------------------------------------------------------
 # --quiet / -q
 # ---------------------------------------------------------------------------
 
@@ -1078,4 +1119,71 @@ def test_cli_stats_json_conflicts_with_stats(tmp_path: Path, capsys):
     err = capsys.readouterr().err
     assert "--stats" in err
     assert "--stats-json" in err
+    assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --list-presets-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_presets_json_emits_valid_json(capsys):
+    """``--list-presets-json`` prints a single JSON array to stdout, one
+    entry per preset, with at minimum a ``name`` and ``description`` key."""
+    from spaceship_generator.presets import list_presets
+
+    rc = main(["--list-presets-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, list), f"expected JSON array, got {type(obj)}"
+    expected_names = list_presets()
+    assert len(obj) == len(expected_names), (
+        f"expected {len(expected_names)} entries, got {len(obj)}: {obj}"
+    )
+
+    # Order is alphabetical (matches list_presets() contract).
+    actual_names = [entry["name"] for entry in obj]
+    assert actual_names == expected_names, (
+        f"order drift: expected {expected_names}, got {actual_names}"
+    )
+
+    # Every entry has at minimum name + description and they're non-empty.
+    for entry in obj:
+        assert isinstance(entry, dict)
+        assert "name" in entry and isinstance(entry["name"], str) and entry["name"]
+        assert "description" in entry, f"missing 'description' in {entry}"
+        assert isinstance(entry["description"], str) and entry["description"]
+
+
+def test_cli_list_presets_json_quiet_still_emits(capsys):
+    """``--quiet --list-presets-json`` still produces the JSON document on
+    stdout (carve-out parallels ``--quiet --stats-json`` /
+    ``--quiet --output-json``)."""
+    from spaceship_generator.presets import list_presets
+
+    rc = main(["--quiet", "--list-presets-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, list)
+    assert len(obj) == len(list_presets())
+
+
+def test_cli_list_presets_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-presets`` and ``--list-presets-json`` exits
+    non-zero via ``parser.error`` with a clear stderr message (mirrors the
+    ``--stats`` vs ``--stats-json`` mutual-exclusion pattern)."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-presets", "--list-presets-json"])
+    # argparse's parser.error() exits with status 2.
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-presets" in err
+    assert "--list-presets-json" in err
     assert "mutually exclusive" in err
