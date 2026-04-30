@@ -290,6 +290,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--list-presets", action="store_true",
                    help="List available preset names and exit.")
+    p.add_argument("--list-presets-json", action="store_true",
+                   help="Machine-readable variant of --list-presets: prints "
+                        "a single JSON array of preset entries "
+                        "(name, description, plus every public preset field) "
+                        "to stdout, one document per call, in alphabetical "
+                        "order by name. Mutually exclusive with "
+                        "--list-presets. Like --stats-json and --output-json, "
+                        "this is NOT silenced by --quiet so scripts can pair "
+                        "--quiet --list-presets-json.")
 
     # Shape params
     p.add_argument("--length", type=int, default=40, help="Ship length in blocks (Z axis).")
@@ -1088,6 +1097,17 @@ def main(argv: list[str] | None = None) -> int:
     if getattr(args, "stats", False) and getattr(args, "stats_json", False):
         parser.error("--stats and --stats-json are mutually exclusive")
 
+    # ``--list-presets`` and ``--list-presets-json`` enumerate the same data
+    # in two formats; passing both is ambiguous, so reject up front via
+    # ``parser.error`` (exit 2 + stderr message) — mirrors the
+    # ``--stats`` vs ``--stats-json`` mutual-exclusion pattern above.
+    if getattr(args, "list_presets", False) and getattr(
+        args, "list_presets_json", False
+    ):
+        parser.error(
+            "--list-presets and --list-presets-json are mutually exclusive"
+        )
+
     if args.verbose and args.quiet:
         print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
         return 2
@@ -1331,6 +1351,44 @@ def main(argv: list[str] | None = None) -> int:
                 _emit(args, f"  {n} — {desc}")
             else:
                 _emit(args, f"  {n}")
+        return 0
+
+    if args.list_presets_json:
+        # Machine-readable variant of ``--list-presets``: one JSON array,
+        # one entry per preset, alphabetical by name (matches
+        # ``list_presets()``). Deliberately NOT routed through ``_emit`` so
+        # ``--quiet --list-presets-json`` still prints — same carve-out as
+        # ``--stats-json`` and ``--output-json``.
+        import json
+
+        if _presets is None:
+            # Defensive fallback parallels ``--list-presets``: still emit a
+            # valid JSON document (empty array) so callers parsing stdout
+            # don't fail, and surface the breadcrumb on stderr.
+            print(
+                f"presets unavailable: {_presets_error}",
+                file=sys.stderr,
+            )
+            print(json.dumps([]), file=sys.stdout)
+            return 0
+        entries: list[dict[str, object]] = []
+        for n in _presets.list_presets():
+            spec = _presets.SHIP_PRESETS[n]
+            entry: dict[str, object] = {"name": n}
+            # Skip private ``_*`` keys defensively — there are none today,
+            # but mirror the brief's "every public field" contract so a
+            # future internal field doesn't accidentally leak via stdout.
+            for k, v in spec.items():
+                if k.startswith("_"):
+                    continue
+                entry[k] = v
+            entries.append(entry)
+        # ``default=str`` collapses any non-trivially-JSON-serializable
+        # value (e.g. a future enum that isn't a StrEnum) to its ``str()``
+        # rather than raising — every preset field today is already a
+        # StrEnum / float / int / tuple-of-StrEnums so the cast is a
+        # belt-and-braces guard.
+        print(json.dumps(entries, default=str), file=sys.stdout)
         return 0
 
     if getattr(args, "palette_info", None):

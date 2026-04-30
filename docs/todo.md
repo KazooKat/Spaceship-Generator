@@ -18,20 +18,10 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-api-greeble-types: add `GET /api/greeble-types` JSON endpoint mirroring `--list-greeble-types`
-      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
-      accept: route returns `{greeble_types:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
-      notes: narrower JSON sibling of `/api/shape-styles`; new `GreebleTypes` schema in `_OPENAPI_COMPONENTS` + path entry in `_OPENAPI_PATHS`
-
 - [ ] feat-api-weapon-types: add `GET /api/weapon-types` JSON endpoint mirroring weapon enum discovery
       scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
       accept: route returns `{weapon_types:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
       notes: narrower JSON sibling of `/api/shape-styles`; companion to `feat-api-greeble-types`
-
-- [ ] feat-cli-list-presets-json: add `--list-presets-json` flag — machine-readable variant of `--list-presets`
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--list-presets-json` emits a single JSON array of `{name, description, ...}` entries to stdout in alphabetical order, exits 0; not silenced by `--quiet`; mutually exclusive with `--list-presets`; tested; CHANGELOG bullet
-      notes: parallels `--stats-json` carve-out (machine-readable variant exempt from `--quiet`); source from `SHIP_PRESETS` dict; one entry per `list_presets()` key
 
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
@@ -69,6 +59,16 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-list-presets-json: add `--list-presets-json` flag — machine-readable variant of `--list-presets`
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-presets-json` emits a single JSON array of `{name, description, ...}` entries to stdout in alphabetical order, exits 0; not silenced by `--quiet`; mutually exclusive with `--list-presets`; tested; CHANGELOG bullet
+      notes: shipped 2026-04-30; new `--list-presets-json` argparse flag emits one JSON array via `print(json.dumps(entries, default=str), file=sys.stdout)` directly (NOT through `_emit`) so the carve-out from `--quiet` matches `--stats-json` and `--output-json`; declared adjacent to `--list-presets` in `build_parser` so the help-text grouping reads as a sibling pair; entries are built by iterating `_presets.list_presets()` (alphabetical) and merging `{"name": n}` with every public top-level field of `SHIP_PRESETS[n]` (private `_*` keys defensively skipped — none today, but mirrors the brief's "every public field" contract so a future internal field doesn't leak via stdout); `json.dumps(..., default=str)` is a belt-and-braces guard for any future non-trivially-JSON-serializable value (every preset field today is already a StrEnum / float / int / tuple-of-StrEnums so `default=str` is never actually invoked, but cheap insurance); mutex check (`if list_presets and list_presets_json: parser.error(...)`) added next to the existing `--stats` vs `--stats-json` mutex so both share the parser.error → exit 2 + `mutually exclusive` stderr-message contract; defensive `_presets is None` partial-rollout fallback still emits a valid empty JSON array on stdout (so downstream parsers don't fault on a malformed payload) plus the `presets unavailable: <reason>` breadcrumb on stderr — parallels how `--list-presets` handles the same case but with empty `[]` instead of silent return; help-text documents the `--quiet` carve-out explicitly ("NOT silenced by --quiet so scripts can pair --quiet --list-presets-json"); three new tests in `tests/test_cli.py` cover (a) `test_cli_list_presets_json_emits_valid_json` — `json.loads(captured.out)` returns a `list` of length `len(list_presets())` with each entry carrying non-empty `name` + `description` keys, alphabetical order pinned by `actual_names == expected_names` direct comparison, (b) `test_cli_list_presets_json_quiet_still_emits` — `--quiet --list-presets-json` still produces a parseable JSON array of the right length, and (c) `test_cli_list_presets_and_json_mutually_exclusive` — passing both raises `SystemExit` with non-zero code and stderr containing both flag names + `mutually exclusive`; full `pytest -q` (2029 tests) + `ruff check .` both green
+
+- [x] feat-api-greeble-types: add `GET /api/greeble-types` JSON endpoint mirroring `--list-greeble-types`
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
+      accept: route returns `{greeble_types:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: shipped 2026-04-30; new `api_greeble_types` route in `src/spaceship_generator/web/blueprints/ship.py` mirrors the `api_shape_styles` sibling structurally — same `[t.value for t in GreebleType]` serialization (declaration order, deterministic across runs) so the two endpoints stay byte-identical with the matching slice of `/api/styles`; new `GreebleTypes` schema (with `required: ["greeble_types"]`) added to `_OPENAPI_COMPONENTS` and `/api/greeble-types` path added to `_OPENAPI_PATHS` so `/api/spec` enumerates the route and `tests/test_api_spec_validate.py` stays green; two new tests in `tests/test_api.py` cover (a) `test_api_greeble_types_ok` — 200 + `application/json` content-type + non-empty array + every `GreebleType.value` present + exact enum-declaration-order match, and (b) `test_api_greeble_types_listed_in_openapi_spec` — path appears in `/api/spec` with a `summary` and `200` response; one row added to the `/api/*` discovery table in `docs/web_ui.md` between `/api/shape-styles` and `/api/presets`; full `pytest -q` + `ruff check .` both green
 
 - [x] feat-cli-list-weapon-types: add `--list-weapon-types` flag — prints every `WeaponType` enum value, exits 0
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
