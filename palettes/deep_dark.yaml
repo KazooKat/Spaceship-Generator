@@ -1,0 +1,26 @@
+name: deep_dark
+description: Deep dark biome runner. Sculk hull, deepslate HULL_DARK accent, cyan-stained-glass windows, deepslate-tile engines, soul-lantern engine glow, tinted-glass cockpit, cobbled-deepslate wings, chiseled-deepslate greebles, soul-torch running lights, polished-deepslate interior — Minecraft 1.19 deep dark sculk biome theme.
+
+blocks:
+  HULL:          minecraft:sculk
+  HULL_DARK:     minecraft:deepslate
+  WINDOW:        minecraft:cyan_stained_glass
+  ENGINE:        minecraft:deepslate_tiles
+  ENGINE_GLOW:   minecraft:soul_lantern
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:cobbled_deepslate
+  GREEBLE:       minecraft:chiseled_deepslate
+  LIGHT:         minecraft:soul_torch
+  INTERIOR:      minecraft:polished_deepslate
+
+preview_colors:
+  HULL:          "#0e2727"
+  HULL_DARK:     "#525355"
+  WINDOW:        "#3fb8c8"
+  ENGINE:        "#3a3c3e"
+  ENGINE_GLOW:   "#5fdcd4"
+  COCKPIT_GLASS: "#2a2228"
+  WING:          "#4a4a4c"
+  GREEBLE:       "#5c5a64"
+  LIGHT:         "#3c8c80"
+  INTERIOR:      "#444446"

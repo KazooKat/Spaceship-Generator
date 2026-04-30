@@ -1,0 +1,26 @@
+name: jagged_peaks
+description: Jagged peaks summit-runner. Snow-block hull, blue-ice HULL_DARK accent, light-blue-stained-glass windows, polished-diorite engines, sea-lantern engine glow, glass cockpit, powder-snow wings, stone greebles, lantern running lights, gravel interior — Minecraft 1.18 snowy mountain peaks biome theme.
+
+blocks:
+  HULL:          minecraft:snow_block
+  HULL_DARK:     minecraft:blue_ice
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:polished_diorite
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:glass
+  WING:          minecraft:powder_snow
+  GREEBLE:       minecraft:stone
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:gravel
+
+preview_colors:
+  HULL:          "#f9faff"
+  HULL_DARK:     "#5a90b8"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#c4c4c4"
+  ENGINE_GLOW:   "#eaf4ff"
+  COCKPIT_GLASS: "#d8eef8"
+  WING:          "#e8f0f8"
+  GREEBLE:       "#888888"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#5e5448"

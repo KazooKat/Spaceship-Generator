@@ -1,6 +1,6 @@
 # Palettes
 
-All 55 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
+All 57 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
 
 | Palette | Description |
 |---|---|
@@ -20,6 +20,7 @@ All 55 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `crimson_nether` | Infernal corsair. Crimson planks, magma block engines, shroomlight glow. |
 | `cyberpunk_neon` | Night-city runner. Matte black concrete hull, magenta/cyan neon glass, sea-lantern engine wash and soul-lantern running lights. |
 | `dark_forest` | Dark forest biome runner. Dark-oak-log hull, dark-oak-planks HULL_DARK accent, yellow-stained-glass canopy-shaft windows, stripped-dark-oak-log engines, shroomlight engine glow, brown-mushroom-block wings, stripped-dark-oak-wood greebles, lantern running lights — Minecraft dark forest (roofed forest) biome theme. |
+| `deep_dark` | Deep dark biome runner. Sculk hull, deepslate HULL_DARK accent, cyan-stained-glass windows, deepslate-tile engines, soul-lantern engine glow, tinted-glass cockpit, cobbled-deepslate wings, chiseled-deepslate greebles, soul-torch running lights, polished-deepslate interior — Minecraft 1.19 deep dark sculk biome theme. |
 | `deepslate_drone` | Stealth drone. Cobbled/polished deepslate plating, moss wing pads, froglight thrusters. (blockpalettes.com-inspired) |
 | `desert_sandstone` | Desert-world dhow. Sandstone hull, amber glass, torches along the spine. |
 | `desert_temple` | Desert temple raider. Sandstone hull, chiseled-sandstone HULL_DARK accent, orange-stained-glass windows, smooth-sandstone wings, torch engine glow, cut-sandstone greebles, redstone-lamp running lights — Minecraft desert pyramid temple theme. |
@@ -32,6 +33,7 @@ All 55 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `gold_imperial` | Imperial flagship. Gold plating, blackstone accents, froglight running lights. |
 | `ice_crystal` | Glacial cruiser. Blue-ice hull with packed-ice highlights and sea-lantern glow. |
 | `ice_spikes` | Ice spikes glacier-runner. Packed-ice hull, blue-ice dark accent, snow-block wings, sea-lantern engine glow, prismarine-brick engines — rare Minecraft ice spikes cold biome. |
+| `jagged_peaks` | Jagged peaks summit-runner. Snow-block hull, blue-ice HULL_DARK accent, light-blue-stained-glass windows, polished-diorite engines, sea-lantern engine glow, glass cockpit, powder-snow wings, stone greebles, lantern running lights, gravel interior — Minecraft 1.18 snowy mountain peaks biome theme. |
 | `jungle_canopy` | Jungle canopy runner. Jungle log hull, mossy stone underframe, ochre froglight engine wash. |
 | `lava_forge` | Volcanic dreadnought. Blackstone hull with magma veins, shroomlight thruster glow. |
 | `lush_caves` | Lush caves bio-cruiser. Moss-block hull, flowering-azalea-leaves accent, verdant-froglight engine glow, glow-lichen running lights — Minecraft 1.18 lush caves biome. |

@@ -266,6 +266,11 @@ def build_parser() -> argparse.ArgumentParser:
                         "enum-declaration order and exit. Narrower sibling "
                         "of --list-styles, which also includes hull / engine "
                         "/ wing / cockpit / weapon types.")
+    p.add_argument("--list-weapon-types", action="store_true",
+                   help="List WeaponType members (one per line) in "
+                        "enum-declaration order and exit. Narrower sibling "
+                        "of --list-styles, which also includes hull / engine "
+                        "/ wing / cockpit / greeble types.")
     # ``--preset``/``--list-presets`` are only active when the optional
     # ``presets`` module is importable. When it's absent we still register
     # the flags (so ``--help`` documents them) but restrict the choices to
@@ -285,8 +290,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--list-presets", action="store_true",
                    help="List available preset names and exit.")
-    p.add_argument("--list-weapon-types", action="store_true",
-                   help="Print all available weapon types and exit.")
 
     # Shape params
     p.add_argument("--length", type=int, default=40, help="Ship length in blocks (Z axis).")
@@ -1267,6 +1270,19 @@ def main(argv: list[str] | None = None) -> int:
             _emit(args, g.value)
         return 0
 
+    if args.list_weapon_types:
+        # Narrower sibling of --list-styles: only the WeaponType enum.
+        # One member per line in enum-declaration order (no header/indent
+        # prefix) so callers can pipe straight into another tool. Members
+        # emit deterministically and stably across runs. Mirrors the
+        # ``--list-greeble-types`` handler exactly.
+        if _weapon_styles is None:
+            print(f"weapon_styles unavailable: {_weapon_styles_error}", file=sys.stderr)
+            return 1
+        for wt in _weapon_styles.WeaponType:
+            _emit(args, wt.value)
+        return 0
+
     if args.list_styles:
         _emit(args, "Hull styles:")
         for h in HullStyle:
@@ -1316,14 +1332,6 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 _emit(args, f"  {n}")
         return 0
-
-    if args.list_weapon_types:
-        if _weapon_styles is None:
-            print(f"weapon_styles unavailable: {_weapon_styles_error}", file=sys.stderr)
-            raise SystemExit(1)
-        for wt in _weapon_styles.WeaponType:
-            _emit(args, f"  {wt.value}")
-        raise SystemExit(0)
 
     if getattr(args, "palette_info", None):
         from .palette import Role, load_palette
