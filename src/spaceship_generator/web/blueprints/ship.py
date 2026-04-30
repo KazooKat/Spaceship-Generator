@@ -520,6 +520,23 @@ def api_shape_styles():
     })
 
 
+@ship_bp.route("/api/weapon-types", methods=["GET"], endpoint="api_weapon_types")
+def api_weapon_types():
+    """Return only the ``WeaponType`` enum list.
+
+    Narrower JSON sibling of ``/api/styles`` exposing just the weapon
+    archetype catalog — clients that only need the weapon picker can
+    fetch this endpoint instead of pulling the larger ``/api/styles``
+    payload that also includes hull/engine/wing + greeble types.
+    Companion to ``/api/shape-styles``. Values are the enum ``.value``
+    strings emitted in enum-declaration order (deterministic + stable
+    across runs), matching the serialization used by ``/api/styles``.
+    """
+    return jsonify({
+        "weapon_types": [t.value for t in WeaponType],
+    })
+
+
 @ship_bp.route("/api/random", methods=["GET"], endpoint="api_random")
 def api_random():
     """Return a random seed/palette/preset combo as JSON.
@@ -854,6 +871,13 @@ _OPENAPI_COMPONENTS: dict = {
                 "wing_styles": {"type": "array", "items": {"type": "string"}},
             },
         },
+                "WeaponTypes": {
+            "type": "object",
+            "required": ["weapon_types"],
+            "properties": {
+                "weapon_types": {"type": "array", "items": {"type": "string"}},
+            },
+        },
         "Random": {
             "type": "object",
             "required": ["seed", "palette", "preset"],
@@ -1100,6 +1124,12 @@ _OPENAPI_PATHS: dict = {
         "get": {
             "summary": "List only the core shape enums: hull/engine/wing",
             "responses": {"200": _json_response("ShapeStyles")},
+        },
+    },
+    "/api/weapon-types": {
+        "get": {
+            "summary": "List only the WeaponType enum values",
+            "responses": {"200": _json_response("WeaponTypes")},
         },
     },
     "/api/random": {

@@ -198,6 +198,45 @@ def test_api_shape_styles_in_openapi_spec(client):
     assert "200" in op["responses"]
 
 
+def test_api_weapon_types_ok(client):
+    """``GET /api/weapon-types`` returns just the ``WeaponType`` enum
+    values in enum-declaration order under a single ``weapon_types`` key.
+
+    Companion to ``/api/shape-styles`` — narrower JSON sibling of
+    ``/api/styles`` exposing only the weapon archetype catalog.
+    """
+    from spaceship_generator.weapon_styles import WeaponType
+
+    resp = client.get("/api/weapon-types")
+    assert resp.status_code == 200
+    ctype = resp.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
+    data = resp.get_json()
+    assert set(data.keys()) == {"weapon_types"}
+    assert isinstance(data["weapon_types"], list)
+    assert len(data["weapon_types"]) > 0
+    # Every declared WeaponType.value must be present.
+    declared = [t.value for t in WeaponType]
+    for value in declared:
+        assert value in data["weapon_types"], f"missing weapon type {value!r}"
+    # Order must match enum-declaration order — same contract as
+    # ``/api/styles`` and ``/api/shape-styles``.
+    assert data["weapon_types"] == declared
+
+
+def test_api_weapon_types_listed_in_openapi_spec(client):
+    """The new ``/api/weapon-types`` path must appear in ``/api/spec``."""
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    spec = rv.get_json()
+    assert "/api/weapon-types" in spec["paths"], (
+        "OpenAPI spec must enumerate /api/weapon-types"
+    )
+    op = spec["paths"]["/api/weapon-types"]["get"]
+    assert "summary" in op
+    assert "200" in op["responses"]
+
+
 def test_api_random_returns_keys(client):
     from spaceship_generator import presets as _presets
     from spaceship_generator.palette import list_palettes as _list_palettes

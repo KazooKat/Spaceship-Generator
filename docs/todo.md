@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-cli-list-weapon-types: add `--list-weapon-types` flag — prints every `WeaponType` enum value, exits 0
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--list-weapon-types` prints one weapon type per line in enum-declaration order, exits 0; tested; CHANGELOG bullet
-      notes: parallel to existing `--list-greeble-types` flag; short-circuit handler placed alongside the other `--list-*` handlers; respects `--quiet` carve-out via shared `_emit` helper
-
 - [ ] feat-api-greeble-types: add `GET /api/greeble-types` JSON endpoint mirroring `--list-greeble-types`
       scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
       accept: route returns `{greeble_types:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
@@ -74,6 +69,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-list-weapon-types: add `--list-weapon-types` flag — prints every `WeaponType` enum value, exits 0
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-weapon-types` prints one weapon type per line in enum-declaration order, exits 0; tested; CHANGELOG bullet
+      notes: shipped 2026-04-30; argparse declaration moved from its old orphaned spot under `--list-presets` up to sit immediately after `--list-greeble-types` (mirrors the structural sibling so the two `--list-*-types` flags are declared adjacently); short-circuit handler in `cli.main` placed directly after the `--list-greeble-types` handler — iterates `WeaponType` (StrEnum natural iteration = declaration order, deterministic and stable) and emits each `.value` on its own line via the existing `_emit(args, ...)` helper so the `--quiet` carve-out keeps working without a special case (suppresses stdout same as the other `--list-*` flags); replaces the older `--list-weapon-types` handler that emitted indented `  weapon_name` lines and called `raise SystemExit(0)` — the new handler drops the indent so callers can pipe straight into another tool (no leading-whitespace strip needed) and uses `return 0` matching every other `--list-*` short-circuit; when the optional `weapon_styles` module is unavailable the handler still prints the `weapon_styles unavailable: <reason>` fallback to stderr and returns exit 1 (preserved from the old handler so a partial rollout keeps a clear error path); new `tests/test_cli.py::test_cli_list_weapon_types` covers exit 0 + every member's `.value` present + deterministic enum-declaration order via direct `[line for line in lines if line] == [w.value for w in WeaponType]` list comparison (no hard-coded string list, so the test doesn't drift when a new weapon type is added) + asserts none of the `--list-styles` group headers leak into the output; existing `tests/test_cli_extra.py::test_list_weapon_types` (substring assertions on `turret_large` / `missile_pod`) stays green under the new bare-line output; full `pytest -q` (2028 tests) + `ruff check .` both green
 
 - [x] feat-docs-troubleshooting: add `docs/troubleshooting.md` covering common errors and fixes
       scope: `docs/troubleshooting.md` (new), one-line link from README
