@@ -767,6 +767,50 @@ def test_property_cockpit_style_seed_grid_generates_non_empty_litematic(
     )
 
 
+@pytest.mark.parametrize(
+    "structure_style", list(StructureStyle), ids=lambda s: s.value
+)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_structure_style_seed_grid_generates_non_empty_litematic(
+    tmp_path, structure_style, seed
+):
+    """Every ``StructureStyle`` × small seed grid → ``generate()`` writes a non-empty file.
+
+    Companion to the HullStyle/EngineStyle/WingStyle/CockpitStyle parametrize tests
+    above — ``StructureStyle`` is plumbed via ``ShapeParams.structure_style`` rather
+    than a top-level ``generate()`` kwarg, so it's threaded in by constructing a
+    fresh ``ShapeParams`` per param pair instead of passed as a ``generate()``
+    argument. The Hypothesis-based ``test_property_structure_x_hull_cross_product_no_crash``
+    samples 20 random ``(StructureStyle, HullStyle)`` pairs and may legitimately
+    skip individual ``StructureStyle`` members on any given run; this parametrize
+    test deterministically pins *every* member so a regression in any single
+    structure profile (``FRIGATE`` / ``FIGHTER`` / ``DREADNOUGHT`` / ``SHUTTLE`` /
+    ``HAMMERHEAD`` / ``CARRIER``) surfaces as a self-named ``[seed-structure_style]``
+    failure node.
+    """
+    params = ShapeParams(
+        length=16, width_max=8, height_max=6, structure_style=structure_style,
+    )
+    res = generate(
+        seed,
+        shape_params=params,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for structure_style={structure_style.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for structure_style={structure_style.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"structure_style={structure_style.value} seed={seed} produced 0 blocks"
+    )
+
+
 # ----------- greeble-type × seed-grid stability (every enum member, small seed set) -----------
 #
 # Companion to ``test_property_hull_style_seed_grid_generates_non_empty_litematic``
