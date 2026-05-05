@@ -313,6 +313,46 @@ def test_api_cockpit_styles_listed_in_openapi_spec(client):
     assert "200" in op["responses"]
 
 
+def test_api_structure_styles_ok(client):
+    """``GET /api/structure-styles`` returns just the ``StructureStyle`` enum
+    values in enum-declaration order under a single ``structure_styles`` key.
+
+    Companion to ``/api/shape-styles`` / ``/api/greeble-types`` /
+    ``/api/weapon-types`` / ``/api/cockpit-styles`` — narrower JSON sibling
+    of ``/api/styles`` exposing only the structure archetype catalog.
+    """
+    from spaceship_generator.structure_styles import StructureStyle
+
+    resp = client.get("/api/structure-styles")
+    assert resp.status_code == 200
+    ctype = resp.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
+    data = resp.get_json()
+    assert set(data.keys()) == {"structure_styles"}
+    assert isinstance(data["structure_styles"], list)
+    assert len(data["structure_styles"]) > 0
+    # Every declared StructureStyle.value must be present.
+    declared = [s.value for s in StructureStyle]
+    for value in declared:
+        assert value in data["structure_styles"], f"missing structure style {value!r}"
+    # Order must match enum-declaration order — same contract as
+    # ``/api/styles`` and ``/api/shape-styles``.
+    assert data["structure_styles"] == declared
+
+
+def test_api_structure_styles_listed_in_openapi_spec(client):
+    """The new ``/api/structure-styles`` path must appear in ``/api/spec``."""
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    spec = rv.get_json()
+    assert "/api/structure-styles" in spec["paths"], (
+        "OpenAPI spec must enumerate /api/structure-styles"
+    )
+    op = spec["paths"]["/api/structure-styles"]["get"]
+    assert "summary" in op
+    assert "200" in op["responses"]
+
+
 def test_api_random_returns_keys(client):
     from spaceship_generator import presets as _presets
     from spaceship_generator.palette import list_palettes as _list_palettes

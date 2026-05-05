@@ -572,6 +572,24 @@ def api_cockpit_styles():
     })
 
 
+@ship_bp.route("/api/structure-styles", methods=["GET"], endpoint="api_structure_styles")
+def api_structure_styles():
+    """Return only the ``StructureStyle`` enum list.
+
+    Narrower JSON sibling of ``/api/styles`` exposing just the structure
+    archetype catalog — clients that only need the structure picker can
+    fetch this endpoint instead of pulling the larger ``/api/styles`` /
+    ``/api/meta`` payloads. Companion to ``/api/shape-styles``,
+    ``/api/greeble-types``, ``/api/weapon-types``, and
+    ``/api/cockpit-styles``. Values are the enum ``.value`` strings
+    emitted in enum-declaration order (deterministic + stable across
+    runs), matching the serialization used by ``/api/meta``.
+    """
+    return jsonify({
+        "structure_styles": [s.value for s in StructureStyle],
+    })
+
+
 @ship_bp.route("/api/random", methods=["GET"], endpoint="api_random")
 def api_random():
     """Return a random seed/palette/preset combo as JSON.
@@ -920,6 +938,13 @@ _OPENAPI_COMPONENTS: dict = {
                 "cockpit_styles": {"type": "array", "items": {"type": "string"}},
             },
         },
+        "StructureStyles": {
+            "type": "object",
+            "required": ["structure_styles"],
+            "properties": {
+                "structure_styles": {"type": "array", "items": {"type": "string"}},
+            },
+        },
         "WeaponTypes": {
             "type": "object",
             "required": ["weapon_types"],
@@ -1185,6 +1210,12 @@ _OPENAPI_PATHS: dict = {
         "get": {
             "summary": "List only the CockpitStyle enum values",
             "responses": {"200": _json_response("CockpitStyles")},
+        },
+    },
+    "/api/structure-styles": {
+        "get": {
+            "summary": "List only the StructureStyle enum values",
+            "responses": {"200": _json_response("StructureStyles")},
         },
     },
     "/api/weapon-types": {
