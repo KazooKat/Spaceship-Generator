@@ -1,145 +1,43 @@
 # FAQ
 
-Short answers with pointers. For depth, follow the links.
+A "How do I X?" reference for the Spaceship Generator. Companion to [quickstart.md](quickstart.md) (5-minute walk) and [troubleshooting.md](troubleshooting.md) (common errors). For the full flag list see [cli.md](cli.md); for the palette catalog see [palettes.md](palettes.md); for the HTTP API see [web_ui.md](web_ui.md).
 
-## Getting started
+### How do I pick a random palette?
 
-**How do I install it?**
-Clone the repo, make a venv, then `pip install -e .`. Full steps in
-[README § Install](../README.md#install). Python 3.11+ is required
-([README § Requirements](../README.md#requirements)).
+Pass `--palette random` — the generator picks one of the shipped palettes at generation time, so each run varies. See [cli.md](cli.md) for the full `--palette` flag reference and [palettes.md](palettes.md) for the catalog of names you can also pin explicitly.
 
-**How do I generate my first ship?**
-Run `spaceship-generator --seed 42 --palette sci_fi_industrial --out ./out`.
-The CLI call and output location are documented in
-[README § Usage — CLI](../README.md#usage--cli).
+### How do I install the preview / web extras?
 
-**Where does the output go?**
-Into whatever you pass to `--out`; the filename is `ship_<seed>.litematic`
-(e.g. `out/ship_42.litematic`). See [README § Usage — CLI](../README.md#usage--cli).
+The base `pip install -e .` only pulls runtime deps. Add `pip install -e .[dev]` to pick up `pytest` / `ruff` / `hypothesis`; install `flask` and `Pillow` directly (`pip install flask Pillow`) if you want the web UI and PNG previews. The same fix list lives in [troubleshooting.md](troubleshooting.md) under the `ModuleNotFoundError` row.
 
-**Is there a web UI?**
-Yes: `flask --app spaceship_generator.web.app run`, then visit
-`http://127.0.0.1:5000`. See [README § Usage — Web UI](../README.md#usage--web-ui).
+### How do I build a fleet of ships?
 
-## Palettes
+Two routes. `--fleet-count N` plans a coherent fleet of `N` ships and writes each as `ship_<seed>_<i>.litematic` (tunable via `--fleet-size-tier` and `--fleet-style-coherence`). `--seeds 1,2,3` (or `--seeds 0-9`, or a mix like `--seeds 1,3-4,9`) generates one ship per seed with no shared style. See [cli.md](cli.md) § "Repeat & fleet modes".
 
-**How do I add a palette?**
-Drop a YAML file into `palettes/`. It auto-appears in `--list-palettes`
-and the web UI dropdown — no code changes. Full schema, role list, and
-testing steps live in
-[docs/palette_authoring.md](palette_authoring.md).
+### How do I add a custom palette?
 
-**What palettes ship built-in?**
-21 palettes in `palettes/*.yaml`:
+Drop a YAML file at `palettes/<name>.yaml` mapping each role to a Minecraft block ID and (optionally) a hex preview color. It auto-appears in `--list-palettes`, the `/api/palettes` JSON, and the web UI dropdown — no code changes. See [palette_authoring.md](palette_authoring.md) for the full role list and lint rules.
 
-| | | |
-|---|---|---|
-| `alien_bio` | `amethyst_crystal` | `biopunk_fungal` |
-| `candy_pop` | `coral_reef` | `crimson_nether` |
-| `cyberpunk_neon` | `deepslate_drone` | `desert_sandstone` |
-| `diamond_tech` | `end_void` | `gold_imperial` |
-| `ice_crystal` | `neon_arcade` | `nordic_scout` |
-| `rustic_salvage` | `sci_fi_industrial` | `sleek_modern` |
-| `stealth_black` | `steampunk_brass` | `wooden_frigate` |
+### How do I start the web UI?
 
-Source: [README § Palettes](../README.md#palettes) and `palettes/`.
+Run `flask --app spaceship_generator.web.app run` from the repo root and open `http://127.0.0.1:5000`. The form is the same parameter surface as the CLI, plus a WebGL preview and one-click `.litematic` download. See [web_ui.md](web_ui.md) for the HTML page list and `/api/*` JSON route reference.
 
-## Styles
+### How do I open the `.litematic` in Minecraft?
 
-**How do I pick hull / engine / wing style?**
-CLI flags: `--hull-style`, `--engine-style`, `--wing-style`, plus
-`--greeble-density` and `--list-styles` (added in commit `34f7134`). In
-the web UI, use the three pickers and the greeble-density slider
-(`65c17ed`). Full list of each style's behavior is in
-[README § Styles](../README.md#styles).
+Install the [Litematica mod](https://www.curseforge.com/minecraft/mc-mods/litematica) for Minecraft Java 1.20+, copy the file into `.minecraft/schematics/`, and load it from Litematica's `Load Schematic` menu in-game. The same step is in [quickstart.md](quickstart.md) § 2.
 
-**What does each style do?**
-Five hull silhouettes, five engine archetypes, five wing planforms (plus
-`straight`). Descriptions for every value are in
-[README § Styles](../README.md#styles).
+### How do I list all presets / palettes / styles?
 
-## Seeds & reproducibility
+Use the `--list-*` short-circuit flags: `--list-palettes`, `--list-presets` (or `--list-presets-json` for a single JSON document), `--list-shape-styles`, `--list-greeble-types`, `--list-weapon-types`, `--list-cockpit-styles`, or the broader `--list-styles`. Each prints to stdout and exits 0. See [cli.md](cli.md) § "Style discovery" / "Presets".
 
-**Does the same seed produce the same ship?**
-Yes. Seed-reproducibility is a core feature — same seed + same params ==
-same ship ([README § Features](../README.md#features)).
+### How do I get JSON output instead of human text?
 
-**How do I share a seed?**
-Include the seed and all generation parameters (palette, dims, the three
-style flags, and `--greeble-density` if set). The web UI provides a "copy
-seed" button (see Wave-1 entry in
-[docs/CHANGELOG.md](CHANGELOG.md#added), commit `81ee2b1`).
+`--output-json` emits one NDJSON summary line per ship to stdout (kept on under `--quiet`). `--stats-json` prints role / block-count tallies as JSON. `--export-manifest` writes a `<name>.json` sidecar next to each `.litematic` (reproducible later via `--from-manifest FILE`). See [cli.md](cli.md) § "Diagnostics & manifests".
 
-## Litematica loading
+### How do I disable weapons or greebles?
 
-**Where do I put the `.litematic` file?**
-Copy it into `.minecraft/schematics/` (or wherever Litematica is
-configured to look), then use the Litematica mod's `Load Schematic`
-menu. See [README § Usage — CLI](../README.md#usage--cli).
+Pass `--no-weapons` (shorthand for `--weapon-count 0`) and/or `--no-greebles` (shorthand for `--greeble-density 0`). Each is mutually exclusive with its numeric counterpart — see [troubleshooting.md](troubleshooting.md) for the exact error if both are passed.
 
-**Which Minecraft version?**
-Minecraft Java 1.20+ with the [Litematica
-mod](https://www.curseforge.com/minecraft/mc-mods/litematica)
-([README § Requirements](../README.md#requirements)). Block states in
-palettes must be valid 1.20+ IDs
-([docs/palette_authoring.md](palette_authoring.md#blocks-format)).
+### How do I benchmark generation speed?
 
-## Troubleshooting
-
-**`ValueError: Palette 'X' missing block roles: [...]`**
-The palette YAML doesn't define all 10 required roles. Every palette
-must map all of them; see the role table in
-[docs/palette_authoring.md § The 10 Roles](palette_authoring.md#the-10-roles).
-Raised from `src/spaceship_generator/palette.py:139`.
-
-**Web UI returns HTTP 429 (`rate_limited`).**
-The Flask app rate-limits POSTs (default **30/min**, see commit
-`d68d986`). Loopback (`127.0.0.1` / `::1`) is exempt (`d68d986`), so
-local dev should never hit it — if you do, you're likely testing from
-another IP. Override with the `SHIPFORGE_RATE_LIMIT` env var (set to `0`
-to disable entirely; see `tests/test_web.py::test_rate_limit_disabled_with_env_zero`).
-
-**`--list-palettes` returns nothing after `pip install`.**
-`pyproject.toml` currently only bundles `py.typed` and `data/*.json` as
-package-data (`[tool.setuptools.package-data]`), and `palettes_dir()`
-resolves to `<package>/../../palettes` relative to the installed source
-(`src/spaceship_generator/palette.py:153`). For a non-editable install
-outside the repo tree the `palettes/` directory will be missing —
-install with `pip install -e .` from a checkout, or point the loader at
-an explicit directory via the `search_dir` argument to
-`load_palette` / `list_palettes`.
-
-**Litemapy version mismatch / deprecation warnings.**
-The project pins `litemapy>=0.11.0b0` (a beta; see `pyproject.toml`). If
-you see deprecation warnings or `.litematic` load failures in Minecraft,
-check that the installed litemapy version matches this floor and that
-your Litematica mod is on 1.20+.
-
-## Performance
-
-**How fast is it, and how do I benchmark?**
-Baseline is ~50 ms/ship (wall) at n=20 on the reference machine, with
-further wins landed in Wave-2. Bench script, numbers, and profiler
-findings are in [docs/performance.md](performance.md); CI-side
-regression gating details live in [docs/bench-ci.md](bench-ci.md). Run
-`python scripts/bench_generator.py` (or `scripts/bench_compare.py`) to
-reproduce.
-
-## Contributing
-
-**How do I run tests and lint?**
-`pytest` (includes Hypothesis property tests) and `ruff check .`. Setup
-is in [README § Development](../README.md#development). CI runs on
-3.11/3.12/3.13 × Ubuntu + Windows ([README § Features](../README.md#features)).
-
-**Commit-message style?**
-Conventional Commits — see recent history (`feat:`, `fix:`, `perf:`,
-`docs:`, `chore:`, `refactor:`). The release flow in
-[docs/release.md § Manual release checklist](release.md#1-manual-release-checklist)
-expects the same prefixes when grouping
-[docs/CHANGELOG.md](CHANGELOG.md) entries.
-
-**Where's the release process documented?**
-[docs/release.md](release.md) — tag-driven, PyPI Trusted Publishing via
-OIDC, hotfix flow included.
+Run `python scripts/bench_full_pipeline.py` for end-to-end ship-build wall-clock, `scripts/bench_shape.py` for per-stage shape timings, `scripts/bench_palette.py` for per-palette cost variance, `scripts/bench_mem.py` for peak Python heap, or `scripts/bench_summary.py` to drive every sibling bench in one fixed-width aggregate table. See [performance.md](performance.md) for baseline numbers and [bench-ci.md](bench-ci.md) for the CI regression gate.
