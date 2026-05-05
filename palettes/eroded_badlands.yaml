@@ -1,0 +1,26 @@
+name: eroded_badlands
+description: Eroded badlands runner. Red-sandstone hull, terracotta dark accent, orange-stained-glass windows, smooth-red-sandstone wings, ochre-froglight engine glow, red-sand-laced greebles, redstone-lamp running lights — Minecraft eroded badlands biome theme.
+
+blocks:
+  HULL:          minecraft:red_sandstone
+  HULL_DARK:     minecraft:terracotta
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:red_terracotta
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:smooth_red_sandstone
+  GREEBLE:       minecraft:orange_terracotta
+  LIGHT:         minecraft:redstone_lamp
+  INTERIOR:      minecraft:red_sand
+
+preview_colors:
+  HULL:          "#bf5e2a"
+  HULL_DARK:     "#4a2218"
+  WINDOW:        "#d87f33"
+  ENGINE:        "#8a3c20"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#ffd84a"
+  WING:          "#c87038"
+  GREEBLE:       "#c05731"
+  LIGHT:         "#f0a040"
+  INTERIOR:      "#bf6028"

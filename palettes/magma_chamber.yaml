@@ -1,0 +1,26 @@
+name: magma_chamber
+description: Magma-chamber dredger. Basalt hull, blackstone dark accent, orange-stained-glass windows, magma-block engines with shroomlight glow, nether-bricks wings, fire-coral-block greebles, smooth-basalt interior — deep-volcanic basalt-and-magma theme.
+
+blocks:
+  HULL:          minecraft:basalt
+  HULL_DARK:     minecraft:blackstone
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:red_stained_glass
+  WING:          minecraft:nether_bricks
+  GREEBLE:       minecraft:fire_coral_block
+  LIGHT:         minecraft:redstone_lamp
+  INTERIOR:      minecraft:smooth_basalt
+
+preview_colors:
+  HULL:          "#3a3640"
+  HULL_DARK:     "#161218"
+  WINDOW:        "#d87f33"
+  ENGINE:        "#8a3018"
+  ENGINE_GLOW:   "#ffb048"
+  COCKPIT_GLASS: "#a02828"
+  WING:          "#2a1c1c"
+  GREEBLE:       "#a01818"
+  LIGHT:         "#f0a040"
+  INTERIOR:      "#3a3840"

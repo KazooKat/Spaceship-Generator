@@ -1,6 +1,6 @@
 # Palettes
 
-All 63 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
+All 65 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
 
 | Palette | Description |
 |---|---|
@@ -30,6 +30,7 @@ All 63 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `dripstone_cave` | Dripstone cave runner. Dripstone-block hull, pointed-dripstone dark accents, cut-copper engines with copper-bulb warm glow, tuff greebles. |
 | `end_city` | End-dimension city runner. Purpur hull, end stone brick accent, end rod glow. |
 | `end_void` | End-dimension voidrunner. Purpur hull, obsidian spine, end-rod thrusters. |
+| `eroded_badlands` | Eroded badlands runner. Red-sandstone hull, terracotta dark accent, orange-stained-glass windows, smooth-red-sandstone wings, ochre-froglight engine glow, red-sand-laced greebles, redstone-lamp running lights — Minecraft eroded badlands biome theme. |
 | `flower_forest` | Flower forest blossom-runner. Oak-planks hull, cherry-log dark accent, pink-stained-glass windows, cherry-planks engines, shroomlight engine glow, pink-petals wings, stripped-oak-wood greebles, redstone-lamp running lights — Minecraft pastel flower forest biome theme. |
 | `forest_camouflage` | Woodland recon craft. Mossy stone hull, leaf-panel wings, froglight landing lights. |
 | `frozen_tundra` | Arctic tundra runner. Calcite-and-dripstone hull, packed-ice engines, soul-lantern cold-blue glow, snow-panel wings. |
@@ -41,6 +42,7 @@ All 63 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `jungle_canopy` | Jungle canopy runner. Jungle log hull, mossy stone underframe, ochre froglight engine wash. |
 | `lava_forge` | Volcanic dreadnought. Blackstone hull with magma veins, shroomlight thruster glow. |
 | `lush_caves` | Lush caves bio-cruiser. Moss-block hull, flowering-azalea-leaves accent, verdant-froglight engine glow, glow-lichen running lights — Minecraft 1.18 lush caves biome. |
+| `magma_chamber` | Magma-chamber dredger. Basalt hull, blackstone dark accent, orange-stained-glass windows, magma-block engines with shroomlight glow, nether-bricks wings, fire-coral-block greebles, smooth-basalt interior — deep-volcanic basalt-and-magma theme. |
 | `mangrove_swamp` | Muggy bayou hauler. Mangrove-log hull, muddy-mangrove-roots dark accent, mangrove-planks wings, ochre-froglight engine glow — Minecraft 1.19 mangrove swamp biome. |
 | `mushroom_islands` | Mycelium hull, red mushroom cap wings, shroomlight engine glow — Minecraft mushroom island biome theme. |
 | `nebula_drift` | Cosmic nebula drifter. Deep purple hull, magenta glass windows, amethyst engines with shroomlight glow. |
