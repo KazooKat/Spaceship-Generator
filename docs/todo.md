@@ -18,6 +18,26 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-cli-list-shape-styles-json: add `--list-shape-styles-json` flag — machine-readable variant of `--list-shape-styles`
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-shape-styles-json` emits a single JSON document `{"hull_styles":[...],"engine_styles":[...],"wing_styles":[...]}` to stdout in enum-declaration order, exits 0; not silenced by `--quiet`; mutually exclusive with `--list-shape-styles`; tested; CHANGELOG bullet
+      notes: mirror `--list-presets-json` pattern (carve-out from `--quiet`, mutex with the human-formatted variant); same payload shape as `GET /api/shape-styles`
+
+- [ ] feat-api-structure-styles: add `GET /api/structure-styles` JSON endpoint
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
+      accept: route returns `{"structure_styles":[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: `StructureStyle` lives in `src/spaceship_generator/structure_styles.py`; mirror of `/api/cockpit-styles` and `/api/greeble-types`
+
+- [ ] feat-tests-property-cockpit-styles: add property test asserting `generate()` succeeds for every (`CockpitStyle` × seed) pair
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each `CockpitStyle` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending cockpit-style + seed; CHANGELOG bullet
+      notes: mirror of `feat-tests-property-wing-styles` / `-weapon-types`; CockpitStyle plumbed via `ShapeParams.cockpit_style`
+
+- [ ] feat-docs-bench: add `docs/bench.md` cataloging every `scripts/bench_*.py` script with one-line description + run command
+      scope: `docs/bench.md` (new), one-line link from README
+      accept: file lists every `scripts/bench_*.py` script (currently 9: bench_compare, bench_fleet, bench_full_pipeline, bench_generator, bench_greeble_density, bench_mem, bench_palette, bench_shape, bench_summary) with one-line description + `python scripts/<name>.py --help` invocation; CHANGELOG bullet; one-line README link
+      notes: complement to `docs/cli.md` and `docs/quickstart.md`; useful before/after refactor perf snapshot
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
