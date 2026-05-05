@@ -1483,3 +1483,221 @@ def test_cli_validate_palette_dirty(tmp_path: Path, capsys):
     assert any(line.startswith("error:") for line in err_lines), (
         f"expected at least one 'error:' diagnostic, got: {err_lines!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# --list-cockpit-styles-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_cockpit_styles_json_emits_valid_json(capsys):
+    """``--list-cockpit-styles-json`` prints a single JSON document to stdout
+    with key ``cockpit_styles`` whose value is the enum's declaration-order
+    value list. Mirror of ``test_cli_list_shape_styles_json_emits_valid_json``
+    for the narrower ``CockpitStyle`` enum."""
+    from spaceship_generator.shape import CockpitStyle
+
+    rc = main(["--list-cockpit-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict), f"expected JSON object, got {type(obj)}"
+    assert set(obj.keys()) == {"cockpit_styles"}, (
+        f"unexpected key set: {sorted(obj.keys())}"
+    )
+    assert isinstance(obj["cockpit_styles"], list)
+    assert obj["cockpit_styles"] == [c.value for c in CockpitStyle]
+
+
+def test_cli_list_cockpit_styles_json_quiet_still_emits(capsys):
+    """``--quiet --list-cockpit-styles-json`` still produces the JSON
+    document on stdout (carve-out parallels ``--quiet --list-presets-json``
+    / ``--quiet --list-shape-styles-json``)."""
+    from spaceship_generator.shape import CockpitStyle
+
+    rc = main(["--quiet", "--list-cockpit-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["cockpit_styles"] == [c.value for c in CockpitStyle]
+
+
+def test_cli_list_cockpit_styles_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-cockpit-styles`` and
+    ``--list-cockpit-styles-json`` exits non-zero via ``parser.error`` with
+    a clear stderr message (mirrors the ``--list-shape-styles`` vs
+    ``--list-shape-styles-json`` pattern)."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-cockpit-styles", "--list-cockpit-styles-json"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-cockpit-styles" in err
+    assert "--list-cockpit-styles-json" in err
+    assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --list-structure-styles-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_structure_styles_json_emits_valid_json(capsys):
+    """``--list-structure-styles-json`` prints a single JSON document to
+    stdout with key ``structure_styles`` whose value is the enum's
+    declaration-order value list."""
+    from spaceship_generator.shape import StructureStyle
+
+    rc = main(["--list-structure-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict), f"expected JSON object, got {type(obj)}"
+    assert set(obj.keys()) == {"structure_styles"}, (
+        f"unexpected key set: {sorted(obj.keys())}"
+    )
+    assert isinstance(obj["structure_styles"], list)
+    assert obj["structure_styles"] == [s.value for s in StructureStyle]
+
+
+def test_cli_list_structure_styles_json_quiet_still_emits(capsys):
+    """``--quiet --list-structure-styles-json`` still produces the JSON
+    document on stdout (carve-out parallels ``--quiet --list-presets-json``
+    / ``--quiet --list-shape-styles-json``)."""
+    from spaceship_generator.shape import StructureStyle
+
+    rc = main(["--quiet", "--list-structure-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["structure_styles"] == [s.value for s in StructureStyle]
+
+
+def test_cli_list_structure_styles_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-structure-styles`` and
+    ``--list-structure-styles-json`` exits non-zero via ``parser.error``
+    with a clear stderr message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-structure-styles", "--list-structure-styles-json"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-structure-styles" in err
+    assert "--list-structure-styles-json" in err
+    assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --list-greeble-types-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_greeble_types_json_emits_valid_json(capsys):
+    """``--list-greeble-types-json`` prints a single JSON document to stdout
+    with key ``greeble_types`` whose value is the enum's declaration-order
+    value list."""
+    from spaceship_generator.greeble_styles import GreebleType
+
+    rc = main(["--list-greeble-types-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict), f"expected JSON object, got {type(obj)}"
+    assert set(obj.keys()) == {"greeble_types"}, (
+        f"unexpected key set: {sorted(obj.keys())}"
+    )
+    assert isinstance(obj["greeble_types"], list)
+    assert obj["greeble_types"] == [g.value for g in GreebleType]
+
+
+def test_cli_list_greeble_types_json_quiet_still_emits(capsys):
+    """``--quiet --list-greeble-types-json`` still produces the JSON
+    document on stdout."""
+    from spaceship_generator.greeble_styles import GreebleType
+
+    rc = main(["--quiet", "--list-greeble-types-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["greeble_types"] == [g.value for g in GreebleType]
+
+
+def test_cli_list_greeble_types_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-greeble-types`` and ``--list-greeble-types-json``
+    exits non-zero via ``parser.error`` with a clear stderr message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-greeble-types", "--list-greeble-types-json"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-greeble-types" in err
+    assert "--list-greeble-types-json" in err
+    assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --list-weapon-types-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_weapon_types_json_emits_valid_json(capsys):
+    """``--list-weapon-types-json`` prints a single JSON document to stdout
+    with key ``weapon_types`` whose value is the enum's declaration-order
+    value list."""
+    from spaceship_generator.weapon_styles import WeaponType
+
+    rc = main(["--list-weapon-types-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict), f"expected JSON object, got {type(obj)}"
+    assert set(obj.keys()) == {"weapon_types"}, (
+        f"unexpected key set: {sorted(obj.keys())}"
+    )
+    assert isinstance(obj["weapon_types"], list)
+    assert obj["weapon_types"] == [w.value for w in WeaponType]
+
+
+def test_cli_list_weapon_types_json_quiet_still_emits(capsys):
+    """``--quiet --list-weapon-types-json`` still produces the JSON
+    document on stdout."""
+    from spaceship_generator.weapon_styles import WeaponType
+
+    rc = main(["--quiet", "--list-weapon-types-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["weapon_types"] == [w.value for w in WeaponType]
+
+
+def test_cli_list_weapon_types_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-weapon-types`` and ``--list-weapon-types-json``
+    exits non-zero via ``parser.error`` with a clear stderr message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-weapon-types", "--list-weapon-types-json"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-weapon-types" in err
+    assert "--list-weapon-types-json" in err
+    assert "mutually exclusive" in err

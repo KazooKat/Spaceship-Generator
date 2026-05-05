@@ -285,21 +285,45 @@ def build_parser() -> argparse.ArgumentParser:
                         "enum-declaration order and exit. Narrower sibling "
                         "of --list-styles, which also includes hull / engine "
                         "/ wing / cockpit / weapon types.")
+    p.add_argument("--list-greeble-types-json", action="store_true",
+                   help="Machine-readable variant of --list-greeble-types: "
+                        "emits a single JSON document "
+                        "{\"greeble_types\":[...]} to stdout. "
+                        "Mutually exclusive with --list-greeble-types. "
+                        "NOT silenced by --quiet.")
     p.add_argument("--list-weapon-types", action="store_true",
                    help="List WeaponType members (one per line) in "
                         "enum-declaration order and exit. Narrower sibling "
                         "of --list-styles, which also includes hull / engine "
                         "/ wing / cockpit / greeble types.")
+    p.add_argument("--list-weapon-types-json", action="store_true",
+                   help="Machine-readable variant of --list-weapon-types: "
+                        "emits a single JSON document "
+                        "{\"weapon_types\":[...]} to stdout. "
+                        "Mutually exclusive with --list-weapon-types. "
+                        "NOT silenced by --quiet.")
     p.add_argument("--list-cockpit-styles", action="store_true",
                    help="List CockpitStyle members (one per line) in "
                         "enum-declaration order and exit. Narrower sibling "
                         "of --list-styles, which also includes hull / engine "
                         "/ wing / greeble / weapon types.")
+    p.add_argument("--list-cockpit-styles-json", action="store_true",
+                   help="Machine-readable variant of --list-cockpit-styles: "
+                        "emits a single JSON document "
+                        "{\"cockpit_styles\":[...]} to stdout. "
+                        "Mutually exclusive with --list-cockpit-styles. "
+                        "NOT silenced by --quiet.")
     p.add_argument("--list-structure-styles", action="store_true",
                    help="List StructureStyle members (one per line) in "
                         "enum-declaration order and exit. Narrower sibling "
                         "of --list-styles, which also includes hull / engine "
                         "/ wing / cockpit / greeble / weapon types.")
+    p.add_argument("--list-structure-styles-json", action="store_true",
+                   help="Machine-readable variant of --list-structure-styles: "
+                        "emits a single JSON document "
+                        "{\"structure_styles\":[...]} to stdout. "
+                        "Mutually exclusive with --list-structure-styles. "
+                        "NOT silenced by --quiet.")
     # ``--preset``/``--list-presets`` are only active when the optional
     # ``presets`` module is importable. When it's absent we still register
     # the flags (so ``--help`` documents them) but restrict the choices to
@@ -1189,6 +1213,39 @@ def main(argv: list[str] | None = None) -> int:
             "mutually exclusive"
         )
 
+    # Same mutex carve-out for the four narrower-enum siblings shipped in
+    # ``feat-cli-list-json-pack``: each ``--list-<x>`` non-json sibling pairs
+    # with a ``--list-<x>-json`` machine-readable variant emitting the same
+    # data; passing both is ambiguous.
+    if getattr(args, "list_cockpit_styles", False) and getattr(
+        args, "list_cockpit_styles_json", False
+    ):
+        parser.error(
+            "--list-cockpit-styles and --list-cockpit-styles-json are "
+            "mutually exclusive"
+        )
+    if getattr(args, "list_structure_styles", False) and getattr(
+        args, "list_structure_styles_json", False
+    ):
+        parser.error(
+            "--list-structure-styles and --list-structure-styles-json are "
+            "mutually exclusive"
+        )
+    if getattr(args, "list_greeble_types", False) and getattr(
+        args, "list_greeble_types_json", False
+    ):
+        parser.error(
+            "--list-greeble-types and --list-greeble-types-json are "
+            "mutually exclusive"
+        )
+    if getattr(args, "list_weapon_types", False) and getattr(
+        args, "list_weapon_types_json", False
+    ):
+        parser.error(
+            "--list-weapon-types and --list-weapon-types-json are "
+            "mutually exclusive"
+        )
+
     if args.verbose and args.quiet:
         print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
         return 2
@@ -1398,6 +1455,21 @@ def main(argv: list[str] | None = None) -> int:
             _emit(args, g.value)
         return 0
 
+    if getattr(args, "list_greeble_types_json", False):
+        # Machine-readable variant of ``--list-greeble-types``: a single JSON
+        # document with a single ``greeble_types`` array in enum-declaration
+        # order. Deliberately NOT routed through ``_emit`` so
+        # ``--quiet --list-greeble-types-json`` still prints — same carve-out
+        # as ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``.
+        import json
+
+        print(
+            json.dumps({"greeble_types": [g.value for g in GreebleType]}),
+            file=sys.stdout,
+        )
+        return 0
+
     if args.list_weapon_types:
         # Narrower sibling of --list-styles: only the WeaponType enum.
         # One member per line in enum-declaration order (no header/indent
@@ -1411,6 +1483,29 @@ def main(argv: list[str] | None = None) -> int:
             _emit(args, wt.value)
         return 0
 
+    if getattr(args, "list_weapon_types_json", False):
+        # Machine-readable variant of ``--list-weapon-types``: a single JSON
+        # document with a single ``weapon_types`` array in enum-declaration
+        # order. Deliberately NOT routed through ``_emit`` so
+        # ``--quiet --list-weapon-types-json`` still prints — same carve-out
+        # as ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``.
+        import json
+
+        if _weapon_styles is None:
+            print(
+                f"weapon_styles unavailable: {_weapon_styles_error}",
+                file=sys.stderr,
+            )
+            return 1
+        print(
+            json.dumps(
+                {"weapon_types": [wt.value for wt in _weapon_styles.WeaponType]}
+            ),
+            file=sys.stdout,
+        )
+        return 0
+
     if args.list_cockpit_styles:
         # Narrower sibling of --list-styles: only the CockpitStyle enum.
         # One member per line in enum-declaration order (no header/indent
@@ -1421,6 +1516,21 @@ def main(argv: list[str] | None = None) -> int:
             _emit(args, c.value)
         return 0
 
+    if getattr(args, "list_cockpit_styles_json", False):
+        # Machine-readable variant of ``--list-cockpit-styles``: a single JSON
+        # document with a single ``cockpit_styles`` array in enum-declaration
+        # order. Deliberately NOT routed through ``_emit`` so
+        # ``--quiet --list-cockpit-styles-json`` still prints — same carve-out
+        # as ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``.
+        import json
+
+        print(
+            json.dumps({"cockpit_styles": [c.value for c in CockpitStyle]}),
+            file=sys.stdout,
+        )
+        return 0
+
     if args.list_structure_styles:
         # Narrower sibling of --list-styles: only the StructureStyle enum.
         # One member per line in enum-declaration order (no header/indent
@@ -1429,6 +1539,21 @@ def main(argv: list[str] | None = None) -> int:
         # ``--list-cockpit-styles`` handler exactly.
         for s in StructureStyle:
             _emit(args, s.value)
+        return 0
+
+    if getattr(args, "list_structure_styles_json", False):
+        # Machine-readable variant of ``--list-structure-styles``: a single
+        # JSON document with a single ``structure_styles`` array in
+        # enum-declaration order. Deliberately NOT routed through ``_emit``
+        # so ``--quiet --list-structure-styles-json`` still prints — same
+        # carve-out as ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``.
+        import json
+
+        print(
+            json.dumps({"structure_styles": [s.value for s in StructureStyle]}),
+            file=sys.stdout,
+        )
         return 0
 
     if args.list_styles:
