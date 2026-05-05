@@ -28,6 +28,7 @@ GREEBLE_DENSITY_SCRIPT = REPO_ROOT / "scripts" / "bench_greeble_density.py"
 FLEET_SCRIPT = REPO_ROOT / "scripts" / "bench_fleet.py"
 SUMMARY_SCRIPT = REPO_ROOT / "scripts" / "bench_summary.py"
 COMPARE_SCRIPT = REPO_ROOT / "scripts" / "bench_compare.py"
+GENERATOR_SCRIPT = REPO_ROOT / "scripts" / "bench_generator.py"
 
 EXPECTED_STAGES = ("hull", "cockpit", "engines", "wings", "greebles", "assembly")
 
@@ -571,3 +572,50 @@ def test_bench_compare_csv_emits_csv(tmp_path: Path) -> None:
     # regression where the header emits but the body is dropped.
     body_rows = [row for row in lines[1:] if row.strip()]
     assert body_rows, f"no per-phase row in CSV body:\n{lines}"
+
+
+def test_bench_generator_csv_emits_csv() -> None:
+    """`--csv` flag produces a CSV header + per-phase rows + WALL TOTAL row.
+
+    The run banner / cProfile top-N print must NOT pollute the CSV stream
+    in `--csv` mode (they're routed to stderr instead) so the stdout is a
+    clean parseable CSV document an operator can pipe straight into a
+    spreadsheet / CI parser. ``bench_generator.py`` uses ``--n`` (not
+    ``--iterations``) for ship count — that's the minimal arg required to
+    keep the smoke run fast.
+    """
+    assert GENERATOR_SCRIPT.is_file(), f"missing bench script: {GENERATOR_SCRIPT}"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(GENERATOR_SCRIPT),
+            "--csv",
+            "--n",
+            "2",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"bench_generator.py --csv exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    out = result.stdout
+    assert out.strip(), f"bench_generator.py --csv produced empty stdout:\n{out!r}"
+    lines = out.splitlines()
+    assert lines[0] == "phase,total_s,mean_s,pct", (
+        f"first stdout line should be the CSV header, got:\n{lines[0]!r}"
+    )
+    # Subsequent rows must include at least one per-phase data row — catches
+    # a regression where the header emits but the body / WALL TOTAL summary
+    # row is dropped.
+    body_rows = lines[1:]
+    assert any(
+        row and not row.startswith("WALL TOTAL,") and not row.startswith("phase,")
+        for row in body_rows
+    ), f"no per-phase row in CSV body:\n{body_rows}"
+    assert any(
+        row.startswith("WALL TOTAL,") for row in body_rows
+    ), f"WALL TOTAL row missing from CSV body:\n{body_rows}"

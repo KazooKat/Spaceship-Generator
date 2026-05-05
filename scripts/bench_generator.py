@@ -7,12 +7,14 @@ Usage:
     .venv/Scripts/python scripts/bench_generator.py
     .venv/Scripts/python scripts/bench_generator.py --n 10 --save base.json
     .venv/Scripts/python scripts/bench_generator.py --compare base.json
+    .venv/Scripts/python scripts/bench_generator.py --csv --n 2
 """
 
 from __future__ import annotations
 
 import argparse
 import cProfile
+import csv
 import json
 import platform
 import pstats
@@ -181,6 +183,34 @@ def print_table(phases: dict[str, dict[str, Any]], wall_times: list[float]) -> N
     )
 
 
+def print_csv(phases: dict[str, dict[str, Any]], wall_times: list[float]) -> None:
+    """Emit the per-phase summary as CSV to stdout.
+
+    Header row is ``phase,total_s,mean_s,pct`` followed by one row per phase
+    (in the same order as :func:`print_table`) and a trailing ``WALL TOTAL``
+    row so a downstream parser can pick up the wall-clock total without
+    summing the phase rows. Both this CSV path and the fixed-width
+    :func:`print_table` path consume the same ``phases`` aggregate produced
+    by :func:`summarize_phases` so the two output paths cannot drift on the
+    per-phase numbers. Uses the stdlib :mod:`csv` module so quoting /
+    escaping (e.g. a future phase name containing a comma) is handled
+    correctly without us reinventing it.
+    """
+    order = ["shape_build", "role_assign", "palette_lookup", "export", "other"]
+    total_wall = sum(wall_times)
+    mean_wall = total_wall / max(1, len(wall_times))
+    writer = csv.writer(sys.stdout, lineterminator="\n")
+    writer.writerow(["phase", "total_s", "mean_s", "pct"])
+    for name in order:
+        p = phases[name]
+        writer.writerow(
+            [name, f"{p['total_s']:.4f}", f"{p['mean_s']:.4f}", f"{p['pct']:.1f}"]
+        )
+    writer.writerow(
+        ["WALL TOTAL", f"{total_wall:.4f}", f"{mean_wall:.4f}", ""]
+    )
+
+
 def build_baseline(phases: dict[str, dict[str, Any]], wall_times: list[float],
                    n_jobs: int) -> dict[str, Any]:
     return {
@@ -232,6 +262,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--keep-output", action="store_true", help="keep generated files")
     p.add_argument("--out-dir", type=str, default=None, help="output dir (default: tempdir)")
     p.add_argument("--top", type=int, default=10, help="top-N hottest functions to print")
+    p.add_argument(
+        "--csv", action="store_true", default=False,
+        help=(
+            "Emit CSV (phase,total_s,mean_s,pct) instead of fixed-width "
+            "table; useful for CI / spreadsheet ingest."
+        ),
+    )
     return p.parse_args()
 
 
@@ -241,8 +278,17 @@ def main() -> int:
         print("--n must be >= 1", file=sys.stderr)
         return 2
 
+    # In CSV mode the run banner / cProfile top-N / save-and-compare prose
+    # all go to stderr so the stdout stream stays a clean parseable CSV
+    # document an operator can pipe straight into a spreadsheet / CI parser.
+    # In the default fixed-width-table mode every print stays on stdout
+    # where it's always been (preserves backwards-compatible output for
+    # existing callers — the no-flag path is byte-identical to pre-CSV).
+    progress_stream = sys.stderr if args.csv else sys.stdout
+
     print(f"benchmark: n={args.n}  py={sys.version.split()[0]}  "
-          f"proc={(platform.processor() or platform.machine())[:60]}")
+          f"proc={(platform.processor() or platform.machine())[:60]}",
+          file=progress_stream)
 
     use_tmp = args.out_dir is None
     if use_tmp:
@@ -261,12 +307,15 @@ def main() -> int:
 
         stats, wall_times, _prof = profile_workload(jobs, out_dir)
         phases = summarize_phases(stats, args.n)
-        print_table(phases, wall_times)
+        if args.csv:
+            print_csv(phases, wall_times)
+        else:
+            print_table(phases, wall_times)
 
-        print()
-        print(f"=== TOP {args.top} HOTTEST FUNCTIONS (tottime) ===")
-        stats.sort_stats("tottime")
-        stats.print_stats(args.top)
+            print()
+            print(f"=== TOP {args.top} HOTTEST FUNCTIONS (tottime) ===")
+            stats.sort_stats("tottime")
+            stats.print_stats(args.top)
 
         current = build_baseline(phases, wall_times, args.n)
 
@@ -274,7 +323,7 @@ def main() -> int:
             save_path = Path(args.save)
             save_path.parent.mkdir(parents=True, exist_ok=True)
             save_path.write_text(json.dumps(current, indent=2))
-            print(f"\nsaved baseline -> {save_path}")
+            print(f"\nsaved baseline -> {save_path}", file=progress_stream)
 
         if args.compare:
             cmp_path = Path(args.compare)
@@ -282,7 +331,17 @@ def main() -> int:
                 print(f"--compare: file not found: {cmp_path}", file=sys.stderr)
                 return 2
             base = json.loads(cmp_path.read_text())
-            compare_baselines(current, base)
+            if args.csv:
+                # Comparison table is human-formatted prose; route to stderr
+                # in CSV mode so the stdout stream stays a clean CSV document.
+                _stdout = sys.stdout
+                sys.stdout = sys.stderr
+                try:
+                    compare_baselines(current, base)
+                finally:
+                    sys.stdout = _stdout
+            else:
+                compare_baselines(current, base)
 
         return 0
     finally:

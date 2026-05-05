@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: `--csv` emits CSV header + per-phase rows; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
       notes: mirror of every other prior `feat-bench-*-csv` unit (summary / palette / compare / fleet / shape / full_pipeline)
 
-- [ ] feat-docs-architecture-wing: extend `docs/architecture.md` with a Wing pipeline section
-      scope: `docs/architecture.md` (extend, not restructure)
-      accept: new section "Wing pipeline" describes `wing_styles.py` (WingStyle + per-style placers) and the role of `wing_style` in the assembly pipeline; cross-link to `docs/cli.md` and `docs/web_ui.md`; ≤80 lines; CHANGELOG bullet
-      notes: completes the per-component pipeline series (greebles + weapons + cockpit + hull shipped; wing is the last)
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -58,6 +53,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-architecture-wing: extend `docs/architecture.md` with a Wing pipeline section
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new section "Wing pipeline" describes `wing_styles.py` (WingStyle + per-style placers) and the role of `wing_style` in the assembly pipeline; cross-link to `docs/cli.md` and `docs/web_ui.md`; ≤80 lines; CHANGELOG bullet
+      notes: completes the per-component pipeline series (greebles + weapons + cockpit + hull shipped; wing is the last)
 
 - [x] feat-palettes-biome-pack-2026-05-05e: add warm_savanna, frozen_river biome palettes
       scope: `palettes/warm_savanna.yaml`, `palettes/frozen_river.yaml`
