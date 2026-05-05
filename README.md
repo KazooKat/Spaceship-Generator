@@ -6,7 +6,7 @@ Procedurally generate Minecraft spaceships and export them as Litematica schemat
 
 Pick a seed, pick a block palette, get a ship you can paste into your world with the [Litematica mod](https://www.curseforge.com/minecraft/mc-mods/litematica).
 
-New here? See [docs/quickstart.md](docs/quickstart.md) for a 5-minute getting-started guide. Want copy-paste recipes? See [docs/recipes.md](docs/recipes.md) for a task-oriented recipe index. Hit an error? See [docs/troubleshooting.md](docs/troubleshooting.md) for common failures and one-line fixes. Wondering "how do I...?" See [docs/faq.md](docs/faq.md) for the common-question reference. Profiling a refactor? See [docs/bench.md](docs/bench.md) for the bench-script catalog. Hacking on the code? See [docs/contributing.md](docs/contributing.md) for the short development guide.
+New here? See [docs/quickstart.md](docs/quickstart.md) for a 5-minute getting-started guide. Want copy-paste recipes? See [docs/recipes.md](docs/recipes.md) for a task-oriented recipe index. Need the output payload shapes? See [docs/output-formats.md](docs/output-formats.md) for the `.litematic` + JSON envelope reference. Hit an error? See [docs/troubleshooting.md](docs/troubleshooting.md) for common failures and one-line fixes. Wondering "how do I...?" See [docs/faq.md](docs/faq.md) for the common-question reference. Profiling a refactor? See [docs/bench.md](docs/bench.md) for the bench-script catalog. Hacking on the code? See [docs/contributing.md](docs/contributing.md) for the short development guide.
 
 ## Pipeline
 

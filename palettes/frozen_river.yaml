@@ -1,0 +1,26 @@
+name: frozen_river
+description: Frozen river runner. Packed-ice hull, cobblestone HULL_DARK accent, light-blue-stained-glass windows, ice engines, sea-lantern engine glow, white-stained-glass cockpit, smooth-stone wings, andesite greebles, soul-lantern cold-blue running lights, stone interior — pale-blue ice and grey river-stone theme.
+
+blocks:
+  HULL:          minecraft:packed_ice
+  HULL_DARK:     minecraft:cobblestone
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:ice
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:white_stained_glass
+  WING:          minecraft:smooth_stone
+  GREEBLE:       minecraft:andesite
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:stone
+
+preview_colors:
+  HULL:          "#b8dcf0"
+  HULL_DARK:     "#5a5a5a"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#c8e8f8"
+  ENGINE_GLOW:   "#d8f0ff"
+  COCKPIT_GLASS: "#f0f0f0"
+  WING:          "#a8a8a8"
+  GREEBLE:       "#7a7a7a"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#7a7a7a"

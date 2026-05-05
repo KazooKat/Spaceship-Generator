@@ -1,6 +1,6 @@
 # Palettes
 
-All 65 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
+All 67 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
 
 | Palette | Description |
 |---|---|
@@ -33,6 +33,7 @@ All 65 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `eroded_badlands` | Eroded badlands runner. Red-sandstone hull, terracotta dark accent, orange-stained-glass windows, smooth-red-sandstone wings, ochre-froglight engine glow, red-sand-laced greebles, redstone-lamp running lights — Minecraft eroded badlands biome theme. |
 | `flower_forest` | Flower forest blossom-runner. Oak-planks hull, cherry-log dark accent, pink-stained-glass windows, cherry-planks engines, shroomlight engine glow, pink-petals wings, stripped-oak-wood greebles, redstone-lamp running lights — Minecraft pastel flower forest biome theme. |
 | `forest_camouflage` | Woodland recon craft. Mossy stone hull, leaf-panel wings, froglight landing lights. |
+| `frozen_river` | Frozen river runner. Packed-ice hull, cobblestone HULL_DARK accent, light-blue-stained-glass windows, ice engines, sea-lantern engine glow, white-stained-glass cockpit, smooth-stone wings, andesite greebles, soul-lantern cold-blue running lights, stone interior — pale-blue ice and grey river-stone theme. |
 | `frozen_tundra` | Arctic tundra runner. Calcite-and-dripstone hull, packed-ice engines, soul-lantern cold-blue glow, snow-panel wings. |
 | `glacial_blue` | Glacial blue glacier-runner. Packed-ice hull, blue-ice HULL_DARK accent, light-blue-stained-glass windows, snow-block engines, sea-lantern engine glow, white-stained-glass cockpit, powder-snow wings, cyan-terracotta greebles, soul-lantern cold-blue running lights, smooth-quartz interior — cold blue / cyan glacier theme. |
 | `gold_imperial` | Imperial flagship. Gold plating, blackstone accents, froglight running lights. |
@@ -67,6 +68,7 @@ All 65 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `swamp_bog` | Swamp bog hauler. Mangrove hull, mud underframe, verdant froglight engine glow. |
 | `void_walker` | Deep-space surveyor. Obsidian hull, blue ice viewports, amethyst glow — built for the void. |
 | `volcanic_ash` | Post-eruption volcanic surveyor. Tuff hull, smooth-basalt panels, glowstone ember glow through an ashen atmosphere. |
+| `warm_savanna` | Warm savanna golden-hour cruiser. Smooth-sandstone hull, acacia-log HULL_DARK accent, orange-stained-glass windows, stripped-acacia-log engines, ochre-froglight engine glow, yellow-stained-glass cockpit, acacia-planks wings, orange-terracotta greebles, lantern running lights, yellow-terracotta interior — golden-hour acacia savanna theme. |
 | `windswept_hills` | Windswept hills surveyor. Stone hull, gravel dark accent, spruce-plank wings, lantern engine glow, andesite greebles — Minecraft 1.18 windswept hills mountains variant. |
 | `wooden_frigate` | Rustic wooden frigate. Oak + dark-oak hull, iron hardpoints, lantern lights. |
 

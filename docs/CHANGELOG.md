@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(scripts): add --csv flag to bench_generator.py for CI/spreadsheet ingest (feat-bench-generator-csv)
+- feat(palettes): add warm_savanna, frozen_river biome palettes (feat-palettes-biome-pack-2026-05-05e)
+- feat(api): add GET /api/roles — narrower JSON sibling exposing Role enum to tooling (feat-api-roles)
+- docs(output-formats): add docs/output-formats.md explaining .litematic + JSON payload shapes (feat-docs-output-formats)
 - test(properties): add weapon_count x seed-grid stability property test (feat-tests-property-weapon-count-grid)
 - docs(architecture): add Hull pipeline section (feat-docs-architecture-hull)
 - feat(cli): add --list-roles / --list-roles-json — expose Role enum to tooling (feat-cli-list-roles)

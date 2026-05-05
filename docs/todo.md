@@ -28,21 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: new section "Wing pipeline" describes `wing_styles.py` (WingStyle + per-style placers) and the role of `wing_style` in the assembly pipeline; cross-link to `docs/cli.md` and `docs/web_ui.md`; ≤80 lines; CHANGELOG bullet
       notes: completes the per-component pipeline series (greebles + weapons + cockpit + hull shipped; wing is the last)
 
-- [ ] feat-palettes-biome-pack-2026-05-05e: add warm_savanna, frozen_river biome palettes
-      scope: `palettes/warm_savanna.yaml`, `palettes/frozen_river.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
-- [ ] feat-api-roles: add `GET /api/roles` JSON endpoint mirroring `--list-roles-json`
-      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components, `docs/web_ui.md`
-      accept: route returns `{"roles":[{"name":"<NAME>","value":<int>},...]}` JSON in declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
-      notes: mirror of just-shipped `feat-cli-list-roles` JSON variant; one agent owns ship.py + test_api.py + web_ui.md
-
-- [ ] feat-docs-output-formats: add `docs/output-formats.md` explaining `.litematic` + JSON output formats
-      scope: `docs/output-formats.md` (new), one-line link from `README.md`
-      accept: file documents the `.litematic` format (Litematica schematic, who can open it, version compatibility), the `--output-json` payload schema (point at `--output-json-schema`), the web `/api/generate` response shape, and the `gen_id` cache lifecycle; cross-link to `docs/cli.md`, `docs/web_ui.md`, `docs/configuration.md`; ≤120 lines; CHANGELOG bullet; one-line README link
-      notes: gap in current docs — operators have to dig through `cli.py` `--output-json-schema` + `ship.py` route source to learn the output payload shapes
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -73,6 +58,21 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palettes-biome-pack-2026-05-05e: add warm_savanna, frozen_river biome palettes
+      scope: `palettes/warm_savanna.yaml`, `palettes/frozen_river.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [x] feat-api-roles: add `GET /api/roles` JSON endpoint mirroring `--list-roles-json`
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components, `docs/web_ui.md`
+      accept: route returns `{"roles":[{"name":"<NAME>","value":<int>},...]}` JSON in declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: mirror of just-shipped `feat-cli-list-roles` JSON variant; one agent owns ship.py + test_api.py + web_ui.md
+
+- [x] feat-docs-output-formats: add `docs/output-formats.md` explaining `.litematic` + JSON output formats
+      scope: `docs/output-formats.md` (new), one-line link from `README.md`
+      accept: file documents the `.litematic` format (Litematica schematic, who can open it, version compatibility), the `--output-json` payload schema (point at `--output-json-schema`), the web `/api/generate` response shape, and the `gen_id` cache lifecycle; cross-link to `docs/cli.md`, `docs/web_ui.md`, `docs/configuration.md`; ≤120 lines; CHANGELOG bullet; one-line README link
+      notes: gap in current docs — operators have to dig through `cli.py` `--output-json-schema` + `ship.py` route source to learn the output payload shapes
 
 - [x] feat-tests-property-weapon-count-grid: add property test asserting `generate()` succeeds for (`weapon_count` × seed) grid
       scope: `tests/test_properties.py` (extend)

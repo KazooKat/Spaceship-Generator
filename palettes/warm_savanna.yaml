@@ -1,0 +1,26 @@
+name: warm_savanna
+description: Warm savanna golden-hour cruiser. Smooth-sandstone hull, acacia-log HULL_DARK accent, orange-stained-glass windows, stripped-acacia-log engines, ochre-froglight engine glow, yellow-stained-glass cockpit, acacia-planks wings, orange-terracotta greebles, lantern running lights, yellow-terracotta interior — golden-hour acacia savanna theme.
+
+blocks:
+  HULL:          minecraft:smooth_sandstone
+  HULL_DARK:     minecraft:acacia_log
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:stripped_acacia_log
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:acacia_planks
+  GREEBLE:       minecraft:orange_terracotta
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:yellow_terracotta
+
+preview_colors:
+  HULL:          "#eadcad"
+  HULL_DARK:     "#5a3320"
+  WINDOW:        "#e08a3a"
+  ENGINE:        "#c79868"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#ffd84a"
+  WING:          "#a85a32"
+  GREEBLE:       "#a44b1f"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#b88431"
