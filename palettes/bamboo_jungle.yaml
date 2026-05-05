@@ -1,0 +1,26 @@
+name: bamboo_jungle
+description: Bamboo jungle runner. Bamboo-planks hull, jungle-log dark accent, lime-stained-glass windows, bamboo-mosaic engines, ochre-froglight engine glow, moss-block wings, stripped-jungle-wood greebles, lantern running lights — Minecraft 1.20 bamboo jungle biome theme.
+
+blocks:
+  HULL:          minecraft:bamboo_planks
+  HULL_DARK:     minecraft:jungle_log
+  WINDOW:        minecraft:lime_stained_glass
+  ENGINE:        minecraft:bamboo_mosaic
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:green_stained_glass
+  WING:          minecraft:moss_block
+  GREEBLE:       minecraft:stripped_jungle_wood
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:bamboo_block
+
+preview_colors:
+  HULL:          "#d8b86a"
+  HULL_DARK:     "#3a2818"
+  WINDOW:        "#a8d870"
+  ENGINE:        "#c8a858"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#5aa830"
+  WING:          "#5a8038"
+  GREEBLE:       "#9c8060"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#a8a050"

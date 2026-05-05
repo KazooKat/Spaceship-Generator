@@ -1,6 +1,6 @@
 # Palettes
 
-All 57 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
+All 59 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
 
 | Palette | Description |
 |---|---|
@@ -11,6 +11,7 @@ All 57 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `ancient_ruin` | Derelict relic-ship. Weathered stone hull, overgrown moss accents, eerie soul glow. |
 | `autumn_harvest` | Seasonal autumn harvest. Orange terracotta hull, copper trim, brown earth tones, shroomlight glow. |
 | `badlands_mesa` | Sun-baked mesa spire-runner. Red terracotta hull, orange wings, copper engine block. |
+| `bamboo_jungle` | Bamboo jungle runner. Bamboo-planks hull, jungle-log dark accent, lime-stained-glass windows, bamboo-mosaic engines, ochre-froglight engine glow, moss-block wings, stripped-jungle-wood greebles, lantern running lights — Minecraft 1.20 bamboo jungle biome theme. |
 | `biopunk_fungal` | Living fungal bio-craft. Moss hull, warped hyphae spines, shroomlight thrusters, slime viewports. |
 | `candy_pop` | Candy-colored pleasure craft. Pink hull, magenta glaze, froglight glow. |
 | `cherry_blossom` | Cherry planks hull, pink concrete accent, shroomlight glow — Minecraft 1.20 cherry blossom theme. |
@@ -28,6 +29,7 @@ All 57 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `dripstone_cave` | Dripstone cave runner. Dripstone-block hull, pointed-dripstone dark accents, cut-copper engines with copper-bulb warm glow, tuff greebles. |
 | `end_city` | End-dimension city runner. Purpur hull, end stone brick accent, end rod glow. |
 | `end_void` | End-dimension voidrunner. Purpur hull, obsidian spine, end-rod thrusters. |
+| `flower_forest` | Flower forest blossom-runner. Oak-planks hull, cherry-log dark accent, pink-stained-glass windows, cherry-planks engines, shroomlight engine glow, pink-petals wings, stripped-oak-wood greebles, redstone-lamp running lights — Minecraft pastel flower forest biome theme. |
 | `forest_camouflage` | Woodland recon craft. Mossy stone hull, leaf-panel wings, froglight landing lights. |
 | `frozen_tundra` | Arctic tundra runner. Calcite-and-dripstone hull, packed-ice engines, soul-lantern cold-blue glow, snow-panel wings. |
 | `gold_imperial` | Imperial flagship. Gold plating, blackstone accents, froglight running lights. |

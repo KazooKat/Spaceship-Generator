@@ -1,0 +1,26 @@
+name: flower_forest
+description: Flower forest blossom-runner. Oak-planks hull, cherry-log dark accent, pink-stained-glass windows, cherry-planks engines, shroomlight engine glow, pink-petals wings, stripped-oak-wood greebles, redstone-lamp running lights — Minecraft pastel flower forest biome theme.
+
+blocks:
+  HULL:          minecraft:oak_planks
+  HULL_DARK:     minecraft:cherry_log
+  WINDOW:        minecraft:pink_stained_glass
+  ENGINE:        minecraft:cherry_planks
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:white_stained_glass
+  WING:          minecraft:pink_petals
+  GREEBLE:       minecraft:stripped_oak_wood
+  LIGHT:         minecraft:redstone_lamp
+  INTERIOR:      minecraft:yellow_wool
+
+preview_colors:
+  HULL:          "#c8a060"
+  HULL_DARK:     "#7a3050"
+  WINDOW:        "#f8b8d0"
+  ENGINE:        "#e8a0b4"
+  ENGINE_GLOW:   "#f09246"
+  COCKPIT_GLASS: "#f0f0f0"
+  WING:          "#f4c4d8"
+  GREEBLE:       "#a88c60"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#f8e060"

@@ -28,11 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: each route returns `{"<name>_styles":[...]}` JSON in enum-declaration order; OpenAPI spec enumerates them; spec-validate test stays green; CHANGELOG bullet
       notes: mirror of `feat-api-cockpit-styles` / `feat-api-structure-styles`; one agent owns ship.py + test_api.py
 
-- [ ] feat-palettes-biome-pack-2026-05-05: add bamboo_jungle, flower_forest biome palettes
-      scope: `palettes/bamboo_jungle.yaml`, `palettes/flower_forest.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs (deep_dark, jagged_peaks, swamp, etc.)
-
 - [ ] feat-bench-compare-csv: add `--csv` flag to `scripts/bench_compare.py` emitting CSV row instead of fixed-width table
       scope: `scripts/bench_compare.py`, `tests/test_bench_smoke.py` (extend)
       accept: `--csv` emits a header row + one row per compared variant; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
@@ -69,6 +64,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palettes-biome-pack-2026-05-05: add bamboo_jungle, flower_forest biome palettes
+      scope: `palettes/bamboo_jungle.yaml`, `palettes/flower_forest.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs (deep_dark, jagged_peaks, swamp, etc.)
 
 - [x] feat-docs-contributing: add `docs/contributing.md` short development guide
       scope: `docs/contributing.md` (new), one-line link from `README.md`
