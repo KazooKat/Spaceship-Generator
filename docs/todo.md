@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: new section "Hull pipeline" describes `hull_styles.py` (HullStyle + per-style placers in `shape/hull.py`), the role of `hull_style` and `ShapeParams.hull_style`; cross-link to `docs/cli.md` and `docs/web_ui.md`; ≤80 lines; CHANGELOG bullet
       notes: mirror of just-shipped greebles / weapons / cockpit pipeline sections
 
-- [ ] feat-cli-list-roles: add `--list-roles` and `--list-roles-json` flags exposing the `Role` enum
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--list-roles` prints one Role enum name per line in declaration order, exits 0; `--list-roles-json` emits `{"roles":[{"name":"<NAME>", "value":<int>}, ...]}` not silenced by `--quiet`; mutually exclusive with each other; tests; CHANGELOG bullet
-      notes: mirror of `--list-shape-styles` / `--list-shape-styles-json` pattern; `Role` is the int8 enum in `shape/core.py`; payload includes both name and integer value since the value matters for shape_grid consumers
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -58,6 +53,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-list-roles: add `--list-roles` and `--list-roles-json` flags exposing the `Role` enum
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-roles` prints one Role enum name per line in declaration order, exits 0; `--list-roles-json` emits `{"roles":[{"name":"<NAME>", "value":<int>}, ...]}` not silenced by `--quiet`; mutually exclusive with each other; tests; CHANGELOG bullet
+      notes: mirror of `--list-shape-styles` / `--list-shape-styles-json` pattern; `Role` is the int8 enum in `shape/core.py`; payload includes both name and integer value since the value matters for shape_grid consumers
 
 - [x] feat-palettes-biome-pack-2026-05-05d: add eroded_badlands, magma_chamber biome palettes
       scope: `palettes/eroded_badlands.yaml`, `palettes/magma_chamber.yaml`

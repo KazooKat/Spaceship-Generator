@@ -329,6 +329,15 @@ def build_parser() -> argparse.ArgumentParser:
                         "{\"structure_styles\":[...]} to stdout. "
                         "Mutually exclusive with --list-structure-styles. "
                         "NOT silenced by --quiet.")
+    p.add_argument("--list-roles", action="store_true",
+                   help="Print every Role enum name (one per line, "
+                        "declaration order) and exit. Useful for tooling "
+                        "that consumes the shape_grid int8 array.")
+    p.add_argument("--list-roles-json", action="store_true",
+                   help="Machine-readable variant: emits "
+                        "{\"roles\":[{\"name\":\"<NAME>\",\"value\":<int>},...]} "
+                        "JSON to stdout. NOT silenced by --quiet. "
+                        "Mutually exclusive with --list-roles.")
     # ``--preset``/``--list-presets`` are only active when the optional
     # ``presets`` module is importable. When it's absent we still register
     # the flags (so ``--help`` documents them) but restrict the choices to
@@ -1261,6 +1270,12 @@ def main(argv: list[str] | None = None) -> int:
             "--list-weapon-types and --list-weapon-types-json are "
             "mutually exclusive"
         )
+    if getattr(args, "list_roles", False) and getattr(
+        args, "list_roles_json", False
+    ):
+        parser.error(
+            "--list-roles and --list-roles-json are mutually exclusive"
+        )
 
     if args.verbose and args.quiet:
         print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
@@ -1582,6 +1597,40 @@ def main(argv: list[str] | None = None) -> int:
 
         print(
             json.dumps({"structure_styles": [s.value for s in StructureStyle]}),
+            file=sys.stdout,
+        )
+        return 0
+
+    if args.list_roles:
+        # Narrower sibling of --list-styles: only the Role enum.
+        # One member per line in enum-declaration order (no header/indent
+        # prefix) so callers can pipe straight into another tool. Members
+        # emit deterministically and stably across runs. Mirrors the
+        # ``--list-structure-styles`` handler exactly. Imported locally
+        # because ``main`` already binds ``Role`` as a local in the
+        # ``--palette-info`` branch below — a module-level import would
+        # be shadowed and trigger ``UnboundLocalError`` here.
+        from .palette import Role
+
+        for r in Role:
+            _emit(args, r.name)
+        return 0
+
+    if getattr(args, "list_roles_json", False):
+        # Machine-readable variant of ``--list-roles``: a single JSON
+        # document with a single ``roles`` array of {name, value} objects in
+        # enum-declaration order. Deliberately NOT routed through ``_emit``
+        # so ``--quiet --list-roles-json`` still prints — same carve-out as
+        # ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``.
+        import json
+
+        from .palette import Role
+
+        print(
+            json.dumps(
+                {"roles": [{"name": r.name, "value": int(r)} for r in Role]}
+            ),
             file=sys.stdout,
         )
         return 0

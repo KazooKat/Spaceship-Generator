@@ -1776,3 +1776,103 @@ def test_cli_list_weapon_types_and_json_mutually_exclusive(capsys):
     assert "--list-weapon-types" in err
     assert "--list-weapon-types-json" in err
     assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --list-roles / --list-roles-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_roles_emits_names(capsys):
+    """``--list-roles`` prints every ``Role`` enum name on its own line in
+    enum-declaration order, exit 0.
+
+    Membership is asserted via enum iteration (no hard-coded string list)
+    so the test does not drift when a new role is added. Narrower sibling
+    of ``--list-shape-styles`` — no group header/indent prefix since
+    there's only one enum to emit.
+    """
+    from spaceship_generator.palette import Role
+
+    rc = main(["--list-roles"])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+
+    # Every enum member's name appears on its own line, no prefix/indent.
+    for r in Role:
+        assert r.name in lines, f"missing Role.{r.name}"
+
+    # Deterministic enum-declaration order — the printed lines (modulo any
+    # blank trailers) match the enum's own iteration order exactly.
+    expected = [r.name for r in Role]
+    assert [line for line in lines if line] == expected
+
+
+def test_cli_list_roles_quiet_silences(capsys):
+    """``--quiet --list-roles`` emits nothing to stdout — matches the
+    non-json sibling pattern (``_emit`` honors ``--quiet``)."""
+    rc = main(["--quiet", "--list-roles"])
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert captured.out == "", (
+        f"--quiet --list-roles leaked stdout: {captured.out!r}"
+    )
+
+
+def test_cli_list_roles_json_emits_valid_json(capsys):
+    """``--list-roles-json`` prints a single JSON document to stdout with
+    key ``roles`` whose value is a list of {name, value} objects in the
+    enum's declaration order."""
+    from spaceship_generator.palette import Role
+
+    rc = main(["--list-roles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict), f"expected JSON object, got {type(obj)}"
+    assert set(obj.keys()) == {"roles"}, (
+        f"unexpected key set: {sorted(obj.keys())}"
+    )
+    assert isinstance(obj["roles"], list)
+    for entry in obj["roles"]:
+        assert isinstance(entry, dict)
+        assert isinstance(entry["name"], str)
+        assert isinstance(entry["value"], int)
+    assert obj["roles"] == [
+        {"name": r.name, "value": int(r)} for r in Role
+    ]
+
+
+def test_cli_list_roles_json_quiet_still_emits(capsys):
+    """``--quiet --list-roles-json`` still produces the JSON document on
+    stdout (carve-out parallels ``--quiet --list-presets-json`` /
+    ``--quiet --list-shape-styles-json``)."""
+    from spaceship_generator.palette import Role
+
+    rc = main(["--quiet", "--list-roles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["roles"] == [
+        {"name": r.name, "value": int(r)} for r in Role
+    ]
+
+
+def test_cli_list_roles_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-roles`` and ``--list-roles-json`` exits
+    non-zero via ``parser.error`` with a clear stderr message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-roles", "--list-roles-json"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-roles" in err
+    assert "--list-roles-json" in err
+    assert "mutually exclusive" in err
