@@ -23,6 +23,7 @@ stages have a place to plug in.
 from __future__ import annotations
 
 import argparse
+import csv
 import platform
 import statistics
 import sys
@@ -169,6 +170,37 @@ def print_table(summary: dict[str, dict[str, float]], iterations: int) -> None:
     )
 
 
+def print_csv(summary: dict[str, dict[str, float]]) -> None:
+    """Emit the per-stage summary as CSV to stdout.
+
+    Header row is ``stage,mean_ms,p95_ms,total_ms`` followed by one row per
+    pipeline stage in the canonical :data:`STAGES` order and a final
+    ``TOTAL`` row whose numbers come from the same ``summary`` aggregate as
+    the fixed-width formatter (so the two output paths can never drift on
+    the summary numbers — both consume :func:`summarize`'s output). Uses
+    the stdlib :mod:`csv` module so quoting / escaping (e.g. a future
+    stage label containing a comma) is handled correctly without us
+    reinventing it.
+    """
+    writer = csv.writer(sys.stdout, lineterminator="\n")
+    writer.writerow(["stage", "mean_ms", "p95_ms", "total_ms"])
+    for stage in STAGES:
+        s = summary[stage]
+        writer.writerow([
+            stage,
+            f"{s['mean_ms']:.3f}",
+            f"{s['p95_ms']:.3f}",
+            f"{s['total_ms']:.3f}",
+        ])
+    t = summary["__total__"]
+    writer.writerow([
+        "TOTAL",
+        f"{t['mean_ms']:.3f}",
+        f"{t['p95_ms']:.3f}",
+        f"{t['total_ms']:.3f}",
+    ])
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument(
@@ -183,6 +215,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--palette", type=str, default="sci_fi_industrial",
         help="palette name (echoed only — shape pipeline is palette-agnostic)",
     )
+    p.add_argument(
+        "--csv", action="store_true", default=False,
+        help=(
+            "Emit CSV instead of fixed-width table; useful for CI / "
+            "spreadsheet ingest."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -192,10 +231,17 @@ def main(argv: list[str] | None = None) -> int:
         print("--iterations must be >= 1", file=sys.stderr)
         return 2
 
+    # In CSV mode the run banner goes to stderr so the stdout stream stays
+    # a clean CSV document an operator can pipe straight into a spreadsheet
+    # / CI parser. In the default fixed-width-table mode it stays on stdout
+    # where it's always been (preserves backwards-compatible output for
+    # existing callers).
+    progress_stream = sys.stderr if args.csv else sys.stdout
     print(
         f"bench_shape: iterations={args.iterations}  seed={args.seed}  "
         f"palette={args.palette}  py={sys.version.split()[0]}  "
-        f"proc={(platform.processor() or platform.machine())[:60]}"
+        f"proc={(platform.processor() or platform.machine())[:60]}",
+        file=progress_stream,
     )
 
     params = ShapeParams()  # default-sized ship, matches generate_shape default
@@ -209,7 +255,10 @@ def main(argv: list[str] | None = None) -> int:
         per_iter.append(run_iteration(args.seed + i, params))
 
     summary = summarize(per_iter)
-    print_table(summary, args.iterations)
+    if args.csv:
+        print_csv(summary)
+    else:
+        print_table(summary, args.iterations)
     return 0
 
 

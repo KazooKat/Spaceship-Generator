@@ -55,6 +55,52 @@ def test_bench_shape_runs_with_two_iterations() -> None:
     assert "p95_ms" in out
 
 
+def test_bench_shape_csv_emits_csv() -> None:
+    """`--csv` flag produces a CSV header + per-stage rows + TOTAL row.
+
+    The run-banner must NOT pollute the CSV stream in `--csv` mode (it's
+    routed to stderr instead) so the stdout is a clean parseable CSV
+    document an operator can pipe straight into a spreadsheet / CI parser.
+    """
+    assert SCRIPT.is_file(), f"missing bench script: {SCRIPT}"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--csv",
+            "--iterations",
+            "2",
+            "--seed",
+            "0",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"bench_shape.py --csv exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    out = result.stdout
+    assert out.strip(), f"bench_shape.py --csv produced empty stdout:\n{out!r}"
+    lines = out.splitlines()
+    assert lines[0] == "stage,mean_ms,p95_ms,total_ms", (
+        f"first stdout line should be the CSV header, got:\n{lines[0]!r}"
+    )
+    # Subsequent rows must include at least one per-stage data row and a
+    # TOTAL row — catches a regression where the header emits but the body
+    # / TOTAL summary row is dropped.
+    body_rows = lines[1:]
+    assert any(
+        row and not row.startswith("TOTAL,") and not row.startswith("stage,")
+        for row in body_rows
+    ), f"no per-stage row in CSV body:\n{body_rows}"
+    assert any(
+        row.startswith("TOTAL,") for row in body_rows
+    ), f"TOTAL row missing from CSV body:\n{body_rows}"
+
+
 def test_bench_full_pipeline_runs_with_two_iterations() -> None:
     """End-to-end bench exits 0 and prints the pipeline + TOTAL rows."""
     assert FULL_PIPELINE_SCRIPT.is_file(), (

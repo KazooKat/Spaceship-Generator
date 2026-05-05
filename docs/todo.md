@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: `python scripts/palette_lint.py --all [--strict]` lints every palette in `palettes/`, exits 0 if all clean / 1 if any error; per-palette OK/error summary lines printed; CHANGELOG bullet
       notes: convenience over invoking the script per-file; should reuse the existing `lint_palette` core; tested with both clean and dirty palette inputs
 
-- [ ] feat-docs-configuration: add `docs/configuration.md` overview of all CLI / web config knobs
-      scope: `docs/configuration.md` (new), one-line link from `README.md`
-      accept: file enumerates CLI flags / web form fields / `ShapeParams` knobs grouped by category (shape / palette / style / greeble / weapon / output); cross-link to `docs/cli.md`, `docs/web_ui.md`; ≤120 lines; CHANGELOG bullet; one-line README link
-      notes: complements `docs/cli.md` (per-flag reference) with a config-by-category index
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -58,6 +53,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-configuration: add `docs/configuration.md` overview of all CLI / web config knobs
+      scope: `docs/configuration.md` (new), one-line link from `README.md`
+      accept: file enumerates CLI flags / web form fields / `ShapeParams` knobs grouped by category (shape / palette / style / greeble / weapon / output); cross-link to `docs/cli.md`, `docs/web_ui.md`; ≤120 lines; CHANGELOG bullet; one-line README link
+      notes: complements `docs/cli.md` (per-flag reference) with a config-by-category index
 
 - [x] feat-palettes-biome-pack-2026-05-05c: add dawn_meadow, glacial_blue biome palettes
       scope: `palettes/dawn_meadow.yaml`, `palettes/glacial_blue.yaml`

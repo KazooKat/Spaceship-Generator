@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(configuration): add docs/configuration.md config-by-category index (feat-docs-configuration)
 - feat(palettes): add dawn_meadow, glacial_blue biome palettes (feat-palettes-biome-pack-2026-05-05c)
 - feat(scripts): add --csv flag to bench_shape.py for CI/spreadsheet ingest (feat-bench-shape-csv)
 - docs(architecture): add Cockpit pipeline section (feat-docs-architecture-cockpit)
