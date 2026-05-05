@@ -14,6 +14,7 @@ not a perf test.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +27,7 @@ PALETTE_SCRIPT = REPO_ROOT / "scripts" / "bench_palette.py"
 GREEBLE_DENSITY_SCRIPT = REPO_ROOT / "scripts" / "bench_greeble_density.py"
 FLEET_SCRIPT = REPO_ROOT / "scripts" / "bench_fleet.py"
 SUMMARY_SCRIPT = REPO_ROOT / "scripts" / "bench_summary.py"
+COMPARE_SCRIPT = REPO_ROOT / "scripts" / "bench_compare.py"
 
 EXPECTED_STAGES = ("hull", "cockpit", "engines", "wings", "greebles", "assembly")
 
@@ -358,3 +360,69 @@ def test_bench_summary_csv_emits_csv() -> None:
             "bench_fleet",
         )
     ), f"no bench-name row in CSV body:\n{body}"
+
+
+def test_bench_compare_csv_emits_csv(tmp_path: Path) -> None:
+    """`--csv` flag produces a CSV header + one row per compared phase.
+
+    bench_compare diffs two JSON baselines (the schema produced by
+    ``bench_generator.py --save``) so this test synthesizes two minimal
+    baseline JSON documents in ``tmp_path`` (one with a small regression in
+    the ``export`` phase so the FAIL glyph is exercised) and asserts that
+    ``--csv`` emits a header row + at least one data row on stdout. The
+    script exits 1 on regression — we still exercise that codepath because
+    a clean run with all phases equal would skip the FAIL row entirely
+    (lower-signal smoke); the CSV output contract itself is independent
+    of the exit code so we assert the contract, not the code.
+    """
+    assert COMPARE_SCRIPT.is_file(), f"missing bench script: {COMPARE_SCRIPT}"
+    baseline = {
+        "wall": {"total_s": 1.0},
+        "phases": {
+            "shape_build": {"total_s": 0.5},
+            "export": {"total_s": 0.5},
+        },
+    }
+    current = {
+        "wall": {"total_s": 1.05},
+        "phases": {
+            "shape_build": {"total_s": 0.5},
+            # 10 % regression in ``export`` so the comparator emits a FAIL
+            # row — exercises the non-empty-CSV-body path.
+            "export": {"total_s": 0.55},
+        },
+    }
+    baseline_path = tmp_path / "baseline.json"
+    current_path = tmp_path / "current.json"
+    baseline_path.write_text(json.dumps(baseline))
+    current_path.write_text(json.dumps(current))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(COMPARE_SCRIPT),
+            str(baseline_path),
+            str(current_path),
+            "--csv",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    # bench_compare exits 1 when any phase regressed beyond threshold (it
+    # does in this fixture), but we don't pin the exact code — the CSV
+    # output contract is independent of regression status.
+    out = result.stdout
+    assert out.strip(), (
+        f"bench_compare.py --csv produced empty stdout:\n{out!r}\n"
+        f"stderr:\n{result.stderr}"
+    )
+    lines = out.splitlines()
+    assert lines[0] == "phase,baseline_s,current_s,delta_pct,status", (
+        f"first stdout line should be the CSV header, got:\n{lines[0]!r}"
+    )
+    # At least one data row must appear in the CSV body — catches a
+    # regression where the header emits but the body is dropped.
+    body_rows = [row for row in lines[1:] if row.strip()]
+    assert body_rows, f"no per-phase row in CSV body:\n{lines}"

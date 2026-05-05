@@ -2,6 +2,7 @@
 
 Usage:
     python scripts/bench_compare.py <baseline.json> <current.json> [--threshold 0.10]
+    python scripts/bench_compare.py <baseline.json> <current.json> --csv
 
 Both JSON files are expected to have the schema produced by
 ``bench_generator.py --save`` (a dict with ``wall`` and ``phases`` keys).
@@ -13,6 +14,7 @@ else exits 1. Stdlib only.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import sys
 from pathlib import Path
@@ -42,6 +44,15 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.10,
         help="regression threshold as fraction (default 0.10 = 10%%)",
+    )
+    p.add_argument(
+        "--csv",
+        action="store_true",
+        default=False,
+        help=(
+            "Emit CSV (phase,baseline_s,current_s,delta_pct,status) instead "
+            "of fixed-width table; useful for CI / spreadsheet ingest."
+        ),
     )
     return p.parse_args()
 
@@ -123,12 +134,46 @@ def render_markdown(
     return "\n".join(lines)
 
 
+def print_csv(rows: list[tuple[str, float, float, float, str]]) -> None:
+    """Emit the per-phase comparison as CSV to stdout.
+
+    Header row is ``phase,baseline_s,current_s,delta_pct,status`` followed
+    by one row per phase. The same intermediate ``rows`` aggregate produced
+    by :func:`compute_rows` feeds both this CSV path and the legacy
+    :func:`render_markdown` path so the two output paths cannot drift on
+    the per-phase numbers. Uses the stdlib :mod:`csv` module so quoting /
+    escaping (e.g. a future phase name containing a comma) is handled
+    correctly without us reinventing it. ``+inf`` is emitted verbatim for
+    the new-phase case (matches the markdown formatter), and the status
+    column carries the same UTF-8 glyph (``OK`` / ``WARN`` / ``FAIL``) as
+    the markdown render so a downstream parser can detect regressions by
+    string match on the ``FAIL`` glyph.
+    """
+    writer = csv.writer(sys.stdout, lineterminator="\n")
+    writer.writerow(["phase", "baseline_s", "current_s", "delta_pct", "status"])
+    for phase, b, c, delta_pct, status in rows:
+        if delta_pct == float("inf"):
+            delta_str = "+inf"
+        else:
+            delta_str = f"{delta_pct:+.1f}"
+        writer.writerow([phase, f"{b:.4f}", f"{c:.4f}", delta_str, status])
+
+
 def main() -> int:
     args = parse_args()
     baseline = load_baseline(args.baseline)
     current = load_baseline(args.current)
     rows = compute_rows(baseline, current, args.threshold)
-    print(render_markdown(rows, args.threshold))
+    # In CSV mode the stdout stream stays a clean parseable CSV document
+    # an operator can pipe straight into a spreadsheet / CI parser. In the
+    # default markdown-table mode the rendered table goes to stdout where
+    # it's always been (preserves backwards-compatible output for existing
+    # callers — bench_compare has no progress / banner lines on stdout to
+    # route, so the only thing that moves between modes is the formatter).
+    if args.csv:
+        print_csv(rows)
+    else:
+        print(render_markdown(rows, args.threshold))
     regressed = any(status == FAIL for _, _, _, _, status in rows)
     return 1 if regressed else 0
 

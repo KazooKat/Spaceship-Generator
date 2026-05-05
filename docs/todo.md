@@ -28,12 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: each route returns `{"<name>_styles":[...]}` JSON in enum-declaration order; OpenAPI spec enumerates them; spec-validate test stays green; CHANGELOG bullet
       notes: mirror of `feat-api-cockpit-styles` / `feat-api-structure-styles`; one agent owns ship.py + test_api.py
 
-- [ ] feat-bench-compare-csv: add `--csv` flag to `scripts/bench_compare.py` emitting CSV row instead of fixed-width table
-      scope: `scripts/bench_compare.py`, `tests/test_bench_smoke.py` (extend)
-      accept: `--csv` emits a header row + one row per compared variant; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
-      notes: mirror of `feat-bench-summary-csv` / `feat-bench-palette-csv`
-
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -64,6 +58,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-bench-compare-csv: add `--csv` flag to `scripts/bench_compare.py` emitting CSV row instead of fixed-width table
+      scope: `scripts/bench_compare.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits a header row + one row per compared variant; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
+      notes: mirror of `feat-bench-summary-csv` / `feat-bench-palette-csv`
 
 - [x] feat-palettes-biome-pack-2026-05-05: add bamboo_jungle, flower_forest biome palettes
       scope: `palettes/bamboo_jungle.yaml`, `palettes/flower_forest.yaml`
