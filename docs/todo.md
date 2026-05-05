@@ -23,17 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: parametrize over each `WeaponType` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending weapon-type + seed; CHANGELOG bullet
       notes: mirror of `feat-tests-property-greeble-types` / `-shape-styles`; weapons plumbed via `weapon_types=[WeaponType(...)]` and `weapon_count > 0`
 
-- [ ] feat-bench-greeble-density: add `scripts/bench_greeble_density.py` per-density `generate()` micro-bench
-      scope: `scripts/bench_greeble_density.py` (new), `tests/test_bench_smoke.py` (extend)
-      accept: script iterates densities `[0.0, 0.25, 0.5, 0.75, 1.0]` (or `--densities` override) running N `generate()` calls each, prints fixed-width `density | mean_ms | p95_ms` table + TOTAL, exits 0; smoke test runs `--iterations 2 --densities 0.0,0.5`; CHANGELOG bullet
-      notes: mirrors `bench_palette.py` schema; surfaces cost slope vs greeble density for `shapes-*` perf work
-
-### Complex & compound ship shapes
-Umbrella epic: today every ship is one ellipsoid-of-revolution per
-`HullStyle`. The items below extend the shape pipeline so a single ship
-can be built from multiple primitives, blended profiles, or CSG ops.
-Land them independently — each is its own design doc + plan.
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -64,6 +53,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-bench-greeble-density: add `scripts/bench_greeble_density.py` per-density `generate()` micro-bench
+      scope: `scripts/bench_greeble_density.py` (new), `tests/test_bench_smoke.py` (extend)
+      accept: script iterates densities `[0.0, 0.25, 0.5, 0.75, 1.0]` (or `--densities` override) running N `generate()` calls each, prints fixed-width `density | mean_ms | p95_ms` table + TOTAL, exits 0; smoke test runs `--iterations 2 --densities 0.0,0.5`; CHANGELOG bullet
+      notes: shipped 2026-05-05; new `scripts/bench_greeble_density.py` mirrors `scripts/bench_palette.py`'s schema (warm-up iter, per-axis fixed-width table, TOTAL aggregating per-iter samples across all densities, numpy + stdlib only); argparse `--iterations N` (default 3), `--densities CSV` (default `0.0,0.25,0.5,0.75,1.0`, parsed via custom `_parse_densities` argparse type that rejects unparseable tokens / out-of-range values with a clean `error:` line), `--seed S` (default 0); palette pinned to `sci_fi_industrial` (matches `bench_full_pipeline.py` default) and ship footprint fixed at `length=16/width_max=8/height_max=6` so a 5-density × 3-iter sweep finishes in seconds; `greeble_density` passed directly to `generate()` (which accepts `[0.0, 1.0]`) rather than via `ShapeParams.greeble_density` (capped at `0.5`) so the upper-bound `1.0` sample is reachable; smoke test `tests/test_bench_smoke.py::test_bench_greeble_density_runs_minimal` runs `--iterations 2 --densities 0.0,0.5 --seed 0` via `subprocess.run` and asserts exit 0 + presence of `density`/`mean_ms`/`p95_ms`/`TOTAL` in stdout
 
 - [x] feat-api-cockpit-styles: add `GET /api/cockpit-styles` JSON endpoint
       scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components

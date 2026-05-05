@@ -38,6 +38,7 @@ from spaceship_generator.shape import (
     generate_shape,
 )
 from spaceship_generator.structure_styles import HullStyle
+from spaceship_generator.weapon_styles import WeaponType
 from spaceship_generator.wing_styles import WingStyle
 
 # Keep grids modest so the property suite stays fast on CI.
@@ -736,6 +737,61 @@ def test_property_greeble_type_seed_grid_generates_non_empty_litematic(
         )
     assert res.block_count > 0, (
         f"greeble_type={greeble_type.value} seed={seed} produced 0 blocks"
+    )
+
+
+# ----------- weapon-type × seed-grid stability (every enum member, small seed set) -----------
+#
+# Companion to ``test_property_greeble_type_seed_grid_generates_non_empty_litematic``
+# and the hull/engine-style siblings. The Hypothesis-based
+# ``test_property_weapon_count_scales_weapon_specific_roles`` samples weapon
+# count but never restricts to a single ``WeaponType``, and the CLI
+# ``--weapon-type TYPE`` plumbing (``[WeaponType(args.weapon_type)]`` →
+# ``generate(..., weapon_types=[that_type])``) is exercised end-to-end nowhere
+# else. This parametrize test deterministically pins *every* WeaponType member
+# against the small fixed seed grid so a regression in any single weapon
+# builder is guaranteed to surface as a self-named ``[seed-weapon_type]``
+# failure node.
+
+
+@pytest.mark.parametrize("weapon_type", list(WeaponType), ids=lambda t: t.value)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_weapon_type_seed_grid_generates_non_empty_litematic(
+    tmp_path, weapon_type, seed
+):
+    """Every ``WeaponType`` × small seed grid → ``generate()`` writes a non-empty file.
+
+    Mirrors how the ``--weapon-type TYPE`` CLI flag plumbs into ``generate()``
+    — the CLI passes ``weapon_types=[WeaponType(args.weapon_type)]``, so we do
+    the same here per enum member to catch weapon-builder-driven regressions
+    (turret_large/missile_pod/laser_lance/point_defense/plasma_core) one tick
+    earlier than the Hypothesis-sampled ``weapon_count_scales_weapon_specific_roles``
+    test would, since this explicitly visits every member rather than sampling.
+    A non-zero ``weapon_count`` is required so the scatter actually fires and
+    the restricted-type list has a chance to matter. Failure messages name both
+    the offending weapon type and seed via the parametrize IDs, plus an explicit
+    ``pytest.fail`` message if the file is missing or zero-bytes.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        shape_params=params,
+        weapon_types=[weapon_type],
+        weapon_count=4,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for weapon_type={weapon_type.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for weapon_type={weapon_type.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"weapon_type={weapon_type.value} seed={seed} produced 0 blocks"
     )
 
 

@@ -23,6 +23,7 @@ SCRIPT = REPO_ROOT / "scripts" / "bench_shape.py"
 FULL_PIPELINE_SCRIPT = REPO_ROOT / "scripts" / "bench_full_pipeline.py"
 MEM_SCRIPT = REPO_ROOT / "scripts" / "bench_mem.py"
 PALETTE_SCRIPT = REPO_ROOT / "scripts" / "bench_palette.py"
+GREEBLE_DENSITY_SCRIPT = REPO_ROOT / "scripts" / "bench_greeble_density.py"
 FLEET_SCRIPT = REPO_ROOT / "scripts" / "bench_fleet.py"
 SUMMARY_SCRIPT = REPO_ROOT / "scripts" / "bench_summary.py"
 
@@ -143,6 +144,40 @@ def test_bench_palette_runs_with_two_palettes_two_iterations() -> None:
     assert out.strip(), f"bench_palette.py produced empty stdout:\n{out!r}"
     # Header columns we promised in the docstring + spec.
     assert "palette" in out, f"'palette' header missing from stdout:\n{out}"
+    assert "mean_ms" in out
+    assert "p95_ms" in out
+    assert "TOTAL" in out, f"TOTAL row missing from stdout:\n{out}"
+
+
+def test_bench_greeble_density_runs_minimal() -> None:
+    """Per-density bench exits 0 and prints the column headers + TOTAL row."""
+    assert GREEBLE_DENSITY_SCRIPT.is_file(), (
+        f"missing bench script: {GREEBLE_DENSITY_SCRIPT}"
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(GREEBLE_DENSITY_SCRIPT),
+            "--iterations",
+            "2",
+            "--densities",
+            "0.0,0.5",
+            "--seed",
+            "0",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"bench_greeble_density.py exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    out = result.stdout
+    assert out.strip(), f"bench_greeble_density.py produced empty stdout:\n{out!r}"
+    # Header columns we promised in the docstring + spec.
+    assert "density" in out, f"'density' header missing from stdout:\n{out}"
     assert "mean_ms" in out
     assert "p95_ms" in out
     assert "TOTAL" in out, f"TOTAL row missing from stdout:\n{out}"
