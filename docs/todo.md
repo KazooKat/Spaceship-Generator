@@ -33,11 +33,6 @@ for one release cycle, then pruned during release prep.
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs (deep_dark, jagged_peaks, swamp, etc.)
 
-- [ ] feat-tests-property-palette-grid: add property test asserting `generate()` succeeds for every (palette × seed) pair
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over each palette in `palettes/` × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending palette + seed; CHANGELOG bullet
-      notes: mirror of the structure/cockpit/wing-style sibling property tests but parametrized over palette filenames
-
 - [ ] feat-bench-compare-csv: add `--csv` flag to `scripts/bench_compare.py` emitting CSV row instead of fixed-width table
       scope: `scripts/bench_compare.py`, `tests/test_bench_smoke.py` (extend)
       accept: `--csv` emits a header row + one row per compared variant; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
@@ -78,6 +73,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-property-palette-grid: add property test asserting `generate()` succeeds for every (palette × seed) pair
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each palette in `palettes/` × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending palette + seed; CHANGELOG bullet
+      notes: mirror of the structure/cockpit/wing-style sibling property tests but parametrized over palette filenames
 
 - [x] feat-cli-output-json-schema: add `--output-json-schema` flag — emits the JSON Schema for the `--output-json` payload to stdout
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`

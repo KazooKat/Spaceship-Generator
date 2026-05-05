@@ -551,16 +551,17 @@ def test_property_structure_x_hull_cross_product_no_crash(seed, structure, hull)
 #
 # Discover palettes dynamically (matches ``tests/test_palette_lint.py`` style)
 # so adding a new YAML to ``palettes/`` automatically widens the matrix.
-# The seed grid is fixed (deterministic + fast); five seeds × ~50 palettes is
-# ~250 generate() calls, which runs in well under 60 s on the dev box (~20 ms
-# per call at length=16/width=8/height=6). pytest's parametrize IDs make any
-# failure self-naming as ``[palette-seed]``.
+# The seed grid is fixed (deterministic + fast) and matches the
+# structure/cockpit/wing-style sibling tests' ``_SHAPE_STYLE_STABILITY_SEEDS``;
+# three seeds × ~57 palettes is ~171 generate() calls, which runs in well under
+# 60 s on the dev box (~20 ms per call at length=16/width=8/height=6). pytest's
+# parametrize IDs make any failure self-naming as ``[seed-palette]``.
 
 _PALETTE_NAMES = sorted(p.stem for p in palettes_dir().glob("*.yaml"))
-_PALETTE_STABILITY_SEEDS = [0, 1, 7, 42, 99]
+_PALETTE_STABILITY_SEEDS = [0, 1, 7]
 
 
-@pytest.mark.parametrize("palette_name", _PALETTE_NAMES)
+@pytest.mark.parametrize("palette_name", _PALETTE_NAMES, ids=lambda p: p)
 @pytest.mark.parametrize("seed", _PALETTE_STABILITY_SEEDS)
 def test_property_palette_seed_grid_generates_non_empty_litematic(
     tmp_path, palette_name, seed
@@ -571,7 +572,10 @@ def test_property_palette_seed_grid_generates_non_empty_litematic(
     pipeline crash on a specific palette × seed combo) one tick earlier
     than a pure shape-property test would. Failure messages name both the
     offending palette and seed via the parametrize IDs, plus an explicit
-    ``pytest.fail`` message if the file is missing or zero-bytes.
+    ``pytest.fail`` message if the file is missing or zero-bytes. Mirrors
+    the structure/cockpit/wing-style sibling parametrize tests' seed grid
+    (``_SHAPE_STYLE_STABILITY_SEEDS = [0, 1, 7]``) so the palette-axis and
+    style-axis stability tests stay apples-to-apples on seed coverage.
     """
     params = ShapeParams(length=16, width_max=8, height_max=6)
     res = generate(
