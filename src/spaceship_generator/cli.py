@@ -254,6 +254,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--palette-info", metavar="NAME",
                    help="Print role -> block ID and hex preview color for NAME and exit. "
                         "Use --list-palettes to see available palette names.")
+    p.add_argument("--validate-palette", metavar="PATH", type=Path, default=None,
+                   help="Run the strict palette-lint logic against a single palette "
+                        "YAML at PATH (the same checks scripts/palette_lint.py runs: "
+                        "missing required roles, invalid block IDs, duplicate role "
+                        "mappings, dark windows, low HULL/HULL_DARK contrast, "
+                        "non-emissive ENGINE_GLOW). Prints 'OK' on a clean palette "
+                        "(suppressed under --quiet) or one diagnostic line per "
+                        "error/warning to stderr on failure, then exits. "
+                        "Exit 0 = clean, exit 1 = at least one error or warning.")
     p.add_argument("--list-styles", action="store_true",
                    help="List available hull/engine/wing styles and exit.")
     p.add_argument("--list-shape-styles", action="store_true",
@@ -286,6 +295,11 @@ def build_parser() -> argparse.ArgumentParser:
                         "enum-declaration order and exit. Narrower sibling "
                         "of --list-styles, which also includes hull / engine "
                         "/ wing / greeble / weapon types.")
+    p.add_argument("--list-structure-styles", action="store_true",
+                   help="List StructureStyle members (one per line) in "
+                        "enum-declaration order and exit. Narrower sibling "
+                        "of --list-styles, which also includes hull / engine "
+                        "/ wing / cockpit / greeble / weapon types.")
     # ``--preset``/``--list-presets`` are only active when the optional
     # ``presets`` module is importable. When it's absent we still register
     # the flags (so ``--help`` documents them) but restrict the choices to
@@ -1357,6 +1371,16 @@ def main(argv: list[str] | None = None) -> int:
             _emit(args, c.value)
         return 0
 
+    if args.list_structure_styles:
+        # Narrower sibling of --list-styles: only the StructureStyle enum.
+        # One member per line in enum-declaration order (no header/indent
+        # prefix) so callers can pipe straight into another tool. Members
+        # emit deterministically and stably across runs. Mirrors the
+        # ``--list-cockpit-styles`` handler exactly.
+        for s in StructureStyle:
+            _emit(args, s.value)
+        return 0
+
     if args.list_styles:
         _emit(args, "Hull styles:")
         for h in HullStyle:
@@ -1461,6 +1485,65 @@ def main(argv: list[str] | None = None) -> int:
             hex_col = f"#{int(r_f * 255):02x}{int(g_f * 255):02x}{int(b_f * 255):02x}"
             _emit(args, f"  {role.name:<16} {bs.id:<40} {hex_col}")
         return 0
+
+    if getattr(args, "validate_palette", None) is not None:
+        # Strict palette lint for a single YAML — same checks as
+        # ``scripts/palette_lint.py`` (missing required roles, invalid block
+        # IDs, duplicate role mappings, dark windows, low HULL/HULL_DARK
+        # contrast, non-emissive ENGINE_GLOW). The lint logic lives in
+        # ``scripts/palette_lint.py`` which isn't part of the installed
+        # package, so we load it lazily via ``importlib.util`` from a path
+        # relative to this file (REPO_ROOT / scripts / palette_lint.py).
+        # On a clean palette (no errors AND no warnings — strict mode)
+        # we print ``OK`` via ``_emit`` so ``--quiet`` silences it; on a
+        # dirty palette we emit one ``error:`` / ``warn:`` line per issue
+        # to stderr so they always show, and exit 1.
+        import importlib.util
+
+        target = args.validate_palette
+        if not target.exists():
+            print(f"--validate-palette: file not found: {target}", file=sys.stderr)
+            return 1
+
+        # ``__file__`` is .../src/spaceship_generator/cli.py; the repo root
+        # (which holds ``scripts/``) is three ``parent`` hops up.
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        lint_module_path = repo_root / "scripts" / "palette_lint.py"
+        if not lint_module_path.exists():
+            print(
+                f"--validate-palette: lint module not found at {lint_module_path}",
+                file=sys.stderr,
+            )
+            return 1
+        module_name = "_palette_lint_for_cli"
+        spec = importlib.util.spec_from_file_location(
+            module_name, lint_module_path
+        )
+        if spec is None or spec.loader is None:
+            print(
+                "--validate-palette: could not load lint module spec",
+                file=sys.stderr,
+            )
+            return 1
+        lint_module = importlib.util.module_from_spec(spec)
+        # Register in ``sys.modules`` *before* exec_module: the lint module
+        # defines a ``@dataclass`` (``LintResult``) and Python's dataclass
+        # machinery resolves annotations by looking up the owning class's
+        # module in ``sys.modules`` — without this, dataclass construction
+        # raises ``AttributeError: 'NoneType' object has no attribute
+        # '__dict__'`` on the ``cls.__module__`` lookup.
+        sys.modules[module_name] = lint_module
+        spec.loader.exec_module(lint_module)
+
+        result = lint_module.lint_palette(target)
+        if not result.errors and not result.warnings:
+            _emit(args, "OK")
+            return 0
+        for e in result.errors:
+            print(f"error: {e}", file=sys.stderr)
+        for w in result.warnings:
+            print(f"warn: {w}", file=sys.stderr)
+        return 1
 
     # Resolve ``--preset`` → kwargs bundle. Individual flags override.
     # We mutate ``args`` in place so the downstream plumbing

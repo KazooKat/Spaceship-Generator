@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-cli-list-structure-styles: add `--list-structure-styles` flag — prints every `StructureStyle` enum value, exits 0
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--list-structure-styles` prints one structure style per line in enum-declaration order, exits 0; `--quiet` carve-out preserved (silenced when paired); tested; CHANGELOG bullet
-      notes: mirror of `--list-cockpit-styles`; `StructureStyle` lives in `src/spaceship_generator/structure_styles.py`
-
 - [ ] feat-tests-property-structure-styles: add property test asserting `generate()` succeeds for every (`StructureStyle` × seed) pair
       scope: `tests/test_properties.py` (extend)
       accept: parametrize over each `StructureStyle` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending structure-style + seed; CHANGELOG bullet
@@ -32,11 +27,6 @@ for one release cycle, then pruned during release prep.
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
       accept: `--validate-palette PATH` invokes the lint logic from `scripts/palette_lint.py::lint_palette` in-process, prints OK or per-error diagnostic lines, exits 0 on clean / 1 on error; tested with both passing and failing palette inputs; CHANGELOG bullet
       notes: lifts the strict-lint into the user-facing CLI so palette authors don't need to remember the helper script path; `lint_palette(path)` returns a `LintResult` dataclass
-
-- [ ] feat-bench-summary-csv: add `--csv` flag to `scripts/bench_summary.py` emitting CSV row instead of fixed-width table
-      scope: `scripts/bench_summary.py`, `tests/test_bench_smoke.py` (extend)
-      accept: `--csv` emits header `bench,metric,iterations` followed by one row per bench (no fixed-width padding); exits 0; smoke test runs `--csv --iterations 2 --limit 2`; CHANGELOG bullet
-      notes: enables CI consumption / spreadsheet diffing of perf snapshots; preserves the existing fixed-width table when `--csv` is absent
 
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
@@ -68,6 +58,16 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-bench-summary-csv: add `--csv` flag to `scripts/bench_summary.py` emitting CSV row instead of fixed-width table
+      scope: `scripts/bench_summary.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits header `bench,metric,iterations` followed by one row per bench (no fixed-width padding); exits 0; smoke test runs `--csv --iterations 2 --limit 2`; CHANGELOG bullet
+      notes: shipped 2026-05-05; new `--csv` argparse flag in `scripts/bench_summary.py::parse_args` (action `store_true`, default `False`) declared adjacent to the existing `--iterations` / `--limit` / `--seed` / `--fleet-count` flags with help text `"Emit CSV (bench,metric,iterations) instead of fixed-width table; useful for CI / spreadsheet ingest."`; new `print_csv(results)` helper writes through the stdlib `csv.writer(sys.stdout, lineterminator="\n")` so future bench names containing commas / quotes / newlines are escaped correctly without us reinventing it; in `--csv` mode the run-banner (`bench_summary: iterations=... seed=... ...`) and the per-bench `running <name> ...` progress lines are routed to stderr (via a single `progress_stream = sys.stderr if args.csv else sys.stdout` hoist) so the stdout stream stays a clean parseable CSV document an operator can pipe straight into a spreadsheet / CI parser without filtering noise out (in default fixed-width-table mode they stay on stdout where they've always been); failed benches in CSV mode emit a row with `metric=FAIL` and `iterations=0` matching the existing fixed-width FAIL handling so the row count stays stable across invocations; absent-flag behavior is byte-identical to the legacy fixed-width formatter (preserved verbatim by routing through the unchanged `print_table()` path); new `tests/test_bench_smoke.py::test_bench_summary_csv_emits_csv` runs the umbrella with `--csv --iterations 2 --limit 2 --fleet-count 2 --seed 0` via `subprocess.run` and asserts exit 0 + first stdout line is exactly `bench,metric,iterations` + at least one bench name appears in the subsequent rows (catches a regression where the header emits but the body is dropped); existing `tests/test_bench_smoke.py::test_bench_summary_runs_minimal` still asserts the fixed-width-table contract with `--csv` absent so the no-flag path is also pinned; full `pytest -q` + `ruff check .` both green
+
+- [x] feat-cli-list-structure-styles: add `--list-structure-styles` flag — prints every `StructureStyle` enum value, exits 0
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-structure-styles` prints one structure style per line in enum-declaration order, exits 0; `--quiet` carve-out preserved (silenced when paired); tested; CHANGELOG bullet
+      notes: shipped 2026-05-05; mirror of `--list-cockpit-styles` — argparse declaration in `src/spaceship_generator/cli.py::build_parser` placed immediately after `--list-cockpit-styles` so the structural sibling `--list-*-styles` flags stay adjacent in `build_parser` and the help-text grouping reads as a sibling pair; short-circuit handler in `cli.main` placed immediately after the existing `--list-cockpit-styles` handler for visual adjacency; uses the existing `_emit(args, ...)` helper so the `--quiet` carve-out keeps working without a special case (silenced when paired with `--quiet` like the other `--list-*` flags); same no-header/no-indent output, same short-circuit pattern returning `0`; handler iterates `StructureStyle` directly (StrEnum natural iteration = declaration order, deterministic and stable across runs) so callers can pipe straight into another tool without parsing grouped output; `StructureStyle` was already imported from `.shape` at the top of `cli.py` (used by `--structure-style` choices), so no new import was needed; new `tests/test_cli.py::test_cli_list_structure_styles` covers exit 0 + every member's `.value` present + deterministic enum-declaration order via `[line for line in lines if line] == [s.value for s in StructureStyle]` (no hard-coded list, so the test doesn't drift when a new structure style is added) + asserts none of the `--list-styles` group headers (`Hull styles:` / `Engine styles:` / `Wing styles:` / `Cockpit styles:` / `Weapon types:`) leak into the output; full `pytest -q` + `ruff check .` both green
 
 - [x] feat-docs-bench: add `docs/bench.md` cataloging every `scripts/bench_*.py` script with one-line description + run command
       scope: `docs/bench.md` (new), one-line link from README

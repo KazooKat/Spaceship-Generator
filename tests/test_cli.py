@@ -795,6 +795,47 @@ def test_cli_list_cockpit_styles(capsys):
 
 
 # ---------------------------------------------------------------------------
+# --list-structure-styles
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_structure_styles(capsys):
+    """``--list-structure-styles`` prints every ``StructureStyle`` value on
+    its own line in enum-declaration order, exit 0.
+
+    Membership is asserted via enum iteration (no hard-coded string list)
+    so the test does not drift when a new structure style is added. Narrower
+    sibling of ``--list-shape-styles`` — no group header/indent prefix
+    since there's only one enum to emit. Mirrors
+    ``test_cli_list_cockpit_styles`` exactly.
+    """
+    from spaceship_generator.structure_styles import StructureStyle
+
+    rc = main(["--list-structure-styles"])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+
+    # Every enum member appears on its own line, no prefix/indent.
+    for s in StructureStyle:
+        assert s.value in lines, f"missing StructureStyle.{s.name}"
+
+    # Deterministic enum-declaration order — the printed lines (modulo any
+    # blank trailers) match the enum's own iteration order exactly.
+    expected = [s.value for s in StructureStyle]
+    assert [line for line in lines if line] == expected
+
+    # Narrower than --list-styles: hull/engine/wing/cockpit/weapon section
+    # headers must NOT appear.
+    assert "Hull styles:" not in lines
+    assert "Engine styles:" not in lines
+    assert "Wing styles:" not in lines
+    assert "Cockpit styles:" not in lines
+    assert "Weapon types:" not in lines
+
+
+# ---------------------------------------------------------------------------
 # --quiet / -q
 # ---------------------------------------------------------------------------
 
@@ -1296,3 +1337,71 @@ def test_cli_list_shape_styles_and_json_mutually_exclusive(capsys):
     assert "--list-shape-styles" in err
     assert "--list-shape-styles-json" in err
     assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --validate-palette
+# ---------------------------------------------------------------------------
+
+
+def test_cli_validate_palette_clean(capsys):
+    """``--validate-palette PATH`` against a strict-clean palette
+    (``palettes/sci_fi_industrial.yaml``) exits 0 and prints ``OK`` to
+    stdout. The strict-clean choice mirrors the canonical palette used as
+    the default ``--palette`` argument and is the one
+    ``scripts/palette_lint.py --strict --file palettes/sci_fi_industrial.yaml``
+    is known to clear without warnings, so this test pins the happy-path
+    contract: clean lint -> exit 0 + ``OK`` on stdout (un-silenced because
+    we deliberately omit ``--quiet``)."""
+    repo_root = Path(__file__).resolve().parent.parent
+    palette_path = repo_root / "palettes" / "sci_fi_industrial.yaml"
+    assert palette_path.exists(), (
+        f"baseline palette missing: {palette_path}"
+    )
+
+    rc = main(["--validate-palette", str(palette_path)])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    assert "OK" in out, f"expected 'OK' in stdout, got: {out!r}"
+
+
+def test_cli_validate_palette_dirty(tmp_path: Path, capsys):
+    """``--validate-palette PATH`` against a deliberately broken palette
+    YAML exits 1 and emits at least one diagnostic line to stderr.
+
+    We construct a palette with an invalid block id format (``not a block``
+    contains a space and no ``namespace:id`` colon) so the lint
+    deterministically produces an ``error:`` line; we don't pin the exact
+    error wording (it's owned by ``scripts/palette_lint.py::lint_palette``)
+    but we do assert at least one ``error:`` prefix appears so a regression
+    that swallows diagnostics surfaces immediately."""
+    bad_palette = tmp_path / "broken.yaml"
+    bad_palette.write_text(
+        "name: broken\n"
+        "blocks:\n"
+        "  HULL: \"not a block\"\n"
+        "  HULL_DARK: \"not a block\"\n"
+        "  WINDOW: \"not a block\"\n"
+        "  ENGINE: \"not a block\"\n"
+        "  ENGINE_GLOW: \"not a block\"\n"
+        "  COCKPIT: \"not a block\"\n"
+        "  WING: \"not a block\"\n"
+        "  GREEBLE: \"not a block\"\n"
+        "  LIGHT: \"not a block\"\n"
+        "  INTERIOR: \"not a block\"\n",
+        encoding="utf-8",
+    )
+
+    rc = main(["--validate-palette", str(bad_palette)])
+    assert rc == 1
+
+    captured = capsys.readouterr()
+    err_lines = [line for line in captured.err.splitlines() if line.strip()]
+    assert err_lines, (
+        f"expected at least one diagnostic line on stderr, got: "
+        f"stdout={captured.out!r} stderr={captured.err!r}"
+    )
+    assert any(line.startswith("error:") for line in err_lines), (
+        f"expected at least one 'error:' diagnostic, got: {err_lines!r}"
+    )
