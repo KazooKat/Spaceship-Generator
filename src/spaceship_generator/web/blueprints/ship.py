@@ -895,7 +895,7 @@ _OPENAPI_COMPONENTS: dict = {
                 "greeble_types": {"type": "array", "items": {"type": "string"}},
             },
         },
-                "WeaponTypes": {
+        "WeaponTypes": {
             "type": "object",
             "required": ["weapon_types"],
             "properties": {
