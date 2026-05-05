@@ -341,6 +341,85 @@ tapered hull left disconnected (engines on a narrow rear, wings clipped by
 the taper). The second mirror restamps bilateral symmetry over those
 bridge lines so the returned grid is guaranteed mirror-symmetric in X.
 
+## Greeble pipeline
+
+Greebles are the small surface details that sell a Minecraft ship as built
+rather than sculpted: turrets, dishes, vents, antennas, panel lines, sensor
+pods, circuit boards, battle damage, pipe clusters, organic growths, and
+nano-mesh patches. They flow through the build in two distinct passes — a
+1-voxel "bump" pass baked into `generate_shape`, and a multi-cell archetype
+pass run from `generator.generate` after the shape grid is finalized.
+
+### Build order
+
+```mermaid
+flowchart LR
+  shape([generate_shape<br/>finalized grid])
+  bumps[shape/greebles.py<br/>_place_greebles<br/>1-voxel bumps]
+  mirror[assembly.py<br/>mirror + connect + mirror]
+  override[generator.py<br/>engine_style override]
+  scatter[greeble_styles.py<br/>scatter_greebles<br/>multi-cell archetypes]
+  weapons[weapon_styles.py<br/>scatter_weapons<br/>EMPTY-only]
+  texture[texture.py<br/>assign_roles]
+
+  shape --> bumps --> mirror --> override --> scatter --> weapons --> texture
+```
+
+Greebles run **before** weapons — `scatter_greebles` writes into `Role.EMPTY`
+neighbours of hull/wing cells, then `scatter_weapons` writes into the
+remaining `Role.EMPTY` cells (and skips any cell whose role is already
+non-empty, see `generator.py`'s `if shape_grid[x, y, z] != Role.EMPTY:
+continue`). That ordering means greebles are immune to weapon overwrites,
+and weapons reliably anchor on top of the (now-greebled) silhouette.
+
+### `greeble_styles.py`
+
+Pure library of placement builders plus a top-level scatterer.
+`GreebleType` is a `StrEnum` with 11 members today (`TURRET`, `DISH`,
+`VENT`, `ANTENNA`, `PANEL_LINE`, `SENSOR_POD`, `CIRCUIT_BOARD`,
+`BATTLE_DAMAGE`, `PIPE_CLUSTER`, `ORGANIC_GROWTH`, `NANO_MESH`).
+`scatter_greebles(shape, rng, density, *, types=None) -> list[Placement]`
+samples surface anchors, draws a Bernoulli mask at the requested density,
+picks one allowed `GreebleType` per hit, and returns the concatenated
+`(x, y, z, Role)` placements. When `shape` is the live numpy grid it uses
+`_surface_anchors_from_grid` (true top-facing skin cells); when it's a
+`(W, H, L)` tuple it falls back to a bounding-box approximation. `rng`
+draws are deterministic in input order — the mask draw is independent of
+`types`, so changing the allow-list never reshuffles which anchors fire.
+The caller (in `generator.py`) is what enforces the no-overwrite invariant
+shared with `weapon_styles`: writes are gated by `if shape_grid[x, y, z]
+== Role.EMPTY` before the placement is committed.
+
+### `shape/greebles.py`
+
+Hosts the in-shape "bump" pass: `_place_greebles(grid, rng, params)` and
+the `_surface_mask(grid)` helper (a vectorized "filled voxel with at least
+one EMPTY 6-neighbor" computation). Skipped when
+`params.greeble_density <= 0`. For each shuffled surface cell with role
+`HULL` or `WING`, it picks the first 6-direction neighbor (preferring up,
+then sideways, then forward/back) that is `Role.EMPTY` and writes
+`Role.GREEBLE` there. These bumps land before the final mirror pass, so
+they are bilaterally symmetric in the returned grid.
+
+### `greeble_density` and `greeble_types`
+
+`greeble_density` is a `float` in `[0.0, 1.0]` that drives both passes.
+On `ShapeParams.greeble_density` (capped at `0.5` by `__post_init__`) it
+controls the fraction of hull-surface cells that get a 1-voxel bump. On
+`generate(greeble_density=...)` it's the Bernoulli probability passed
+straight to `scatter_greebles` (full `[0.0, 1.0]` range). The CLI plumbs
+it through `--greeble-density` (mutex with `--no-greebles` which forces
+`0.0`); the web layer takes it from the `greeble_density` form/JSON field
+in `web/blueprints/ship.py`. `greeble_types` is the optional
+`Iterable[GreebleType]` allow-list — eagerly validated in `generator.py`
+to surface bad members early, then forwarded as `types=` to
+`scatter_greebles`. `None` means "all 11 types".
+
+### Cross-references
+
+- CLI ([docs/cli.md](cli.md)): `--list-greeble-types`, `--no-greebles`, `--greeble-density`.
+- Web API ([docs/web_ui.md](web_ui.md)): `GET /api/greeble-types`.
+
 ## Related documentation
 
 - [faq.md](faq.md) — common questions and troubleshooting.
