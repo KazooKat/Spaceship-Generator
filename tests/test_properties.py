@@ -684,6 +684,47 @@ def test_property_engine_style_seed_grid_generates_non_empty_litematic(
     )
 
 
+@pytest.mark.parametrize("wing_style", list(WingStyle), ids=lambda s: s.value)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_wing_style_seed_grid_generates_non_empty_litematic(
+    tmp_path, wing_style, seed
+):
+    """Every ``WingStyle`` × small seed grid → ``generate()`` writes a non-empty file.
+
+    Companion to the HullStyle/EngineStyle parametrize tests above — ``WingStyle``
+    is plumbed via ``ShapeParams.wing_style`` rather than a top-level ``generate()``
+    kwarg, so it's threaded in by constructing a fresh ``ShapeParams`` per param
+    pair instead of passed as a ``generate()`` argument. The Hypothesis-based
+    ``test_property_all_style_combos_symmetric`` samples random style trios and
+    may legitimately skip individual ``WingStyle`` members on any given run; this
+    parametrize test deterministically pins *every* member so a regression in any
+    single wing placer (``_place_straight`` / ``_place_swept`` / ``_place_delta``
+    / ``_place_tapered`` / ``_place_gull`` / ``_place_split``) surfaces as a
+    self-named ``[seed-wing_style]`` failure node.
+    """
+    params = ShapeParams(
+        length=16, width_max=8, height_max=6, wing_style=wing_style,
+    )
+    res = generate(
+        seed,
+        shape_params=params,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for wing_style={wing_style.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for wing_style={wing_style.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"wing_style={wing_style.value} seed={seed} produced 0 blocks"
+    )
+
+
 # ----------- greeble-type × seed-grid stability (every enum member, small seed set) -----------
 #
 # Companion to ``test_property_hull_style_seed_grid_generates_non_empty_litematic``
