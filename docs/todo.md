@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-bench-generator-csv: add `--csv` flag to `scripts/bench_generator.py`
+      scope: `scripts/bench_generator.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits CSV header + per-phase rows; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
+      notes: mirror of every other prior `feat-bench-*-csv` unit (summary / palette / compare / fleet / shape / full_pipeline)
+
+- [ ] feat-docs-architecture-wing: extend `docs/architecture.md` with a Wing pipeline section
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new section "Wing pipeline" describes `wing_styles.py` (WingStyle + per-style placers) and the role of `wing_style` in the assembly pipeline; cross-link to `docs/cli.md` and `docs/web_ui.md`; ≤80 lines; CHANGELOG bullet
+      notes: completes the per-component pipeline series (greebles + weapons + cockpit + hull shipped; wing is the last)
+
+- [ ] feat-tests-property-weapon-count-grid: add property test asserting `generate()` succeeds for (`weapon_count` × seed) grid
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over weapon_count `[0, 1, 2, 4, 8]` × seed grid `[0, 1, 7]` (= 15 nodes); assert `.litematic` exists + non-empty; failure names offending count + seed; CHANGELOG bullet
+      notes: complements existing `test_property_weapon_count_scales_weapon_specific_roles` which checks scaling but not every-count stability
+
+- [ ] feat-palettes-biome-pack-2026-05-05e: add warm_savanna, frozen_river biome palettes
+      scope: `palettes/warm_savanna.yaml`, `palettes/frozen_river.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [ ] feat-api-roles: add `GET /api/roles` JSON endpoint mirroring `--list-roles-json`
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components, `docs/web_ui.md`
+      accept: route returns `{"roles":[{"name":"<NAME>","value":<int>},...]}` JSON in declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: mirror of just-shipped `feat-cli-list-roles` JSON variant; one agent owns ship.py + test_api.py + web_ui.md
+
+- [ ] feat-docs-output-formats: add `docs/output-formats.md` explaining `.litematic` + JSON output formats
+      scope: `docs/output-formats.md` (new), one-line link from `README.md`
+      accept: file documents the `.litematic` format (Litematica schematic, who can open it, version compatibility), the `--output-json` payload schema (point at `--output-json-schema`), the web `/api/generate` response shape, and the `gen_id` cache lifecycle; cross-link to `docs/cli.md`, `docs/web_ui.md`, `docs/configuration.md`; ≤120 lines; CHANGELOG bullet; one-line README link
+      notes: gap in current docs — operators have to dig through `cli.py` `--output-json-schema` + `ship.py` route source to learn the output payload shapes
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
