@@ -38,10 +38,6 @@ for one release cycle, then pruned during release prep.
       accept: `--csv` emits a header row + one row per compared variant; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
       notes: mirror of `feat-bench-summary-csv` / `feat-bench-palette-csv`
 
-- [ ] feat-docs-contributing: add `docs/contributing.md` short development guide
-      scope: `docs/contributing.md` (new), one-line link from `README.md`
-      accept: file documents repo layout, dev install (`pip install -e .[dev]`), test/ruff commands, branch naming convention, "where to file bugs"; ≤100 lines; CHANGELOG bullet; one-line README link
-      notes: fills a gap — no CONTRIBUTING.md exists yet; should cross-link to `docs/quickstart.md`, `docs/architecture.md`, `docs/release.md`
 
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
@@ -73,6 +69,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-contributing: add `docs/contributing.md` short development guide
+      scope: `docs/contributing.md` (new), one-line link from `README.md`
+      accept: file documents repo layout, dev install (`pip install -e .[dev]`), test/ruff commands, branch naming convention, "where to file bugs"; ≤100 lines; CHANGELOG bullet; one-line README link
+      notes: shipped 2026-05-05; new `docs/contributing.md` (99 lines under the 100-line cap) with H1 `# Contributing`, intro paragraph naming "anyone working on the codebase, including the dev-swarm tick" as the audience; `## Repo layout` bullets for `src/spaceship_generator/`, `tests/` (notes 2116-test count + property tests in `tests/test_properties.py` + bench smoke in `tests/test_bench_smoke.py`), `scripts/`, `palettes/`, `docs/` (one-sentence per-directory description sourced from `ls`); `## Local setup` documents `python -m venv .venv` + `pip install -e .[dev]` (the dev extra declared in `pyproject.toml`); `## Tests & lint` documents `python -m pytest -q` and `ruff check .`; `## Benchmarks` cross-links to `docs/bench.md` and `docs/bench-ci.md` and notes `scripts/bench_summary.py` for one-shot perf snapshots; `## Adding a palette` cross-links to `docs/palette_authoring.md` + `scripts/palette_lint.py --strict`; `## Branch / commit / PR convention` documents Conventional Commits (feat / fix / docs / chore / test) with a CHANGELOG-bullet reminder; `## Where to file bugs` links to GitHub issues with a "include seed + palette + CLI args" repro tip; `## Cross-links` bullet list to quickstart / architecture / cli / web_ui / release / troubleshooting / faq / bench / palette_authoring; one-line README link added immediately after the existing `docs/bench.md` link in the intro paragraph (no restructure, mirrors the `docs/faq.md` / `docs/bench.md` pattern); CHANGELOG bullet added at top of `## [Unreleased]`; `pytest -q` (2040 tests) + `ruff check .` both green on docs-only change
 
 - [x] feat-tests-property-palette-grid: add property test asserting `generate()` succeeds for every (palette × seed) pair
       scope: `tests/test_properties.py` (extend)
