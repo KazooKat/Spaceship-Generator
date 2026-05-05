@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-cli-list-palettes-json: add `--list-palettes-json` flag — machine-readable variant of `--list-palettes`
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-palettes-json` emits a single JSON document `{"palettes":[...]}` to stdout in alphabetical order, exits 0; not silenced by `--quiet`; mutually exclusive with `--list-palettes`; tested; CHANGELOG bullet
+      notes: mirror of `feat-cli-list-presets-json` / `feat-cli-list-shape-styles-json`
+
+- [ ] feat-bench-fleet-csv: add `--csv` flag to `scripts/bench_fleet.py` emitting CSV row instead of fixed-width table
+      scope: `scripts/bench_fleet.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits a header row + one data row per measured iteration/group; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
+      notes: mirror of `feat-bench-summary-csv` / `feat-bench-palette-csv` / `feat-bench-compare-csv`
+
+- [ ] feat-docs-cli-list-json-flags: extend `docs/cli.md` with the newly-shipped `--list-*-json` flag family
+      scope: `docs/cli.md` (extend, not restructure)
+      accept: docs/cli.md documents the four new `--list-cockpit-styles-json`, `--list-structure-styles-json`, `--list-greeble-types-json`, `--list-weapon-types-json` flags + the existing `--list-presets-json`, `--list-shape-styles-json`, `--output-json-schema` siblings as a coherent "machine-readable list/output" block; CHANGELOG bullet
+      notes: pure-docs unit; ≤40 added lines; do not duplicate flag-by-flag schemas (reference the JSON shape inline)
+
+- [ ] feat-tests-property-preset-grid: add property test asserting `generate()` succeeds for every (preset × seed) pair
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each named preset × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending preset + seed; CHANGELOG bullet
+      notes: mirror of palette / structure / cockpit / wing-style sibling property tests; enumerate presets via the existing presets module API
+
+- [ ] feat-docs-architecture-weapons: extend `docs/architecture.md` with a Weapon pipeline section
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new section "Weapon pipeline" describes `weapon_styles.py` (WeaponType + scatter_weapons), the role of `weapon_count` in the assembly pipeline, the relationship to `greeble_styles` (weapons stamp into Role.EMPTY only); cross-link to `docs/cli.md --list-weapon-types` and `docs/web_ui.md /api/weapon-types`; ≤80 lines; CHANGELOG bullet
+      notes: mirror of just-shipped `feat-docs-architecture-greebles`
+
+- [ ] feat-palettes-biome-pack-2026-05-05b: add sunflower_plains, stony_peaks biome palettes
+      scope: `palettes/sunflower_plains.yaml`, `palettes/stony_peaks.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
