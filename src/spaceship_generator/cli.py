@@ -560,6 +560,10 @@ def build_parser() -> argparse.ArgumentParser:
                         "scripts can pair --quiet --stats-json.")
     p.add_argument("--output-json", action="store_true",
                    help="Print a JSON summary of each generated ship to stdout.")
+    p.add_argument("--output-json-schema", action="store_true",
+                   help="Print the JSON Schema for the --output-json payload "
+                        "to stdout. Useful for downstream consumers validating "
+                        "output payloads. NOT silenced by --quiet.")
     p.add_argument("--export-manifest", action="store_true",
                    help="Write <name>.json sidecar alongside each .litematic with "
                         "seed, palette, shape, block count, and UTC timestamp.")
@@ -1050,6 +1054,41 @@ def _print_json_summary(result: GenerationResult) -> None:
     print(json.dumps(summary), file=sys.stdout)
 
 
+# Draft-7 JSON Schema describing the ``--output-json`` payload built by
+# :func:`_print_json_summary`. Hand-written rather than derived from
+# ``_OPENAPI_COMPONENTS["GenerateResult"]`` (the canonical web-API schema)
+# because the CLI payload's key set diverges from the web payload (the CLI
+# emits ``path``, the web API emits ``download_url`` / ``preview_url`` /
+# ``gen_id``); the structural skeleton (top-level ``type: object`` +
+# ``properties`` for ``seed`` / ``palette`` / ``shape`` / ``blocks``) is
+# kept aligned by hand. The two schemas should be kept in lockstep when
+# either output gains a new field — see ``test_cli_output_json_schema_*``
+# in ``tests/test_cli.py`` for the contract pin.
+_OUTPUT_JSON_SCHEMA: dict = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SpaceshipGeneratorOutputJson",
+    "description": (
+        "JSON payload emitted by the spaceship-generator CLI's "
+        "--output-json flag, one object per generated ship (NDJSON in "
+        "bulk runs)."
+    ),
+    "type": "object",
+    "required": ["seed", "palette", "shape", "blocks", "path"],
+    "properties": {
+        "seed": {"type": "integer"},
+        "palette": {"type": "string"},
+        "shape": {
+            "type": "array",
+            "items": {"type": "integer"},
+            "minItems": 3,
+            "maxItems": 3,
+        },
+        "blocks": {"type": "integer"},
+        "path": {"type": "string"},
+    },
+}
+
+
 def _print_block_summary(result: GenerationResult) -> None:
     """Print CSV of block_id,count sorted by count descending."""
     import numpy as np
@@ -1337,6 +1376,17 @@ def main(argv: list[str] | None = None) -> int:
             "wing_styles": [w.value for w in WingStyle],
         }
         print(json.dumps(payload), file=sys.stdout)
+        return 0
+
+    if getattr(args, "output_json_schema", False):
+        # Emit the Draft-7 JSON Schema describing the ``--output-json``
+        # payload to stdout, then exit. Deliberately NOT routed through
+        # ``_emit`` so ``--quiet --output-json-schema`` still prints — same
+        # carve-out as ``--stats-json``, ``--output-json``,
+        # ``--list-presets-json``, and ``--list-shape-styles-json``.
+        import json
+
+        print(json.dumps(_OUTPUT_JSON_SCHEMA), file=sys.stdout)
         return 0
 
     if args.list_greeble_types:

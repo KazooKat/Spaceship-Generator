@@ -1340,6 +1340,84 @@ def test_cli_list_shape_styles_and_json_mutually_exclusive(capsys):
 
 
 # ---------------------------------------------------------------------------
+# --output-json-schema
+# ---------------------------------------------------------------------------
+
+
+def test_cli_output_json_schema_is_valid_jsonschema(capsys):
+    """``--output-json-schema`` prints a single Draft-7 (or later) JSON
+    Schema document to stdout describing the ``--output-json`` payload.
+
+    The emitted document MUST:
+    - parse as JSON,
+    - declare ``$schema`` (Draft-7 or later),
+    - have ``type: "object"`` at the top level,
+    - carry ``properties`` containing every key ``--output-json`` actually
+      emits (``seed``, ``palette``, ``shape``, ``blocks``, ``path`` —
+      sourced from :data:`_REQUIRED_KEYS` so adding a new key to one path
+      forces a sibling update on the other),
+    - validate as a well-formed schema via
+      ``jsonschema.Draft7Validator.check_schema``.
+    """
+    import pytest
+
+    jsonschema = pytest.importorskip("jsonschema")
+
+    rc = main(["--output-json-schema"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    schema = json.loads(captured.out)
+
+    assert isinstance(schema, dict), f"expected JSON object, got {type(schema)}"
+    assert "$schema" in schema, "schema must declare $schema (Draft version)"
+    assert "draft-07" in schema["$schema"] or "draft/2020" in schema["$schema"], (
+        f"expected Draft-7 or later, got $schema={schema['$schema']!r}"
+    )
+    assert schema.get("type") == "object", (
+        f"expected top-level type=='object', got {schema.get('type')!r}"
+    )
+    assert isinstance(schema.get("properties"), dict), (
+        f"expected dict 'properties', got {type(schema.get('properties'))}"
+    )
+
+    # Every key the human ``--output-json`` payload actually emits must
+    # appear under ``properties`` so downstream validators don't reject a
+    # legitimate payload field.
+    schema_props = set(schema["properties"].keys())
+    missing = _REQUIRED_KEYS - schema_props
+    assert not missing, (
+        f"schema 'properties' missing keys emitted by --output-json: {missing}"
+    )
+
+    # ``check_schema`` raises ``jsonschema.SchemaError`` if the schema
+    # itself is malformed (e.g. invalid type names, broken $ref). Calling
+    # it here pins the validity of the document, not just its key set.
+    jsonschema.Draft7Validator.check_schema(schema)
+
+
+def test_cli_output_json_schema_quiet_still_emits(capsys):
+    """``--quiet --output-json-schema`` still produces the JSON Schema
+    document on stdout (carve-out parallels ``--quiet --output-json`` /
+    ``--quiet --stats-json`` / ``--quiet --list-presets-json`` /
+    ``--quiet --list-shape-styles-json``)."""
+    rc = main(["--quiet", "--output-json-schema"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    schema = json.loads(captured.out)
+    assert isinstance(schema, dict)
+    assert schema.get("type") == "object"
+    assert isinstance(schema.get("properties"), dict)
+    # Sanity check: at minimum the key set the CLI emits is documented.
+    schema_props = set(schema["properties"].keys())
+    assert _REQUIRED_KEYS.issubset(schema_props), (
+        f"schema 'properties' missing keys emitted by --output-json: "
+        f"{_REQUIRED_KEYS - schema_props}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # --validate-palette
 # ---------------------------------------------------------------------------
 
