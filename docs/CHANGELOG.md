@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- test(properties): add greeble_density x seed-grid stability property test (feat-tests-property-greeble-density-grid)
 - feat(scripts): add --all flag to palette_lint.py — lint every palettes/*.yaml in one invocation (feat-palette-lint-all-flag)
 - docs(configuration): add docs/configuration.md config-by-category index (feat-docs-configuration)
 - feat(palettes): add dawn_meadow, glacial_blue biome palettes (feat-palettes-biome-pack-2026-05-05c)

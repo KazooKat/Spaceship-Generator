@@ -28,11 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: new section "Hull pipeline" describes `hull_styles.py` (HullStyle + per-style placers in `shape/hull.py`), the role of `hull_style` and `ShapeParams.hull_style`; cross-link to `docs/cli.md` and `docs/web_ui.md`; ≤80 lines; CHANGELOG bullet
       notes: mirror of just-shipped greebles / weapons / cockpit pipeline sections
 
-- [ ] feat-tests-property-greeble-density-grid: add property test asserting `generate()` succeeds for (`greeble_density` × seed) grid
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over greeble_density `[0.0, 0.25, 0.5, 0.75, 1.0]` × seed grid `[0, 1, 7]` (= 15 nodes); assert `.litematic` exists + non-empty; failure names offending density + seed; CHANGELOG bullet
-      notes: complements existing `test_property_greeble_density_monotonic_in_block_count` which checks monotonicity but not every-density stability
-
 - [ ] feat-palettes-biome-pack-2026-05-05d: add eroded_badlands, magma_chamber biome palettes
       scope: `palettes/eroded_badlands.yaml`, `palettes/magma_chamber.yaml`
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
@@ -78,6 +73,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-property-greeble-density-grid: add property test asserting `generate()` succeeds for (`greeble_density` × seed) grid
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over greeble_density `[0.0, 0.25, 0.5, 0.75, 1.0]` × seed grid `[0, 1, 7]` (= 15 nodes); assert `.litematic` exists + non-empty; failure names offending density + seed; CHANGELOG bullet
+      notes: complements existing `test_property_greeble_density_monotonic_in_block_count` which checks monotonicity but not every-density stability
 
 - [x] feat-palette-lint-all-flag: add `--all` flag to `scripts/palette_lint.py` linting every `palettes/*.yaml` at once
       scope: `scripts/palette_lint.py`, `tests/test_palette_lint.py` (extend)

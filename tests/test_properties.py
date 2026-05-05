@@ -441,6 +441,68 @@ def test_property_greeble_density_monotonic_in_block_count(tmp_path_factory, see
     assert low.block_count <= mid.block_count <= high.block_count
 
 
+# ----------- greeble-density × seed-grid stability (5 densities × small seed set) -----------
+#
+# Companion to ``test_property_greeble_density_monotonic_in_block_count`` above.
+# The Hypothesis-based shape tests sample greeble density but never deterministically
+# pin every density-step in a fixed sweep, and the sibling monotonic test only
+# samples three densities (0.0 / 0.5 / 1.0) in service of the monotonicity
+# assertion. This parametrize test deterministically pins five density steps
+# spanning the full ``[0.0, 1.0]`` ``generate()`` range crossed with the small
+# fixed seed grid ``[0, 1, 7]`` so a regression in the scatter at any single
+# density × seed combo surfaces as a self-named ``[seed-greeble_density]``
+# failure node. Note: at ``greeble_density=0.0`` the ship still generates (no
+# greebles, but hull/cockpit/engines/wings still produce a non-empty
+# ``.litematic``), so the lower bound of the sweep is also a "bare-hull" sanity
+# probe.
+
+
+@pytest.mark.parametrize("greeble_density", [0.0, 0.25, 0.5, 0.75, 1.0])
+@pytest.mark.parametrize("seed", [0, 1, 7])
+def test_property_greeble_density_seed_grid_generates_non_empty_litematic(
+    tmp_path, greeble_density, seed
+):
+    """Every ``greeble_density`` step × small seed grid → ``generate()`` writes a non-empty file.
+
+    Mirrors how ``--greeble-density VAL`` plumbs into ``generate()`` —
+    ``generate(greeble_density=VAL)`` accepts the full ``[0.0, 1.0]`` range
+    (the ``ShapeParams.greeble_density`` cap of ``0.5`` doesn't apply here
+    because we pass density directly to ``generate()`` rather than through
+    ``ShapeParams``). At ``greeble_density=0.0`` the scatter no-ops but the
+    ship still generates a non-empty hull/cockpit/engines/wings silhouette,
+    so ``block_count > 0`` is the right floor invariant for every density
+    step including zero. Failure messages name both the offending density
+    and seed via the parametrize IDs, plus an explicit ``pytest.fail`` if
+    the file is missing or zero-bytes. Companion to the sibling
+    ``test_property_greeble_density_monotonic_in_block_count`` which checks
+    monotonicity but only over three densities — this test pins five density
+    steps deterministically so any single-density regression surfaces as a
+    self-named failure node rather than relying on Hypothesis sampling.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        shape_params=params,
+        greeble_density=greeble_density,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"greeble_density={greeble_density} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"greeble_density={greeble_density} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"greeble_density={greeble_density} seed={seed} produced 0 blocks"
+    )
+
+
 @given(
     count=st.integers(min_value=1, max_value=20),
     coherence=st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
