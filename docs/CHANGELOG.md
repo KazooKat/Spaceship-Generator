@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(cli): add --list-palettes-json — machine-readable variant of --list-palettes (feat-cli-list-palettes-json)
+- docs(architecture): add Weapon pipeline section (feat-docs-architecture-weapons)
+- test(properties): add preset x seed-grid stability property test (feat-tests-property-preset-grid)
 - docs(cli): document the --list-*-json machine-readable flag family (feat-docs-cli-list-json-flags)
 - feat(cli): add --list-cockpit-styles-json / --list-structure-styles-json / --list-greeble-types-json / --list-weapon-types-json — machine-readable variants (feat-cli-list-json-pack-2026-05-05)
 - feat(api): add GET /api/hull-styles, /api/engine-styles, /api/wing-styles — narrower JSON siblings of /api/styles (feat-api-narrow-style-endpoints)

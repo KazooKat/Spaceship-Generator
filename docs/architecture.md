@@ -420,6 +420,71 @@ to surface bad members early, then forwarded as `types=` to
 - CLI ([docs/cli.md](cli.md)): `--list-greeble-types`, `--no-greebles`, `--greeble-density`.
 - Web API ([docs/web_ui.md](web_ui.md)): `GET /api/greeble-types`.
 
+## Weapon pipeline
+
+Weapons are the multi-cell armament archetypes that punctuate a ship's
+silhouette: heavy turrets, missile pods, laser lances, point-defense stubs,
+and plasma cores. They are scattered onto **top-facing** hull cells in a
+single pass run from `generator.generate` after the shape grid is finalized
+and after greebles have been placed.
+
+### Build order
+
+```mermaid
+flowchart LR
+  shape([generate_shape<br/>finalized grid])
+  greebles[greeble_styles.py<br/>scatter_greebles<br/>EMPTY-only]
+  weapons[weapon_styles.py<br/>scatter_weapons<br/>top-facing anchors]
+  gate[generator.py<br/>shape_grid==EMPTY<br/>+ nose-tip-light skip]
+  texture[texture.py<br/>assign_roles]
+
+  shape --> greebles --> weapons --> gate --> texture
+```
+
+Weapons run **after** greebles — `scatter_greebles` writes into `Role.EMPTY`
+neighbours of hull/wing cells first, then `scatter_weapons` writes into the
+remaining `Role.EMPTY` cells. The per-cell gate at the call site in
+`generator.py` reads `if shape_grid[x, y, z] != Role.EMPTY: continue`, which
+preserves greebles, hull, cockpit, engines, and wings against weapon
+overwrites. A second skip avoids shadowing the nose-tip-light column(s).
+
+### `weapon_styles.py`
+
+Pure library of placement builders plus a top-level scatterer.
+`WeaponType` is a `StrEnum` with 5 members (`TURRET_LARGE`, `MISSILE_POD`,
+`LASER_LANCE`, `POINT_DEFENSE`, `PLASMA_CORE`).
+`scatter_weapons(shape, rng, count, *, types=None) -> list[Placement]`
+picks `count` top-facing anchors and builds weapons on them. When `shape`
+is the live numpy grid it samples anchors via `_top_facing_anchors_from_grid`
+(non-empty cells whose +Y neighbour is empty); when it's a `(W, H, L)`
+tuple it falls back to `_top_face_anchors_from_shape` (deterministic top
+face of the bounding box). Anchors are sampled **without replacement** via
+`rng.choice(..., replace=False)`, so the same anchor is never reused; if
+`count` exceeds the available anchors, every anchor is used exactly once.
+`count == 0` short-circuits to `[]` without touching the rng. Per-builder
+rng draws drive small parameters (barrel length, tube rows, lance length,
+pedestal height) so neighbouring weapons of the same type don't read as
+copy-paste.
+
+### `weapon_count` and `weapon_types`
+
+`weapon_count` is a non-negative `int` plumbed through `generate(weapon_count=...)`
+and validated eagerly (`if int(weapon_count) < 0: raise ValueError`). The
+CLI exposes it via `--weapon-count` (mutex with `--no-weapons` which forces
+`0`); the web layer takes it from the `weapon_count` form/JSON field in
+`web/blueprints/ship.py` via `_parse_weapon_count`. The scatter is gated by
+`if int(weapon_count) > 0` in `generator.py` and is naturally capped by the
+available top-facing anchors (see `scatter_weapons` above). `weapon_types`
+is the optional `Iterable[WeaponType]` allow-list — eagerly validated in
+`generator.py` (each member must be a `WeaponType` instance) and forwarded
+as `types=` to `scatter_weapons`. `None` means "all 5 types"; an empty
+allow-list yields no placements.
+
+### Cross-references
+
+- CLI ([docs/cli.md](cli.md)): `--list-weapon-types`, `--list-weapon-types-json`, `--weapon-count`, `--weapon-type`.
+- Web API ([docs/web_ui.md](web_ui.md)): `GET /api/weapon-types`.
+
 ## Related documentation
 
 - [faq.md](faq.md) — common questions and troubleshooting.
