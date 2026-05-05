@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-cli-list-json-pack-2026-05-05: add `--list-cockpit-styles-json`, `--list-structure-styles-json`, `--list-greeble-types-json`, `--list-weapon-types-json` flags
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: each flag emits a single JSON document (e.g. `{"cockpit_styles":[...]}`) to stdout in enum-declaration order, exits 0; not silenced by `--quiet`; mutually exclusive with non-json sibling; tested per flag; CHANGELOG bullet
+      notes: mirror of `feat-cli-list-shape-styles-json`; one agent owns cli.py + test_cli.py to avoid concurrent-edit conflicts
+
+- [ ] feat-api-narrow-style-endpoints: add `GET /api/hull-styles`, `GET /api/engine-styles`, `GET /api/wing-styles` JSON endpoints
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components, `docs/web_ui.md`
+      accept: each route returns `{"<name>_styles":[...]}` JSON in enum-declaration order; OpenAPI spec enumerates them; spec-validate test stays green; CHANGELOG bullet
+      notes: mirror of `feat-api-cockpit-styles` / `feat-api-structure-styles`; one agent owns ship.py + test_api.py
+
+- [ ] feat-palettes-biome-pack-2026-05-05: add bamboo_jungle, flower_forest biome palettes
+      scope: `palettes/bamboo_jungle.yaml`, `palettes/flower_forest.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs (deep_dark, jagged_peaks, swamp, etc.)
+
+- [ ] feat-tests-property-palette-grid: add property test asserting `generate()` succeeds for every (palette × seed) pair
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each palette in `palettes/` × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending palette + seed; CHANGELOG bullet
+      notes: mirror of the structure/cockpit/wing-style sibling property tests but parametrized over palette filenames
+
+- [ ] feat-bench-compare-csv: add `--csv` flag to `scripts/bench_compare.py` emitting CSV row instead of fixed-width table
+      scope: `scripts/bench_compare.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits a header row + one row per compared variant; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
+      notes: mirror of `feat-bench-summary-csv` / `feat-bench-palette-csv`
+
+- [ ] feat-docs-contributing: add `docs/contributing.md` short development guide
+      scope: `docs/contributing.md` (new), one-line link from `README.md`
+      accept: file documents repo layout, dev install (`pip install -e .[dev]`), test/ruff commands, branch naming convention, "where to file bugs"; ≤100 lines; CHANGELOG bullet; one-line README link
+      notes: fills a gap — no CONTRIBUTING.md exists yet; should cross-link to `docs/quickstart.md`, `docs/architecture.md`, `docs/release.md`
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
