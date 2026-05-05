@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(scripts): add --csv flag to bench_full_pipeline.py for CI/spreadsheet ingest (feat-bench-full-pipeline-csv)
+- feat(palettes): add eroded_badlands, magma_chamber biome palettes (feat-palettes-biome-pack-2026-05-05d)
+- docs(recipes): add docs/recipes.md task-oriented recipe index (feat-docs-recipes)
 - test(properties): add greeble_density x seed-grid stability property test (feat-tests-property-greeble-density-grid)
 - feat(scripts): add --all flag to palette_lint.py — lint every palettes/*.yaml in one invocation (feat-palette-lint-all-flag)
 - docs(configuration): add docs/configuration.md config-by-category index (feat-docs-configuration)
