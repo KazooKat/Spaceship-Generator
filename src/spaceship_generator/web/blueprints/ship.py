@@ -554,6 +554,24 @@ def api_weapon_types():
     })
 
 
+@ship_bp.route("/api/cockpit-styles", methods=["GET"], endpoint="api_cockpit_styles")
+def api_cockpit_styles():
+    """Return only the ``CockpitStyle`` enum list.
+
+    Narrower JSON sibling of ``/api/styles`` exposing just the cockpit
+    archetype catalog — clients that only need the cockpit picker can
+    fetch this endpoint instead of pulling the larger ``/api/styles``
+    payload that also includes hull/engine/wing + greeble + weapon
+    types. Companion to ``/api/shape-styles``, ``/api/greeble-types``,
+    and ``/api/weapon-types``. Values are the enum ``.value`` strings
+    emitted in enum-declaration order (deterministic + stable across
+    runs), matching the serialization used by ``/api/meta``.
+    """
+    return jsonify({
+        "cockpit_styles": [c.value for c in CockpitStyle],
+    })
+
+
 @ship_bp.route("/api/random", methods=["GET"], endpoint="api_random")
 def api_random():
     """Return a random seed/palette/preset combo as JSON.
@@ -895,6 +913,13 @@ _OPENAPI_COMPONENTS: dict = {
                 "greeble_types": {"type": "array", "items": {"type": "string"}},
             },
         },
+        "CockpitStyles": {
+            "type": "object",
+            "required": ["cockpit_styles"],
+            "properties": {
+                "cockpit_styles": {"type": "array", "items": {"type": "string"}},
+            },
+        },
         "WeaponTypes": {
             "type": "object",
             "required": ["weapon_types"],
@@ -1154,6 +1179,12 @@ _OPENAPI_PATHS: dict = {
         "get": {
             "summary": "List only the GreebleType enum values",
             "responses": {"200": _json_response("GreebleTypes")},
+        },
+    },
+    "/api/cockpit-styles": {
+        "get": {
+            "summary": "List only the CockpitStyle enum values",
+            "responses": {"200": _json_response("CockpitStyles")},
         },
     },
     "/api/weapon-types": {

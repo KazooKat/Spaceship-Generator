@@ -18,30 +18,15 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-api-cockpit-styles: add `GET /api/cockpit-styles` JSON endpoint
-      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
-      accept: route returns `{cockpit_styles:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
-      notes: narrower JSON sibling of `/api/styles`; mirrors `/api/greeble-types` and `/api/weapon-types`
-
 - [ ] feat-tests-property-weapon-types: add property test asserting `generate()` succeeds for every (`WeaponType` × seed) pair
       scope: `tests/test_properties.py` (extend)
       accept: parametrize over each `WeaponType` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending weapon-type + seed; CHANGELOG bullet
       notes: mirror of `feat-tests-property-greeble-types` / `-shape-styles`; weapons plumbed via `weapon_types=[WeaponType(...)]` and `weapon_count > 0`
 
-- [ ] feat-tests-property-wing-styles: add property test asserting `generate()` succeeds for every (`WingStyle` × seed) pair
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over each `WingStyle` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending wing-style + seed; CHANGELOG bullet
-      notes: mirror of `feat-tests-property-shape-styles` (covers HullStyle/EngineStyle); WingStyle plumbed via `ShapeParams.wing_style`
-
 - [ ] feat-bench-greeble-density: add `scripts/bench_greeble_density.py` per-density `generate()` micro-bench
       scope: `scripts/bench_greeble_density.py` (new), `tests/test_bench_smoke.py` (extend)
       accept: script iterates densities `[0.0, 0.25, 0.5, 0.75, 1.0]` (or `--densities` override) running N `generate()` calls each, prints fixed-width `density | mean_ms | p95_ms` table + TOTAL, exits 0; smoke test runs `--iterations 2 --densities 0.0,0.5`; CHANGELOG bullet
       notes: mirrors `bench_palette.py` schema; surfaces cost slope vs greeble density for `shapes-*` perf work
-
-- [ ] feat-docs-faq: add `docs/faq.md` covering common usage questions
-      scope: `docs/faq.md` (new), one-line link from README
-      accept: file covers ≥6 Q&A entries (e.g. how do I pick a random palette? how do I install preview deps? how do I build a fleet? how do I add a custom palette? how do I start the web UI? where does the .litematic open in Minecraft?) sourced from CLI help / docs/quickstart.md / docs/web_ui.md; CHANGELOG bullet; one-line README link
-      notes: complement to `docs/troubleshooting.md` (errors) and `docs/quickstart.md` (5-min walk); FAQ is the "how do I" sibling
 
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
@@ -79,6 +64,16 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-api-cockpit-styles: add `GET /api/cockpit-styles` JSON endpoint
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
+      accept: route returns `{cockpit_styles:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: shipped 2026-05-05; new `api_cockpit_styles` view in `src/spaceship_generator/web/blueprints/ship.py` placed immediately after `api_weapon_types` — same `[c.value for c in CockpitStyle]` serialization (declaration order, deterministic across runs) so the endpoint stays byte-identical with the matching slice of `/api/meta`'s `cockpit_styles` array; `CockpitStyle` was already imported at the top of `ship.py` (used by `index()` / `do_generate()` / `api_meta()` view functions), so no new import was needed; new `CockpitStyles` schema (with `required: ["cockpit_styles"]`, mirroring the `GreebleTypes` and `WeaponTypes` siblings) added to `_OPENAPI_COMPONENTS` immediately after `GreebleTypes`, and `/api/cockpit-styles` path added to `_OPENAPI_PATHS` immediately after `/api/greeble-types` so `/api/spec` enumerates the route and `tests/test_api_spec_validate.py` stays green; two new tests in `tests/test_api.py` cover (a) `test_api_cockpit_styles_ok` — 200 + `application/json` content-type + non-empty array + every `CockpitStyle.value` present + exact enum-declaration-order match, and (b) `test_api_cockpit_styles_listed_in_openapi_spec` — path appears in `/api/spec` with a `summary` and `200` response; one row added to the `/api/*` discovery table in `docs/web_ui.md` immediately after the `/api/weapon-types` row; full `pytest -q` + `ruff check .` both green
+
+- [x] feat-docs-faq: add `docs/faq.md` covering common usage questions
+      scope: `docs/faq.md` (new), one-line link from README
+      accept: file covers ≥6 Q&A entries (e.g. how do I pick a random palette? how do I install preview deps? how do I build a fleet? how do I add a custom palette? how do I start the web UI? where does the .litematic open in Minecraft?) sourced from CLI help / docs/quickstart.md / docs/web_ui.md; CHANGELOG bullet; one-line README link
+      notes: shipped 2026-05-05; new `docs/faq.md` is a 43-line "How do I X?" reference doc with 10 Q&A entries (each `### Question?` h3 + 1-3 sentence answer) covering the brief's required topics (`--palette random`, dev/preview deps, `--fleet-count` / `--seeds`, custom palette via `palettes/<name>.yaml`, web UI launch via `flask --app spaceship_generator.web.app run`, Litematica mod load) plus four discretion entries (the `--list-*` short-circuit family, `--output-json` / `--stats-json` / `--export-manifest` JSON paths, `--no-weapons` / `--no-greebles` shorthands, `scripts/bench_*.py` benchmarking); top-of-file cross-link header points to `quickstart.md`/`troubleshooting.md`/`cli.md`/`palettes.md`/`web_ui.md`; every answer cross-links the canonical source doc so the FAQ stays a thin orchestrator rather than duplicating content; one-line README link added immediately after the existing `docs/troubleshooting.md` link (no restructure); CHANGELOG bullet under `## [Unreleased]`; `pytest -q` and `ruff check .` both green (docs-only change)
 
 - [x] feat-cli-list-cockpit-styles: add `--list-cockpit-styles` flag — prints every `CockpitStyle` enum value, exits 0
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
