@@ -18,11 +18,25 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-tests-property-cockpit-styles: add property test asserting `generate()` succeeds for every (`CockpitStyle` × seed) pair
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over each `CockpitStyle` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending cockpit-style + seed; CHANGELOG bullet
-      notes: mirror of `feat-tests-property-wing-styles` / `-weapon-types`; CockpitStyle plumbed via `ShapeParams.cockpit_style`
+- [ ] feat-cli-list-structure-styles: add `--list-structure-styles` flag — prints every `StructureStyle` enum value, exits 0
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-structure-styles` prints one structure style per line in enum-declaration order, exits 0; `--quiet` carve-out preserved (silenced when paired); tested; CHANGELOG bullet
+      notes: mirror of `--list-cockpit-styles`; `StructureStyle` lives in `src/spaceship_generator/structure_styles.py`
 
+- [ ] feat-tests-property-structure-styles: add property test asserting `generate()` succeeds for every (`StructureStyle` × seed) pair
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each `StructureStyle` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending structure-style + seed; CHANGELOG bullet
+      notes: mirror of `feat-tests-property-cockpit-styles` / `-wing-styles`; StructureStyle plumbed via `ShapeParams.structure_style`
+
+- [ ] feat-cli-validate-palette: add `--validate-palette PATH` flag — runs strict lint against a single palette YAML and exits 0/1
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--validate-palette PATH` invokes the lint logic from `scripts/palette_lint.py::lint_palette` in-process, prints OK or per-error diagnostic lines, exits 0 on clean / 1 on error; tested with both passing and failing palette inputs; CHANGELOG bullet
+      notes: lifts the strict-lint into the user-facing CLI so palette authors don't need to remember the helper script path; `lint_palette(path)` returns a `LintResult` dataclass
+
+- [ ] feat-bench-summary-csv: add `--csv` flag to `scripts/bench_summary.py` emitting CSV row instead of fixed-width table
+      scope: `scripts/bench_summary.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits header `bench,metric,iterations` followed by one row per bench (no fixed-width padding); exits 0; smoke test runs `--csv --iterations 2 --limit 2`; CHANGELOG bullet
+      notes: enables CI consumption / spreadsheet diffing of perf snapshots; preserves the existing fixed-width table when `--csv` is absent
 
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
