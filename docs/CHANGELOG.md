@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- test(properties): add weapon_count x seed-grid stability property test (feat-tests-property-weapon-count-grid)
 - docs(architecture): add Hull pipeline section (feat-docs-architecture-hull)
 - feat(cli): add --list-roles / --list-roles-json — expose Role enum to tooling (feat-cli-list-roles)
 - feat(scripts): add --csv flag to bench_full_pipeline.py for CI/spreadsheet ingest (feat-bench-full-pipeline-csv)

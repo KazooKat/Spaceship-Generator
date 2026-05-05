@@ -415,6 +415,67 @@ def test_property_weapon_count_scales_weapon_specific_roles(
         assert np.array_equal(variant.role_grid, baseline.role_grid)
 
 
+# ----------- weapon-count × seed-grid stability (5 counts × small seed set) -----------
+#
+# Companion to ``test_property_weapon_count_scales_weapon_specific_roles`` above.
+# That sibling samples weapon counts via Hypothesis to assert monotonic scaling
+# of weapon-specific roles, but it does not deterministically pin every count
+# step in a fixed sweep. This parametrize test deterministically pins five
+# weapon-count steps spanning the range ``generate()`` accepts crossed with the
+# small fixed seed grid ``[0, 1, 7]`` so a regression in the weapon scatter at
+# any single count × seed combo surfaces as a self-named ``[seed-weapon_count]``
+# failure node. Note: at ``weapon_count=0`` the ship still generates (no weapons
+# but hull/cockpit/engines/wings/greebles still produce a non-empty
+# ``.litematic``), so the lower bound of the sweep is also a "no-weapons" sanity
+# probe.
+
+
+@pytest.mark.parametrize("weapon_count", [0, 1, 2, 4, 8])
+@pytest.mark.parametrize("seed", [0, 1, 7])
+def test_property_weapon_count_seed_grid_generates_non_empty_litematic(
+    tmp_path, weapon_count, seed
+):
+    """Every ``weapon_count`` step × small seed grid → ``generate()`` writes a non-empty file.
+
+    Mirrors how ``--weapon-count VAL`` plumbs into ``generate()`` —
+    ``generate(weapon_count=VAL)`` accepts non-negative integers (with
+    ``weapon_count=0`` meaning "skip the weapon scatter entirely"). At
+    ``weapon_count=0`` the scatter no-ops but the ship still generates a
+    non-empty hull/cockpit/engines/wings/greebles silhouette, so
+    ``block_count > 0`` is the right floor invariant for every count step
+    including zero. Failure messages name both the offending count and seed
+    via the parametrize IDs, plus an explicit ``pytest.fail`` if the file is
+    missing or zero-bytes. Companion to the sibling
+    ``test_property_weapon_count_scales_weapon_specific_roles`` which checks
+    weapon-role monotonicity but does so via Hypothesis sampling — this test
+    pins five count steps deterministically so any single-count regression
+    surfaces as a self-named failure node rather than relying on Hypothesis
+    sampling.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        shape_params=params,
+        weapon_count=weapon_count,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"weapon_count={weapon_count} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"weapon_count={weapon_count} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"weapon_count={weapon_count} seed={seed} produced 0 blocks"
+    )
+
+
 @given(seed=_seeds)
 @_HEAVY_SETTINGS
 def test_property_greeble_density_monotonic_in_block_count(tmp_path_factory, seed):

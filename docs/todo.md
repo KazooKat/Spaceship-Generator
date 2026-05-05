@@ -28,11 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: new section "Wing pipeline" describes `wing_styles.py` (WingStyle + per-style placers) and the role of `wing_style` in the assembly pipeline; cross-link to `docs/cli.md` and `docs/web_ui.md`; ≤80 lines; CHANGELOG bullet
       notes: completes the per-component pipeline series (greebles + weapons + cockpit + hull shipped; wing is the last)
 
-- [ ] feat-tests-property-weapon-count-grid: add property test asserting `generate()` succeeds for (`weapon_count` × seed) grid
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over weapon_count `[0, 1, 2, 4, 8]` × seed grid `[0, 1, 7]` (= 15 nodes); assert `.litematic` exists + non-empty; failure names offending count + seed; CHANGELOG bullet
-      notes: complements existing `test_property_weapon_count_scales_weapon_specific_roles` which checks scaling but not every-count stability
-
 - [ ] feat-palettes-biome-pack-2026-05-05e: add warm_savanna, frozen_river biome palettes
       scope: `palettes/warm_savanna.yaml`, `palettes/frozen_river.yaml`
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
@@ -78,6 +73,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-property-weapon-count-grid: add property test asserting `generate()` succeeds for (`weapon_count` × seed) grid
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over weapon_count `[0, 1, 2, 4, 8]` × seed grid `[0, 1, 7]` (= 15 nodes); assert `.litematic` exists + non-empty; failure names offending count + seed; CHANGELOG bullet
+      notes: complements existing `test_property_weapon_count_scales_weapon_specific_roles` which checks scaling but not every-count stability
 
 - [x] feat-docs-architecture-hull: extend `docs/architecture.md` with a Hull pipeline section
       scope: `docs/architecture.md` (extend, not restructure)
