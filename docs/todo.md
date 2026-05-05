@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-bench-shape-csv: add `--csv` flag to `scripts/bench_shape.py` emitting CSV row instead of fixed-width table
+      scope: `scripts/bench_shape.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits header + per-stage / TOTAL rows; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
+      notes: mirror of `feat-bench-summary-csv` / `feat-bench-palette-csv` / `feat-bench-compare-csv` / `feat-bench-fleet-csv`
+
+- [ ] feat-docs-architecture-cockpit: extend `docs/architecture.md` with a Cockpit pipeline section
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new section "Cockpit pipeline" describes `cockpit_styles.py` (CockpitStyle + placers), the role of `cockpit_style` in the assembly pipeline; cross-link to `docs/cli.md --list-cockpit-styles` and `docs/web_ui.md /api/cockpit-styles`; ≤80 lines; CHANGELOG bullet
+      notes: mirror of just-shipped `feat-docs-architecture-greebles` / `feat-docs-architecture-weapons`
+
+- [ ] feat-tests-property-no-greebles-no-weapons-combos: add property test asserting `generate()` succeeds for every (no_greebles, no_weapons) combo × seed grid
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over the 4 boolean combos × seed grid `[0, 1, 7]` (= 12 nodes); assert `.litematic` exists + non-empty; failure names offending combo + seed; CHANGELOG bullet
+      notes: catches regressions in the no-greebles / no-weapons code paths that single-flag tests miss
+
+- [ ] feat-palettes-biome-pack-2026-05-05c: add dawn_meadow, glacial_blue biome palettes
+      scope: `palettes/dawn_meadow.yaml`, `palettes/glacial_blue.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [ ] feat-palette-lint-all-flag: add `--all` flag to `scripts/palette_lint.py` linting every `palettes/*.yaml` at once
+      scope: `scripts/palette_lint.py`, `tests/test_palette_lint.py` (extend)
+      accept: `python scripts/palette_lint.py --all [--strict]` lints every palette in `palettes/`, exits 0 if all clean / 1 if any error; per-palette OK/error summary lines printed; CHANGELOG bullet
+      notes: convenience over invoking the script per-file; should reuse the existing `lint_palette` core; tested with both clean and dirty palette inputs
+
+- [ ] feat-docs-configuration: add `docs/configuration.md` overview of all CLI / web config knobs
+      scope: `docs/configuration.md` (new), one-line link from `README.md`
+      accept: file enumerates CLI flags / web form fields / `ShapeParams` knobs grouped by category (shape / palette / style / greeble / weapon / output); cross-link to `docs/cli.md`, `docs/web_ui.md`; ≤120 lines; CHANGELOG bullet; one-line README link
+      notes: complements `docs/cli.md` (per-flag reference) with a config-by-category index
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
