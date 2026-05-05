@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-docs-architecture-hull: extend `docs/architecture.md` with a Hull pipeline section
-      scope: `docs/architecture.md` (extend, not restructure)
-      accept: new section "Hull pipeline" describes `hull_styles.py` (HullStyle + per-style placers in `shape/hull.py`), the role of `hull_style` and `ShapeParams.hull_style`; cross-link to `docs/cli.md` and `docs/web_ui.md`; ≤80 lines; CHANGELOG bullet
-      notes: mirror of just-shipped greebles / weapons / cockpit pipeline sections
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -53,6 +48,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-architecture-hull: extend `docs/architecture.md` with a Hull pipeline section
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new section "Hull pipeline" describes `hull_styles.py` (HullStyle + per-style placers in `shape/hull.py`), the role of `hull_style` and `ShapeParams.hull_style`; cross-link to `docs/cli.md` and `docs/web_ui.md`; ≤80 lines; CHANGELOG bullet
+      notes: mirror of just-shipped greebles / weapons / cockpit pipeline sections
 
 - [x] feat-cli-list-roles: add `--list-roles` and `--list-roles-json` flags exposing the `Role` enum
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`

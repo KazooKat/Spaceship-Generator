@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(architecture): add Hull pipeline section (feat-docs-architecture-hull)
 - feat(cli): add --list-roles / --list-roles-json — expose Role enum to tooling (feat-cli-list-roles)
 - feat(scripts): add --csv flag to bench_full_pipeline.py for CI/spreadsheet ingest (feat-bench-full-pipeline-csv)
 - feat(palettes): add eroded_badlands, magma_chamber biome palettes (feat-palettes-biome-pack-2026-05-05d)

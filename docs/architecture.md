@@ -341,6 +341,86 @@ tapered hull left disconnected (engines on a narrow rear, wings clipped by
 the taper). The second mirror restamps bilateral symmetry over those
 bridge lines so the returned grid is guaranteed mirror-symmetric in X.
 
+## Hull pipeline
+
+The hull is the membrane every other part attaches to: stamped first
+inside `generate_shape`, every later stage (cockpit, engines, wings,
+greebles, weapons) modifies hull voxels or anchors voxels adjacent to
+them. Three placers are available; the generator picks one per call
+based on which `hull_style*` kwargs are set.
+
+### Build order
+
+```mermaid
+flowchart LR
+  seed([seed + ShapeParams + hull_style*])
+  blend[hull.py<br/>_place_hull_blend<br/>both front+rear set]
+  single[structure_styles.py<br/>apply_hull_style<br/>hull_style only]
+  legacy[hull.py<br/>_place_hull<br/>neither set — StructureStyle]
+  noise[hull.py<br/>_apply_hull_noise<br/>if hull_noise > 0]
+  rest[cockpit → engines → wings → greebles → mirror+connect+mirror]
+
+  seed --> blend --> noise
+  seed --> single --> noise
+  seed --> legacy --> noise
+  noise --> rest
+```
+
+Dispatch lives in `generate_shape` (`shape/core.py`): when both
+`hull_style_front` and `hull_style_rear` are set, `_place_hull_blend`
+wins; else when `hull_style` is set, `apply_hull_style(grid, hull_style)`
+runs; else the legacy `_place_hull` picks profile + rx/ry from
+`params.structure_style` via `profile_fn` / `hull_rx_ry_scale`. All
+three paths write only `Role.HULL`; the optional `_apply_hull_noise`
+post-pass runs next (no-op when `hull_noise == 0`).
+
+### `HullStyle` (in `structure_styles.py`)
+
+`HullStyle` is a `StrEnum` with 10 members today (`ARROW`, `SAUCER`,
+`WHALE`, `DAGGER`, `BLOCKY_FREIGHTER`, `ORGANIC_BIO`,
+`HEXAGONAL_LATTICE`, `ASYMMETRIC_SCAVENGER`, `MODULAR_BLOCK`,
+`SLEEK_RACING`). It lives in `structure_styles.py` rather than a
+free-standing `hull_styles.py` because the dispatch tables
+(`_HULL_PROFILE_FNS`, `_HULL_RX_RY_SCALES`) sit beside the
+`StructureStyle` maps and share helpers (`hull_profile_fn`,
+`hull_style_rx_ry`, `blended_hull_radii`).
+
+### `shape/hull.py`
+
+Three entry points: `_place_hull(grid, rng, params)` — legacy taper
+from `StructureStyle` (one `rng.random()` thickness-jitter, the only
+RNG draw a hull placer makes); `_place_hull_blend(grid, rng, front,
+rear, *, midband=0.25)` — Z-axis cosine-weighted blend of two
+`HullStyle` profiles via `blended_hull_radii`, also consuming one
+thickness-jitter so the seed contract stays intact; and
+`_apply_hull_noise(grid, rng, params)` — optional hash-noise post-pass
+that erodes/grows the membrane, bounded to ±2 cells. The RNG-free
+single-style entry `apply_hull_style(grid, style)` lives in `structure_styles.py`.
+
+### `hull_style` and `hull_style_*` kwargs
+
+Unlike `cockpit_style` / `wing_style` / `structure_style`, `hull_style`
+is **not** a field on `ShapeParams` — it is a keyword-only argument on
+`generate_shape(seed, params, *, hull_style=None, hull_style_front=None,
+hull_style_rear=None, hull_blend_midband=0.25)` and on
+`generator.generate(...)`, which forwards them through. `None` defaults
+preserve legacy behavior byte-for-byte. CLI plumbing: `--hull-style`,
+`--hull-style-front`, `--hull-style-rear`; the web layer reads
+`hull_style` via `_parse_optional_enum`. `presets.py` pins a `HullStyle`.
+
+### Relationship to symmetry
+
+All three hull placers stamp voxels via the centred ellipsoid test
+`((x-cx)/rx)**2 + ((y-cy)/ry)**2 <= 1.0` with `cx = (W-1)/2`, so the
+membrane is bilaterally symmetric in X by construction. The final
+`_enforce_x_symmetry` → `_connect_floaters` → `_enforce_x_symmetry`
+restamps symmetry against asymmetry from `_place_offset_turret`, the
+greeble/wing pickers, and `_apply_hull_noise`.
+
+### Cross-references
+
+- CLI ([docs/cli.md](cli.md)): `--hull-style`, `--list-shape-styles`, `--list-shape-styles-json`. Web API ([docs/web_ui.md](web_ui.md)): `GET /api/hull-styles`, `GET /api/shape-styles`.
+
 ## Greeble pipeline
 
 Greebles are the small surface details that sell a Minecraft ship as built
