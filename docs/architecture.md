@@ -485,6 +485,83 @@ allow-list yields no placements.
 - CLI ([docs/cli.md](cli.md)): `--list-weapon-types`, `--list-weapon-types-json`, `--weapon-count`, `--weapon-type`.
 - Web API ([docs/web_ui.md](web_ui.md)): `GET /api/weapon-types`.
 
+## Cockpit pipeline
+
+Cockpits are the forward-upper canopy archetypes that give a ship its
+"face": bubble, pointed, integrated, canopy_dome, wrap_bridge, and
+offset_turret. Unlike greebles and weapons, the cockpit is not a scatter
+pass — exactly one cockpit is stamped per ship, *inside* the shape build,
+between hull placement and engine placement.
+
+### Build order
+
+```mermaid
+flowchart LR
+  hull[hull.py<br/>_place_hull<br/>or apply_hull_style]
+  cockpit[shape/cockpit.py<br/>_place_cockpit<br/>dispatch on CockpitStyle]
+  engines[engines.py<br/>_place_engines]
+  rest[wings → greebles → mirror+connect+mirror]
+  scatter[generator.py<br/>scatter_greebles → scatter_weapons]
+
+  hull --> cockpit --> engines --> rest --> scatter
+```
+
+The cockpit slot is reserved **before** engines, wings, and the in-shape
+greeble bumps (see `generate_shape` in `shape/core.py`), and long before
+the multi-cell `scatter_greebles` / `scatter_weapons` passes in
+`generator.generate`. Because `_place_cockpit` runs inside the shape build,
+its `Role.COCKPIT_GLASS` cells are visible to the per-cell `if shape_grid[x,
+y, z] != Role.EMPTY: continue` gate that protects greebles and weapons from
+overwriting them at scatter time.
+
+### `CockpitStyle` (in `shape/core.py`)
+
+`CockpitStyle` is a `StrEnum` with 6 members today (`BUBBLE`, `POINTED`,
+`INTEGRATED`, `CANOPY_DOME`, `WRAP_BRIDGE`, `OFFSET_TURRET`). It is
+declared adjacent to `ShapeParams` in `shape/core.py` (rather than its
+own `cockpit_styles.py` module) because the dispatch table lives one
+import away in `shape/cockpit.py` and the public knob is the
+`ShapeParams.cockpit_style` field, not a free-standing scatter function.
+
+### `shape/cockpit.py`
+
+Single entry point: `_place_cockpit(grid, rng, params)` — *"Attach a
+cockpit to the nose of the ship."* It calls `default_cockpit_for(
+params.structure_style, params.cockpit_style)` from `structure_styles`
+(currently a pass-through hook so the user's choice always wins) and
+dispatches to one of six concrete placers, each writing
+`Role.COCKPIT_GLASS` (and occasionally framing `Role.HULL`) on the
+forward upper hull: `_place_cockpit_bubble` (small ellipsoidal bulge),
+`_place_cockpit_pointed` (tapered cone canopy narrowing to the nose),
+`_place_cockpit_integrated` (flat strip — converts the topmost hull
+voxels into glass without growing the silhouette), `_place_canopy_dome`
+(low half-ellipsoid dome with a one-row hull collar), `_place_wrap_bridge`
+(panoramic glass band one row above the hull top with a hull roof on its
+edges), and `_place_offset_turret` (asymmetric raised turret —
+deliberately breaks X-symmetry, restored later by the assembly mirror).
+RNG is unused; cockpit shape is purely a function of `ShapeParams` and
+grid dimensions.
+
+### `cockpit_style` and `ShapeParams.cockpit_style`
+
+`cockpit_style` is a `CockpitStyle` field on `ShapeParams` (default
+`CockpitStyle.BUBBLE`). It is the sole input that picks which placer
+runs — `_place_cockpit` reads `params.cockpit_style` directly. The CLI
+plumbs it through two flags: legacy `--cockpit` (always sets
+`ShapeParams(cockpit_style=...)`) and the newer `--cockpit-style`
+(opt-in override that pushes onto the already-built `ShapeParams` and is
+also forwarded as a generator-level `cockpit_style=` kwarg, which the CLI
+gracefully drops on `TypeError` if the running generator doesn't accept
+it). The web layer reads it from the `cockpit_style` form/JSON field via
+`_parse_optional_enum(source, "cockpit_style", CockpitStyle)` in
+`web/blueprints/ship_support.py`. `presets.py` ships seven named
+archetypes, each pinning a `cockpit_style`.
+
+### Cross-references
+
+- CLI ([docs/cli.md](cli.md)): `--cockpit-style`, `--list-cockpit-styles`, `--list-cockpit-styles-json`.
+- Web API ([docs/web_ui.md](web_ui.md)): `GET /api/cockpit-styles`.
+
 ## Related documentation
 
 - [faq.md](faq.md) — common questions and troubleshooting.

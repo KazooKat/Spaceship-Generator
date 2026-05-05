@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(palettes): add dawn_meadow, glacial_blue biome palettes (feat-palettes-biome-pack-2026-05-05c)
+- feat(scripts): add --csv flag to bench_shape.py for CI/spreadsheet ingest (feat-bench-shape-csv)
+- docs(architecture): add Cockpit pipeline section (feat-docs-architecture-cockpit)
 - test(properties): add (no_greebles, no_weapons) combos x seed-grid stability property test (feat-tests-property-no-greebles-no-weapons-combos)
 - feat(cli): add --list-palettes-json — machine-readable variant of --list-palettes (feat-cli-list-palettes-json)
 - feat(scripts): add --csv flag to bench_fleet.py for CI/spreadsheet ingest (feat-bench-fleet-csv)
