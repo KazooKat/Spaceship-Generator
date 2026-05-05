@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palette-lint-all-flag: add `--all` flag to `scripts/palette_lint.py` linting every `palettes/*.yaml` at once
-      scope: `scripts/palette_lint.py`, `tests/test_palette_lint.py` (extend)
-      accept: `python scripts/palette_lint.py --all [--strict]` lints every palette in `palettes/`, exits 0 if all clean / 1 if any error; per-palette OK/error summary lines printed; CHANGELOG bullet
-      notes: convenience over invoking the script per-file; should reuse the existing `lint_palette` core; tested with both clean and dirty palette inputs
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -53,6 +48,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palette-lint-all-flag: add `--all` flag to `scripts/palette_lint.py` linting every `palettes/*.yaml` at once
+      scope: `scripts/palette_lint.py`, `tests/test_palette_lint.py` (extend)
+      accept: `python scripts/palette_lint.py --all [--strict]` lints every palette in `palettes/`, exits 0 if all clean / 1 if any error; per-palette OK/error summary lines printed; CHANGELOG bullet
+      notes: convenience over invoking the script per-file; should reuse the existing `lint_palette` core; tested with both clean and dirty palette inputs
 
 - [x] feat-docs-configuration: add `docs/configuration.md` overview of all CLI / web config knobs
       scope: `docs/configuration.md` (new), one-line link from `README.md`

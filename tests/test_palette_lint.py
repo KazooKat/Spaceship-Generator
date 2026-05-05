@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import subprocess
 import sys
@@ -276,6 +278,59 @@ def test_cli_text_format_summary_for_warnings(tmp_path: Path):
     assert "warny:" in cp.stdout
     assert "warning(s)" in cp.stdout
     assert "too dark" in cp.stdout
+
+
+# ---------------------------------------------------------------------------
+# CLI --all flag
+# ---------------------------------------------------------------------------
+
+
+def test_palette_lint_all_clean():
+    """``--all`` against the shipped palette suite exits 0 (errors-clean)."""
+    cp = _run_cli("--all")
+    assert cp.returncode == 0, cp.stdout + cp.stderr
+    paths = sorted((REPO_ROOT / "palettes").glob("*.yaml"))
+    n = len(paths)
+    assert f"{n}/{n} palettes clean" in cp.stdout
+
+
+def test_palette_lint_all_with_dirty_palette(tmp_path: Path, monkeypatch):
+    """``--all`` exits 1 with at least one ``error:``-prefixed line when any
+    palette is broken."""
+    # Sandbox: redirect REPO_ROOT/palettes to a tmp dir holding one broken file.
+    fake_palettes = tmp_path / "palettes"
+    fake_palettes.mkdir()
+    bad = fake_palettes / "broken.yaml"
+    bad.write_text(
+        "name: broken\nblocks:\n  HULL: minecraft:stone\n",
+        encoding="utf-8",
+    )
+
+    # Re-import the module fresh and patch its REPO_ROOT to tmp_path so the
+    # `--all` glob picks up only our broken file.
+    spec = importlib.util.spec_from_file_location("palette_lint_sandbox", LINT_SCRIPT)
+    assert spec and spec.loader
+    sandbox = importlib.util.module_from_spec(spec)
+    sys.modules["palette_lint_sandbox"] = sandbox
+    spec.loader.exec_module(sandbox)
+    monkeypatch.setattr(sandbox, "REPO_ROOT", tmp_path)
+
+    # Capture stdout via redirect.
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc = sandbox.main(["--all"])
+    out = buf.getvalue()
+
+    assert rc == 1
+    assert any("error:" in line for line in out.splitlines())
+
+
+def test_palette_lint_all_and_path_mutually_exclusive(tmp_path: Path):
+    """Passing both ``--all`` and ``--file`` must raise SystemExit."""
+    pal = _write_full(tmp_path / "ok.yaml")
+    cp = _run_cli("--all", "--file", str(pal))
+    assert cp.returncode != 0
+    assert "mutually exclusive" in cp.stderr
 
 
 # ---------------------------------------------------------------------------

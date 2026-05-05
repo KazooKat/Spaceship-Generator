@@ -218,12 +218,58 @@ def _collect_targets(file_arg: str | None) -> list[Path]:
     return sorted((REPO_ROOT / "palettes").glob("*.yaml"))
 
 
+def _run_all(strict: bool) -> int:
+    """Lint every ``palettes/*.yaml`` file and print a per-palette summary.
+
+    Prints ``OK <name>`` for each clean palette, ``<name>: error: <msg>`` for
+    each error (one line per error), and a final ``<n>/<total> palettes clean``
+    summary line. Returns 0 if every palette is clean (strict-aware), 1 if any
+    palette has an error (or warning under ``--strict``).
+    """
+    palettes_dir = REPO_ROOT / "palettes"
+    targets = sorted(palettes_dir.glob("*.yaml"))
+    if not targets:
+        print("no palette files found", file=sys.stderr)
+        return 1
+
+    clean_count = 0
+    any_failure = False
+    for path in targets:
+        result = lint_palette(path)
+        is_failure = bool(result.errors) or (strict and bool(result.warnings))
+        if not is_failure:
+            print(f"OK {result.name}")
+            clean_count += 1
+        else:
+            any_failure = True
+            for e in result.errors:
+                print(f"{result.name}: error: {e}")
+            if strict:
+                for w in result.warnings:
+                    print(f"{result.name}: error: {w}")
+
+    print(f"{clean_count}/{len(targets)} palettes clean")
+    return 1 if any_failure else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Lint spaceship-generator palette YAMLs.")
     parser.add_argument("--file", help="Lint a single palette file instead of palettes/")
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        default=False,
+        help="Lint every palettes/*.yaml at once; exits 0 if all clean / 1 if any error.",
+    )
     parser.add_argument("--strict", action="store_true", help="Treat warnings as errors.")
     parser.add_argument("--format", choices=("text", "json"), default="text")
     args = parser.parse_args(argv)
+
+    if args.all and args.file:
+        parser.error("--all and --file are mutually exclusive")
+
+    if args.all:
+        return _run_all(strict=args.strict)
 
     targets = _collect_targets(args.file)
     if not targets:
