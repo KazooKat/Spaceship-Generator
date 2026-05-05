@@ -11,6 +11,7 @@ Usage:
     .venv/Scripts/python scripts/bench_full_pipeline.py
     .venv/Scripts/python scripts/bench_full_pipeline.py --iterations 100 --seed 42
     .venv/Scripts/python scripts/bench_full_pipeline.py --palette stealth_black
+    .venv/Scripts/python scripts/bench_full_pipeline.py --csv --iterations 2
 
 The bench writes each iteration's ``.litematic`` into a
 :class:`tempfile.TemporaryDirectory` so no files leak onto disk between
@@ -20,6 +21,7 @@ runs.
 from __future__ import annotations
 
 import argparse
+import csv
 import platform
 import sys
 import tempfile
@@ -54,6 +56,19 @@ def run_iteration(seed: int, palette: str, out_dir: Path) -> float:
     return time.perf_counter() - t0
 
 
+def _aggregate_stats(per_iter_ms: np.ndarray) -> tuple[float, float, float]:
+    """Compute the ``(mean_ms, p95_ms, total_ms)`` aggregate.
+
+    Single source of truth for the summary numbers — both
+    :func:`print_table` and :func:`print_csv` consume this so the two
+    output paths can never drift on the summary numbers.
+    """
+    mean_ms = float(per_iter_ms.mean()) if per_iter_ms.size else 0.0
+    p95_ms = float(np.percentile(per_iter_ms, 95)) if per_iter_ms.size else 0.0
+    total_ms = float(per_iter_ms.sum())
+    return mean_ms, p95_ms, total_ms
+
+
 def print_table(per_iter_ms: np.ndarray, iterations: int) -> None:
     """Emit a fixed-width mean/p95/total table to stdout.
 
@@ -61,9 +76,7 @@ def print_table(per_iter_ms: np.ndarray, iterations: int) -> None:
     benches side-by-side. There is only one row here — the whole pipeline
     is the unit of work — so the table is intentionally compact.
     """
-    mean_ms = float(per_iter_ms.mean()) if per_iter_ms.size else 0.0
-    p95_ms = float(np.percentile(per_iter_ms, 95)) if per_iter_ms.size else 0.0
-    total_ms = float(per_iter_ms.sum())
+    mean_ms, p95_ms, total_ms = _aggregate_stats(per_iter_ms)
     print()
     print(f"{'stage':<10} {'mean_ms':>12} {'p95_ms':>12} {'total_ms':>12}")
     print("-" * 50)
@@ -75,6 +88,28 @@ def print_table(per_iter_ms: np.ndarray, iterations: int) -> None:
     print(
         f"{'TOTAL':<10} {mean_ms:>12.3f} {p95_ms:>12.3f} "
         f"{total_ms:>12.3f}  (n={iterations})"
+    )
+
+
+def print_csv(per_iter_ms: np.ndarray) -> None:
+    """Emit the per-stage summary as CSV to stdout.
+
+    Header row is ``stage,mean_ms,p95_ms,total_ms`` followed by one row
+    per stage (``pipeline``, ``TOTAL``). Both rows share the same
+    ``_aggregate_stats`` aggregate as the fixed-width formatter so the
+    two output paths cannot drift on the summary numbers. Uses the
+    stdlib :mod:`csv` module so quoting / escaping (e.g. a future stage
+    label containing a comma) is handled correctly without us
+    reinventing it.
+    """
+    mean_ms, p95_ms, total_ms = _aggregate_stats(per_iter_ms)
+    writer = csv.writer(sys.stdout, lineterminator="\n")
+    writer.writerow(["stage", "mean_ms", "p95_ms", "total_ms"])
+    writer.writerow(
+        ["pipeline", f"{mean_ms:.3f}", f"{p95_ms:.3f}", f"{total_ms:.3f}"]
+    )
+    writer.writerow(
+        ["TOTAL", f"{mean_ms:.3f}", f"{p95_ms:.3f}", f"{total_ms:.3f}"]
     )
 
 
@@ -92,6 +127,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--palette", type=str, default="sci_fi_industrial",
         help="palette name passed through to generate() (default: sci_fi_industrial)",
     )
+    p.add_argument(
+        "--csv", action="store_true", default=False,
+        help=(
+            "Emit CSV (stage,mean_ms,p95_ms,total_ms) instead of fixed-width "
+            "table; useful for CI / spreadsheet ingest."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -101,10 +143,17 @@ def main(argv: list[str] | None = None) -> int:
         print("--iterations must be >= 1", file=sys.stderr)
         return 2
 
+    # In CSV mode the run banner goes to stderr so the stdout stream stays
+    # a clean CSV document an operator can pipe straight into a spreadsheet
+    # / CI parser. In the default fixed-width-table mode it stays on stdout
+    # where it's always been (preserves backwards-compatible output for
+    # existing callers).
+    progress_stream = sys.stderr if args.csv else sys.stdout
     print(
         f"bench_full_pipeline: iterations={args.iterations}  seed={args.seed}  "
         f"palette={args.palette}  py={sys.version.split()[0]}  "
-        f"proc={(platform.processor() or platform.machine())[:60]}"
+        f"proc={(platform.processor() or platform.machine())[:60]}",
+        file=progress_stream,
     )
 
     with tempfile.TemporaryDirectory(prefix="bench_full_pipeline_") as tmp:
@@ -119,7 +168,10 @@ def main(argv: list[str] | None = None) -> int:
             secs = run_iteration(args.seed + i, args.palette, tmp_path)
             per_iter_ms[i] = secs * 1000.0
 
-    print_table(per_iter_ms, args.iterations)
+    if args.csv:
+        print_csv(per_iter_ms)
+    else:
+        print_table(per_iter_ms, args.iterations)
     return 0
 
 
