@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-bench-fleet-csv: add `--csv` flag to `scripts/bench_fleet.py` emitting CSV row instead of fixed-width table
-      scope: `scripts/bench_fleet.py`, `tests/test_bench_smoke.py` (extend)
-      accept: `--csv` emits a header row + one data row per measured iteration/group; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
-      notes: mirror of `feat-bench-summary-csv` / `feat-bench-palette-csv` / `feat-bench-compare-csv`
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -53,6 +48,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-bench-fleet-csv: add `--csv` flag to `scripts/bench_fleet.py` emitting CSV row instead of fixed-width table
+      scope: `scripts/bench_fleet.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits a header row + one data row per measured iteration/group; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
+      notes: mirror of `feat-bench-summary-csv` / `feat-bench-palette-csv` / `feat-bench-compare-csv`
 
 - [x] feat-tests-property-preset-grid: add property test asserting `generate()` succeeds for every (preset × seed) pair
       scope: `tests/test_properties.py` (extend)

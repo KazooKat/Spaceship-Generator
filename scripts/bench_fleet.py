@@ -18,6 +18,7 @@ Usage:
     .venv/Scripts/python scripts/bench_fleet.py
     .venv/Scripts/python scripts/bench_fleet.py --fleet-count 8 --iterations 5
     .venv/Scripts/python scripts/bench_fleet.py --fleet-count 4 --seed 42
+    .venv/Scripts/python scripts/bench_fleet.py --csv --iterations 2
 
 The bench writes each iteration's ``.litematic`` files into a
 :class:`tempfile.TemporaryDirectory` so no files leak onto disk between
@@ -27,6 +28,7 @@ runs.
 from __future__ import annotations
 
 import argparse
+import csv
 import platform
 import sys
 import tempfile
@@ -119,6 +121,29 @@ def run_iteration(
     return time.perf_counter() - t0
 
 
+def _aggregate_stats(
+    fleet_ms: np.ndarray,
+    fleet_count: int,
+) -> tuple[float, float, float, float]:
+    """Compute the per_ship + fleet (mean_ms, p95_ms) tuple.
+
+    Single source of truth for the summary numbers — both
+    :func:`print_table` and :func:`print_csv` consume this so the two
+    output paths can never drift on the per-stage stats. Returns
+    ``(per_ship_mean, per_ship_p95, fleet_mean, fleet_p95)``.
+    """
+    if fleet_ms.size:
+        per_ship_ms = fleet_ms / float(fleet_count)
+        per_ship_mean = float(per_ship_ms.mean())
+        per_ship_p95 = float(np.percentile(per_ship_ms, 95))
+        fleet_mean = float(fleet_ms.mean())
+        fleet_p95 = float(np.percentile(fleet_ms, 95))
+    else:
+        per_ship_mean = per_ship_p95 = 0.0
+        fleet_mean = fleet_p95 = 0.0
+    return per_ship_mean, per_ship_p95, fleet_mean, fleet_p95
+
+
 def print_table(
     fleet_ms: np.ndarray,
     fleet_count: int,
@@ -134,15 +159,9 @@ def print_table(
     distribution — that would require timing each ``generate()`` call
     individually and is intentionally out of scope for this bench).
     """
-    if fleet_ms.size:
-        per_ship_ms = fleet_ms / float(fleet_count)
-        per_ship_mean = float(per_ship_ms.mean())
-        per_ship_p95 = float(np.percentile(per_ship_ms, 95))
-        fleet_mean = float(fleet_ms.mean())
-        fleet_p95 = float(np.percentile(fleet_ms, 95))
-    else:
-        per_ship_mean = per_ship_p95 = 0.0
-        fleet_mean = fleet_p95 = 0.0
+    per_ship_mean, per_ship_p95, fleet_mean, fleet_p95 = _aggregate_stats(
+        fleet_ms, fleet_count,
+    )
 
     print()
     print(f"{'stage':<10} {'mean_ms':>12} {'p95_ms':>12}")
@@ -154,6 +173,31 @@ def print_table(
         f"{'TOTAL':<10} {fleet_mean:>12.3f} {fleet_p95:>12.3f}  "
         f"(ships={fleet_count}, n={iterations})"
     )
+
+
+def print_csv(
+    fleet_ms: np.ndarray,
+    fleet_count: int,
+) -> None:
+    """Emit the per-stage summary as CSV to stdout.
+
+    Header row is ``stage,mean_ms,p95_ms`` followed by one row per stage
+    (``per_ship``, ``fleet``, ``TOTAL``). The TOTAL row mirrors the
+    fixed-width formatter's TOTAL line which uses the *fleet* mean/p95
+    (the per-ship row is the divided-by-N average) so the two output
+    paths cannot drift on the summary numbers — both consume the same
+    ``_aggregate_stats`` aggregate. Uses the stdlib :mod:`csv` module so
+    quoting / escaping (e.g. a future stage label containing a comma) is
+    handled correctly without us reinventing it.
+    """
+    per_ship_mean, per_ship_p95, fleet_mean, fleet_p95 = _aggregate_stats(
+        fleet_ms, fleet_count,
+    )
+    writer = csv.writer(sys.stdout, lineterminator="\n")
+    writer.writerow(["stage", "mean_ms", "p95_ms"])
+    writer.writerow(["per_ship", f"{per_ship_mean:.3f}", f"{per_ship_p95:.3f}"])
+    writer.writerow(["fleet", f"{fleet_mean:.3f}", f"{fleet_p95:.3f}"])
+    writer.writerow(["TOTAL", f"{fleet_mean:.3f}", f"{fleet_p95:.3f}"])
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -177,6 +221,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             f"(default: {_DEFAULT_PALETTE})"
         ),
     )
+    p.add_argument(
+        "--csv", action="store_true", default=False,
+        help=(
+            "Emit CSV (stage,mean_ms,p95_ms) instead of fixed-width "
+            "table; useful for CI / spreadsheet ingest."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -189,11 +240,18 @@ def main(argv: list[str] | None = None) -> int:
         print("--fleet-count must be >= 1", file=sys.stderr)
         return 2
 
+    # In CSV mode the run banner goes to stderr so the stdout stream stays
+    # a clean CSV document an operator can pipe straight into a spreadsheet
+    # / CI parser. In the default fixed-width-table mode it stays on stdout
+    # where it's always been (preserves backwards-compatible output for
+    # existing callers).
+    progress_stream = sys.stderr if args.csv else sys.stdout
     print(
         f"bench_fleet: fleet_count={args.fleet_count}  "
         f"iterations={args.iterations}  seed={args.seed}  "
         f"palette={args.palette}  py={sys.version.split()[0]}  "
-        f"proc={(platform.processor() or platform.machine())[:60]}"
+        f"proc={(platform.processor() or platform.machine())[:60]}",
+        file=progress_stream,
     )
 
     with tempfile.TemporaryDirectory(prefix="bench_fleet_") as tmp:
@@ -221,7 +279,10 @@ def main(argv: list[str] | None = None) -> int:
             )
             fleet_ms[i] = secs * 1000.0
 
-    print_table(fleet_ms, args.fleet_count, args.iterations)
+    if args.csv:
+        print_csv(fleet_ms, args.fleet_count)
+    else:
+        print_table(fleet_ms, args.fleet_count, args.iterations)
     return 0
 
 

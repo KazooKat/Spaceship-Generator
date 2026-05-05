@@ -268,6 +268,55 @@ def test_bench_fleet_runs_with_two_ships_two_iterations() -> None:
     assert "TOTAL" in out, f"TOTAL row missing from stdout:\n{out}"
 
 
+def test_bench_fleet_csv_emits_csv() -> None:
+    """`--csv` flag produces a CSV header + per-stage rows + TOTAL row.
+
+    The fleet run-banner must NOT pollute the CSV stream in `--csv` mode
+    (it's routed to stderr instead) so the stdout is a clean parseable
+    CSV document an operator can pipe straight into a spreadsheet / CI
+    parser.
+    """
+    assert FLEET_SCRIPT.is_file(), f"missing bench script: {FLEET_SCRIPT}"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(FLEET_SCRIPT),
+            "--csv",
+            "--fleet-count",
+            "2",
+            "--iterations",
+            "2",
+            "--seed",
+            "0",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"bench_fleet.py --csv exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    out = result.stdout
+    assert out.strip(), f"bench_fleet.py --csv produced empty stdout:\n{out!r}"
+    lines = out.splitlines()
+    assert lines[0] == "stage,mean_ms,p95_ms", (
+        f"first stdout line should be the CSV header, got:\n{lines[0]!r}"
+    )
+    # Subsequent rows must include at least one per-stage data row and a
+    # TOTAL row — catches a regression where the header emits but the body
+    # / TOTAL summary row is dropped.
+    body_rows = lines[1:]
+    assert any(
+        row and not row.startswith("TOTAL,") and not row.startswith("stage,")
+        for row in body_rows
+    ), f"no per-stage row in CSV body:\n{body_rows}"
+    assert any(
+        row.startswith("TOTAL,") for row in body_rows
+    ), f"TOTAL row missing from CSV body:\n{body_rows}"
+
+
 def test_bench_summary_runs_minimal() -> None:
     """Umbrella driver exits 0 and prints every child bench's name."""
     assert SUMMARY_SCRIPT.is_file(), f"missing bench script: {SUMMARY_SCRIPT}"
