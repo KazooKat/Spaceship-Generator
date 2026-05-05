@@ -18,10 +18,35 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-api-weapon-types: add `GET /api/weapon-types` JSON endpoint mirroring weapon enum discovery
+- [ ] feat-cli-list-cockpit-styles: add `--list-cockpit-styles` flag — prints every `CockpitStyle` enum value, exits 0
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-cockpit-styles` prints one cockpit style per line in enum-declaration order, exits 0; `--quiet` carve-out preserved (silenced when paired); tested; CHANGELOG bullet
+      notes: mirror of `--list-greeble-types` / `--list-weapon-types`; `CockpitStyle` lives in `src/spaceship_generator/shape/core.py`
+
+- [ ] feat-api-cockpit-styles: add `GET /api/cockpit-styles` JSON endpoint
       scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
-      accept: route returns `{weapon_types:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
-      notes: narrower JSON sibling of `/api/shape-styles`; companion to `feat-api-greeble-types`
+      accept: route returns `{cockpit_styles:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: narrower JSON sibling of `/api/styles`; mirrors `/api/greeble-types` and `/api/weapon-types`
+
+- [ ] feat-tests-property-weapon-types: add property test asserting `generate()` succeeds for every (`WeaponType` × seed) pair
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each `WeaponType` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending weapon-type + seed; CHANGELOG bullet
+      notes: mirror of `feat-tests-property-greeble-types` / `-shape-styles`; weapons plumbed via `weapon_types=[WeaponType(...)]` and `weapon_count > 0`
+
+- [ ] feat-tests-property-wing-styles: add property test asserting `generate()` succeeds for every (`WingStyle` × seed) pair
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over each `WingStyle` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending wing-style + seed; CHANGELOG bullet
+      notes: mirror of `feat-tests-property-shape-styles` (covers HullStyle/EngineStyle); WingStyle plumbed via `ShapeParams.wing_style`
+
+- [ ] feat-bench-greeble-density: add `scripts/bench_greeble_density.py` per-density `generate()` micro-bench
+      scope: `scripts/bench_greeble_density.py` (new), `tests/test_bench_smoke.py` (extend)
+      accept: script iterates densities `[0.0, 0.25, 0.5, 0.75, 1.0]` (or `--densities` override) running N `generate()` calls each, prints fixed-width `density | mean_ms | p95_ms` table + TOTAL, exits 0; smoke test runs `--iterations 2 --densities 0.0,0.5`; CHANGELOG bullet
+      notes: mirrors `bench_palette.py` schema; surfaces cost slope vs greeble density for `shapes-*` perf work
+
+- [ ] feat-docs-faq: add `docs/faq.md` covering common usage questions
+      scope: `docs/faq.md` (new), one-line link from README
+      accept: file covers ≥6 Q&A entries (e.g. how do I pick a random palette? how do I install preview deps? how do I build a fleet? how do I add a custom palette? how do I start the web UI? where does the .litematic open in Minecraft?) sourced from CLI help / docs/quickstart.md / docs/web_ui.md; CHANGELOG bullet; one-line README link
+      notes: complement to `docs/troubleshooting.md` (errors) and `docs/quickstart.md` (5-min walk); FAQ is the "how do I" sibling
 
 ### Complex & compound ship shapes
 Umbrella epic: today every ship is one ellipsoid-of-revolution per
@@ -59,6 +84,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-api-weapon-types: add `GET /api/weapon-types` JSON endpoint mirroring weapon enum discovery
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
+      accept: route returns `{weapon_types:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: shipped 2026-04-30 in `4d4af79`; flipped to closed in cycle1 of 2026-05-05 tick (todo entry was stale — code, tests, OpenAPI schema, and CHANGELOG bullet all already on `main`)
 
 - [x] feat-cli-list-presets-json: add `--list-presets-json` flag — machine-readable variant of `--list-presets`
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
