@@ -520,6 +520,23 @@ def api_shape_styles():
     })
 
 
+@ship_bp.route("/api/greeble-types", methods=["GET"], endpoint="api_greeble_types")
+def api_greeble_types():
+    """Return only the ``GreebleType`` enum list.
+
+    Narrower JSON sibling of ``/api/styles`` mirroring the CLI
+    ``--list-greeble-types`` flag — clients that only need the greeble
+    archetype picker can fetch this endpoint instead of pulling the
+    larger ``/api/styles`` payload that also includes hull/engine/wing
+    + weapon types. Values are the enum ``.value`` strings emitted in
+    enum-declaration order (deterministic + stable across runs),
+    matching the serialization used by ``/api/styles``.
+    """
+    return jsonify({
+        "greeble_types": [t.value for t in GreebleType],
+    })
+
+
 @ship_bp.route("/api/weapon-types", methods=["GET"], endpoint="api_weapon_types")
 def api_weapon_types():
     """Return only the ``WeaponType`` enum list.
@@ -871,6 +888,13 @@ _OPENAPI_COMPONENTS: dict = {
                 "wing_styles": {"type": "array", "items": {"type": "string"}},
             },
         },
+        "GreebleTypes": {
+            "type": "object",
+            "required": ["greeble_types"],
+            "properties": {
+                "greeble_types": {"type": "array", "items": {"type": "string"}},
+            },
+        },
                 "WeaponTypes": {
             "type": "object",
             "required": ["weapon_types"],
@@ -1124,6 +1148,12 @@ _OPENAPI_PATHS: dict = {
         "get": {
             "summary": "List only the core shape enums: hull/engine/wing",
             "responses": {"200": _json_response("ShapeStyles")},
+        },
+    },
+    "/api/greeble-types": {
+        "get": {
+            "summary": "List only the GreebleType enum values",
+            "responses": {"200": _json_response("GreebleTypes")},
         },
     },
     "/api/weapon-types": {

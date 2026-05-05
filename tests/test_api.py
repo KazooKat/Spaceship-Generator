@@ -198,6 +198,42 @@ def test_api_shape_styles_in_openapi_spec(client):
     assert "200" in op["responses"]
 
 
+def test_api_greeble_types_ok(client):
+    """``GET /api/greeble-types`` mirrors the ``--list-greeble-types`` CLI
+    flag: returns just the ``GreebleType`` enum values in enum-declaration
+    order under a single ``greeble_types`` key."""
+    from spaceship_generator.greeble_styles import GreebleType
+
+    resp = client.get("/api/greeble-types")
+    assert resp.status_code == 200
+    ctype = resp.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
+    data = resp.get_json()
+    assert set(data.keys()) == {"greeble_types"}
+    assert isinstance(data["greeble_types"], list)
+    assert len(data["greeble_types"]) > 0
+    # Every declared GreebleType.value must be present.
+    declared = [t.value for t in GreebleType]
+    for value in declared:
+        assert value in data["greeble_types"], f"missing greeble type {value!r}"
+    # Order must match enum-declaration order — same contract as
+    # ``/api/styles`` and ``/api/shape-styles``.
+    assert data["greeble_types"] == declared
+
+
+def test_api_greeble_types_listed_in_openapi_spec(client):
+    """The new ``/api/greeble-types`` path must appear in ``/api/spec``."""
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    spec = rv.get_json()
+    assert "/api/greeble-types" in spec["paths"], (
+        "OpenAPI spec must enumerate /api/greeble-types"
+    )
+    op = spec["paths"]["/api/greeble-types"]["get"]
+    assert "summary" in op
+    assert "200" in op["responses"]
+
+
 def test_api_weapon_types_ok(client):
     """``GET /api/weapon-types`` returns just the ``WeaponType`` enum
     values in enum-declaration order under a single ``weapon_types`` key.

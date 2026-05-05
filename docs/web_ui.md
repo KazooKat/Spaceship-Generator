@@ -54,6 +54,7 @@ served at `GET /api/spec` (sourced from `_OPENAPI_PATHS` in
 | `GET` | `/api/palettes/<name>` | path: `name` | Get a single palette's roles, blocks, and preview colors. 404 on unknown name. | `{name:"<n>", roles:{"<ROLE>":"<block_id>", ...}, preview_colors:{"<ROLE>":"#rrggbb", ...}}` |
 | `GET` | `/api/styles` | — | All style enums: hull, engine, wing, greeble, weapon types. | `{hull_styles:[...], engine_styles:[...], wing_styles:[...], greeble_types:[...], weapon_types:[...]}` |
 | `GET` | `/api/shape-styles` | — | Narrower sibling of `/api/styles` — only the three core shape enums (mirrors CLI `--list-shape-styles`). | `{hull_styles:[...], engine_styles:[...], wing_styles:[...]}` |
+| `GET` | `/api/greeble-types` | — | Narrower sibling of `/api/styles` — only the `GreebleType` enum values (mirrors CLI `--list-greeble-types`). | `{greeble_types:[...]}` |
 | `GET` | `/api/weapon-types` | — | Narrower sibling of `/api/styles` — only the `WeaponType` enum values (companion to `/api/shape-styles`). | `{weapon_types:[...]}` |
 | `GET` | `/api/presets` | — | Full metadata for every named preset. | `{presets:[<PresetDetail>...]}` (see `/api/presets/<name>` for each entry's shape) |
 | `GET` | `/api/presets/<name>` | path: `name` | Get one named preset's full metadata. 404 on unknown name; 503 if the presets module failed to import. | `{name, description, hull_style, engine_style, wing_style, cockpit_style, greeble_density, weapon_count, weapon_types:[...], size:{width,height,length}}` |
