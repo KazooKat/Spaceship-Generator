@@ -1,0 +1,26 @@
+name: dawn_meadow
+description: Dawn meadow biome runner. Moss-block hull, cherry-log HULL_DARK accent, pink-stained-glass sunrise windows, cherry-planks engines, shroomlight engine glow, yellow-stained-glass cockpit, pink-petals wings, stripped-cherry-log greebles, lantern running lights, white-concrete-powder interior — soft dawn / sunrise pastel meadow theme.
+
+blocks:
+  HULL:          minecraft:moss_block
+  HULL_DARK:     minecraft:cherry_log
+  WINDOW:        minecraft:pink_stained_glass
+  ENGINE:        minecraft:cherry_planks
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:pink_petals
+  GREEBLE:       minecraft:stripped_cherry_log
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:white_concrete_powder
+
+preview_colors:
+  HULL:          "#5b8a3a"
+  HULL_DARK:     "#4a2010"
+  WINDOW:        "#f8b8d0"
+  ENGINE:        "#e8a0b4"
+  ENGINE_GLOW:   "#ffee88"
+  COCKPIT_GLASS: "#fff04a"
+  WING:          "#f4c0d4"
+  GREEBLE:       "#d8a484"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#fafafa"

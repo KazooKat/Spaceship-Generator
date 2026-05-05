@@ -1,6 +1,6 @@
 # Palettes
 
-All 61 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
+All 63 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
 
 | Palette | Description |
 |---|---|
@@ -21,6 +21,7 @@ All 61 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `crimson_nether` | Infernal corsair. Crimson planks, magma block engines, shroomlight glow. |
 | `cyberpunk_neon` | Night-city runner. Matte black concrete hull, magenta/cyan neon glass, sea-lantern engine wash and soul-lantern running lights. |
 | `dark_forest` | Dark forest biome runner. Dark-oak-log hull, dark-oak-planks HULL_DARK accent, yellow-stained-glass canopy-shaft windows, stripped-dark-oak-log engines, shroomlight engine glow, brown-mushroom-block wings, stripped-dark-oak-wood greebles, lantern running lights — Minecraft dark forest (roofed forest) biome theme. |
+| `dawn_meadow` | Dawn meadow biome runner. Moss-block hull, cherry-log HULL_DARK accent, pink-stained-glass sunrise windows, cherry-planks engines, shroomlight engine glow, yellow-stained-glass cockpit, pink-petals wings, stripped-cherry-log greebles, lantern running lights, white-concrete-powder interior — soft dawn / sunrise pastel meadow theme. |
 | `deep_dark` | Deep dark biome runner. Sculk hull, deepslate HULL_DARK accent, cyan-stained-glass windows, deepslate-tile engines, soul-lantern engine glow, tinted-glass cockpit, cobbled-deepslate wings, chiseled-deepslate greebles, soul-torch running lights, polished-deepslate interior — Minecraft 1.19 deep dark sculk biome theme. |
 | `deepslate_drone` | Stealth drone. Cobbled/polished deepslate plating, moss wing pads, froglight thrusters. (blockpalettes.com-inspired) |
 | `desert_sandstone` | Desert-world dhow. Sandstone hull, amber glass, torches along the spine. |
@@ -32,6 +33,7 @@ All 61 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `flower_forest` | Flower forest blossom-runner. Oak-planks hull, cherry-log dark accent, pink-stained-glass windows, cherry-planks engines, shroomlight engine glow, pink-petals wings, stripped-oak-wood greebles, redstone-lamp running lights — Minecraft pastel flower forest biome theme. |
 | `forest_camouflage` | Woodland recon craft. Mossy stone hull, leaf-panel wings, froglight landing lights. |
 | `frozen_tundra` | Arctic tundra runner. Calcite-and-dripstone hull, packed-ice engines, soul-lantern cold-blue glow, snow-panel wings. |
+| `glacial_blue` | Glacial blue glacier-runner. Packed-ice hull, blue-ice HULL_DARK accent, light-blue-stained-glass windows, snow-block engines, sea-lantern engine glow, white-stained-glass cockpit, powder-snow wings, cyan-terracotta greebles, soul-lantern cold-blue running lights, smooth-quartz interior — cold blue / cyan glacier theme. |
 | `gold_imperial` | Imperial flagship. Gold plating, blackstone accents, froglight running lights. |
 | `ice_crystal` | Glacial cruiser. Blue-ice hull with packed-ice highlights and sea-lantern glow. |
 | `ice_spikes` | Ice spikes glacier-runner. Packed-ice hull, blue-ice dark accent, snow-block wings, sea-lantern engine glow, prismarine-brick engines — rare Minecraft ice spikes cold biome. |

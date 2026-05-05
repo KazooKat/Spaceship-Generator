@@ -1,0 +1,26 @@
+name: glacial_blue
+description: Glacial blue glacier-runner. Packed-ice hull, blue-ice HULL_DARK accent, light-blue-stained-glass windows, snow-block engines, sea-lantern engine glow, white-stained-glass cockpit, snow-block wings, cyan-terracotta greebles, soul-lantern cold-blue running lights, smooth-quartz interior — cold blue / cyan glacier theme.
+
+blocks:
+  HULL:          minecraft:packed_ice
+  HULL_DARK:     minecraft:blue_ice
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:snow_block
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:white_stained_glass
+  WING:          minecraft:powder_snow
+  GREEBLE:       minecraft:cyan_terracotta
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:smooth_quartz
+
+preview_colors:
+  HULL:          "#a8d4f0"
+  HULL_DARK:     "#3a6090"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#f4fbff"
+  ENGINE_GLOW:   "#d8f0ff"
+  COCKPIT_GLASS: "#f0f0f0"
+  WING:          "#e8f2ff"
+  GREEBLE:       "#2f5868"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#eae6d8"
