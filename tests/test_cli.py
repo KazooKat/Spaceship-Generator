@@ -1340,6 +1340,81 @@ def test_cli_list_shape_styles_and_json_mutually_exclusive(capsys):
 
 
 # ---------------------------------------------------------------------------
+# --list-palettes-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_palettes_json_emits_valid_json(capsys):
+    """``--list-palettes-json`` prints a single JSON document
+    ``{"palettes": [...]}`` to stdout in alphabetical order whose contents
+    match the same source ``--list-palettes`` uses."""
+    rc = main(["--list-palettes-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict), f"expected JSON object, got {type(obj)}"
+    assert set(obj.keys()) == {"palettes"}, (
+        f"unexpected key set: {sorted(obj.keys())}"
+    )
+    palettes = obj["palettes"]
+    assert isinstance(palettes, list), (
+        f"expected 'palettes' to be a list, got {type(palettes)}"
+    )
+
+    # Alphabetical order (matches the alphabetical list humans expect).
+    assert palettes == sorted(palettes), (
+        f"palettes not alphabetically sorted: {palettes}"
+    )
+
+    # Cross-check: contents match the same source ``--list-palettes`` uses.
+    rc2 = main(["--list-palettes"])
+    assert rc2 == 0
+    captured2 = capsys.readouterr()
+    text_names = [
+        line.strip()
+        for line in captured2.out.splitlines()
+        if line.strip() and not line.strip().startswith("(")
+    ]
+    assert set(palettes) == set(text_names), (
+        f"json palettes {sorted(palettes)} != text palettes "
+        f"{sorted(text_names)}"
+    )
+
+
+def test_cli_list_palettes_json_quiet_still_emits(capsys):
+    """``--quiet --list-palettes-json`` still produces the JSON document on
+    stdout (carve-out parallels ``--quiet --list-presets-json`` /
+    ``--quiet --list-shape-styles-json`` / ``--quiet --stats-json``)."""
+    rc = main(["--quiet", "--list-palettes-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert "palettes" in obj
+    assert isinstance(obj["palettes"], list)
+    assert obj["palettes"] == sorted(obj["palettes"])
+
+
+def test_cli_list_palettes_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-palettes`` and ``--list-palettes-json`` exits
+    non-zero via ``parser.error`` with a clear stderr message (mirrors the
+    ``--list-presets`` vs ``--list-presets-json`` pattern)."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-palettes", "--list-palettes-json"])
+    # argparse's parser.error() exits with status 2.
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-palettes" in err
+    assert "--list-palettes-json" in err
+    assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
 # --output-json-schema
 # ---------------------------------------------------------------------------
 

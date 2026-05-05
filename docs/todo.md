@@ -49,6 +49,11 @@ for one release cycle, then pruned during release prep.
 
 ## Closed (last cycle)
 
+- [x] feat-cli-list-palettes-json: add `--list-palettes-json` flag — machine-readable variant of `--list-palettes`
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-palettes-json` emits a single JSON document `{"palettes":[...]}` to stdout in alphabetical order, exits 0; not silenced by `--quiet`; mutually exclusive with `--list-palettes`; tested; CHANGELOG bullet
+      notes: mirror of `feat-cli-list-presets-json` / `feat-cli-list-shape-styles-json`
+
 - [x] feat-bench-fleet-csv: add `--csv` flag to `scripts/bench_fleet.py` emitting CSV row instead of fixed-width table
       scope: `scripts/bench_fleet.py`, `tests/test_bench_smoke.py` (extend)
       accept: `--csv` emits a header row + one data row per measured iteration/group; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
@@ -63,11 +68,6 @@ for one release cycle, then pruned during release prep.
       scope: `palettes/sunflower_plains.yaml`, `palettes/stony_peaks.yaml`
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs
-
-- [x] feat-cli-list-palettes-json: add `--list-palettes-json` flag — machine-readable variant of `--list-palettes`
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--list-palettes-json` emits a single JSON document `{"palettes":[...]}` to stdout in alphabetical order, exits 0; not silenced by `--quiet`; mutually exclusive with `--list-palettes`; tested; CHANGELOG bullet
-      notes: mirror of `feat-cli-list-presets-json` / `feat-cli-list-shape-styles-json`
 
 - [x] feat-docs-architecture-weapons: extend `docs/architecture.md` with a Weapon pipeline section
       scope: `docs/architecture.md` (extend, not restructure)

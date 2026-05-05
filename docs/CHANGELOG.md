@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(cli): add --list-palettes-json — machine-readable variant of --list-palettes (feat-cli-list-palettes-json)
 - feat(scripts): add --csv flag to bench_fleet.py for CI/spreadsheet ingest (feat-bench-fleet-csv)
 - test(properties): add preset x seed-grid stability property test (feat-tests-property-preset-grid)
 - feat(palettes): add sunflower_plains, stony_peaks biome palettes (feat-palettes-biome-pack-2026-05-05b)
-- feat(cli): add --list-palettes-json — machine-readable variant of --list-palettes (feat-cli-list-palettes-json)
 - docs(architecture): add Weapon pipeline section (feat-docs-architecture-weapons)
 - docs(cli): document the --list-*-json machine-readable flag family (feat-docs-cli-list-json-flags)
 - feat(cli): add --list-cockpit-styles-json / --list-structure-styles-json / --list-greeble-types-json / --list-weapon-types-json — machine-readable variants (feat-cli-list-json-pack-2026-05-05)

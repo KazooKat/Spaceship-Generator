@@ -251,6 +251,11 @@ def build_parser() -> argparse.ArgumentParser:
                         "Use 'random' to pick a random palette.")
     p.add_argument("--list-palettes", action="store_true",
                    help="List available palettes and exit.")
+    p.add_argument("--list-palettes-json", action="store_true",
+                   help="Machine-readable variant of --list-palettes: emits "
+                        "a single JSON document {\"palettes\":[...]} to "
+                        "stdout in alphabetical order. Mutually exclusive "
+                        "with --list-palettes. NOT silenced by --quiet.")
     p.add_argument("--palette-info", metavar="NAME",
                    help="Print role -> block ID and hex preview color for NAME and exit. "
                         "Use --list-palettes to see available palette names.")
@@ -1200,6 +1205,17 @@ def main(argv: list[str] | None = None) -> int:
             "--list-presets and --list-presets-json are mutually exclusive"
         )
 
+    # ``--list-palettes`` and ``--list-palettes-json`` enumerate the same data
+    # in two formats; passing both is ambiguous, so reject up front via
+    # ``parser.error`` — mirrors the ``--list-presets`` vs
+    # ``--list-presets-json`` mutual-exclusion pattern above.
+    if getattr(args, "list_palettes", False) and getattr(
+        args, "list_palettes_json", False
+    ):
+        parser.error(
+            "--list-palettes and --list-palettes-json are mutually exclusive"
+        )
+
     # ``--list-shape-styles`` and ``--list-shape-styles-json`` enumerate the
     # same data in two formats; passing both is ambiguous, so reject up front
     # via ``parser.error`` (exit 2 + stderr message) — mirrors the
@@ -1400,6 +1416,20 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         for n in names:
             _emit(args, n)
+        return 0
+
+    if getattr(args, "list_palettes_json", False):
+        # Machine-readable variant of ``--list-palettes``: a single JSON
+        # document with a single ``palettes`` array in alphabetical order
+        # (matches ``list_palettes()`` contract — same source as the non-json
+        # sibling). Deliberately NOT routed through ``_emit`` so
+        # ``--quiet --list-palettes-json`` still prints — same carve-out as
+        # ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``.
+        import json
+
+        names = sorted(list_palettes())
+        print(json.dumps({"palettes": names}), file=sys.stdout)
         return 0
 
     if args.list_shape_styles:
