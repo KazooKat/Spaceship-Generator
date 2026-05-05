@@ -1228,3 +1228,71 @@ def test_cli_list_presets_and_json_mutually_exclusive(capsys):
     assert "--list-presets" in err
     assert "--list-presets-json" in err
     assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --list-shape-styles-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_shape_styles_json_emits_valid_json(capsys):
+    """``--list-shape-styles-json`` prints a single JSON document to stdout
+    with keys ``hull_styles`` / ``engine_styles`` / ``wing_styles``, each a
+    list whose contents match the corresponding enum's declaration order."""
+    from spaceship_generator.engine_styles import EngineStyle
+    from spaceship_generator.structure_styles import HullStyle
+    from spaceship_generator.wing_styles import WingStyle
+
+    rc = main(["--list-shape-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict), f"expected JSON object, got {type(obj)}"
+    assert set(obj.keys()) == {"hull_styles", "engine_styles", "wing_styles"}, (
+        f"unexpected key set: {sorted(obj.keys())}"
+    )
+    assert isinstance(obj["hull_styles"], list)
+    assert isinstance(obj["engine_styles"], list)
+    assert isinstance(obj["wing_styles"], list)
+
+    # Every list matches its enum's declaration order exactly (no drift).
+    assert obj["hull_styles"] == [s.value for s in HullStyle]
+    assert obj["engine_styles"] == [s.value for s in EngineStyle]
+    assert obj["wing_styles"] == [s.value for s in WingStyle]
+
+
+def test_cli_list_shape_styles_json_quiet_still_emits(capsys):
+    """``--quiet --list-shape-styles-json`` still produces the JSON document
+    on stdout (carve-out parallels ``--quiet --list-presets-json`` /
+    ``--quiet --stats-json`` / ``--quiet --output-json``)."""
+    from spaceship_generator.engine_styles import EngineStyle
+    from spaceship_generator.structure_styles import HullStyle
+    from spaceship_generator.wing_styles import WingStyle
+
+    rc = main(["--quiet", "--list-shape-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["hull_styles"] == [s.value for s in HullStyle]
+    assert obj["engine_styles"] == [s.value for s in EngineStyle]
+    assert obj["wing_styles"] == [s.value for s in WingStyle]
+
+
+def test_cli_list_shape_styles_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-shape-styles`` and ``--list-shape-styles-json``
+    exits non-zero via ``parser.error`` with a clear stderr message (mirrors
+    the ``--list-presets`` vs ``--list-presets-json`` pattern)."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-shape-styles", "--list-shape-styles-json"])
+    # argparse's parser.error() exits with status 2.
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-shape-styles" in err
+    assert "--list-shape-styles-json" in err
+    assert "mutually exclusive" in err

@@ -261,6 +261,16 @@ def build_parser() -> argparse.ArgumentParser:
                         "(grouped, one per line) and exit. Narrower than "
                         "--list-styles, which also includes cockpit and "
                         "weapon types.")
+    p.add_argument("--list-shape-styles-json", action="store_true",
+                   help="Machine-readable variant of --list-shape-styles: "
+                        "prints a single JSON document "
+                        "{\"hull_styles\":[...],\"engine_styles\":[...],"
+                        "\"wing_styles\":[...]} to stdout in "
+                        "enum-declaration order, one document per call. "
+                        "Mutually exclusive with --list-shape-styles. "
+                        "Like --stats-json and --output-json, this is NOT "
+                        "silenced by --quiet so scripts can pair "
+                        "--quiet --list-shape-styles-json.")
     p.add_argument("--list-greeble-types", action="store_true",
                    help="List GreebleType members (one per line) in "
                         "enum-declaration order and exit. Narrower sibling "
@@ -1113,6 +1123,19 @@ def main(argv: list[str] | None = None) -> int:
             "--list-presets and --list-presets-json are mutually exclusive"
         )
 
+    # ``--list-shape-styles`` and ``--list-shape-styles-json`` enumerate the
+    # same data in two formats; passing both is ambiguous, so reject up front
+    # via ``parser.error`` (exit 2 + stderr message) — mirrors the
+    # ``--list-presets`` vs ``--list-presets-json`` mutual-exclusion pattern
+    # above.
+    if getattr(args, "list_shape_styles", False) and getattr(
+        args, "list_shape_styles_json", False
+    ):
+        parser.error(
+            "--list-shape-styles and --list-shape-styles-json are "
+            "mutually exclusive"
+        )
+
     if args.verbose and args.quiet:
         print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
         return 2
@@ -1284,6 +1307,22 @@ def main(argv: list[str] | None = None) -> int:
         _emit(args, "Wing styles:")
         for w in WingStyle:
             _emit(args, f"  {w.value}")
+        return 0
+
+    if args.list_shape_styles_json:
+        # Machine-readable variant of ``--list-shape-styles``: a single JSON
+        # document with three arrays (hull/engine/wing) in enum-declaration
+        # order. Deliberately NOT routed through ``_emit`` so
+        # ``--quiet --list-shape-styles-json`` still prints — same carve-out
+        # as ``--stats-json``, ``--output-json``, and ``--list-presets-json``.
+        import json
+
+        payload = {
+            "hull_styles": [h.value for h in HullStyle],
+            "engine_styles": [e.value for e in EngineStyle],
+            "wing_styles": [w.value for w in WingStyle],
+        }
+        print(json.dumps(payload), file=sys.stdout)
         return 0
 
     if args.list_greeble_types:
