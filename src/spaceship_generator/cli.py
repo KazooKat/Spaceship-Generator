@@ -271,6 +271,11 @@ def build_parser() -> argparse.ArgumentParser:
                         "enum-declaration order and exit. Narrower sibling "
                         "of --list-styles, which also includes hull / engine "
                         "/ wing / cockpit / greeble types.")
+    p.add_argument("--list-cockpit-styles", action="store_true",
+                   help="List CockpitStyle members (one per line) in "
+                        "enum-declaration order and exit. Narrower sibling "
+                        "of --list-styles, which also includes hull / engine "
+                        "/ wing / greeble / weapon types.")
     # ``--preset``/``--list-presets`` are only active when the optional
     # ``presets`` module is importable. When it's absent we still register
     # the flags (so ``--help`` documents them) but restrict the choices to
@@ -1301,6 +1306,16 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         for wt in _weapon_styles.WeaponType:
             _emit(args, wt.value)
+        return 0
+
+    if args.list_cockpit_styles:
+        # Narrower sibling of --list-styles: only the CockpitStyle enum.
+        # One member per line in enum-declaration order (no header/indent
+        # prefix) so callers can pipe straight into another tool. Members
+        # emit deterministically and stably across runs. Mirrors the
+        # ``--list-greeble-types`` / ``--list-weapon-types`` handlers exactly.
+        for c in CockpitStyle:
+            _emit(args, c.value)
         return 0
 
     if args.list_styles:

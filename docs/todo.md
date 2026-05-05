@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-cli-list-cockpit-styles: add `--list-cockpit-styles` flag — prints every `CockpitStyle` enum value, exits 0
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--list-cockpit-styles` prints one cockpit style per line in enum-declaration order, exits 0; `--quiet` carve-out preserved (silenced when paired); tested; CHANGELOG bullet
-      notes: mirror of `--list-greeble-types` / `--list-weapon-types`; `CockpitStyle` lives in `src/spaceship_generator/shape/core.py`
-
 - [ ] feat-api-cockpit-styles: add `GET /api/cockpit-styles` JSON endpoint
       scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components
       accept: route returns `{cockpit_styles:[...]}` JSON in enum-declaration order; OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
@@ -84,6 +79,11 @@ Land them independently — each is its own design doc + plan.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-list-cockpit-styles: add `--list-cockpit-styles` flag — prints every `CockpitStyle` enum value, exits 0
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--list-cockpit-styles` prints one cockpit style per line in enum-declaration order, exits 0; `--quiet` carve-out preserved (silenced when paired); tested; CHANGELOG bullet
+      notes: shipped 2026-05-05; argparse declaration placed immediately after `--list-weapon-types` in `build_parser` so the three `--list-*-types`/`--list-*-styles` sibling flags stay adjacent; short-circuit handler in `cli.main` placed directly after the `--list-weapon-types` handler — iterates `CockpitStyle` (StrEnum natural iteration = declaration order, deterministic and stable) and emits each `.value` on its own line via the existing `_emit(args, ...)` helper so the `--quiet` carve-out keeps working without a special case (silenced when paired with `--quiet` same as the other `--list-*` flags); `CockpitStyle` is already imported from `spaceship_generator.shape` at module top (used by the `--cockpit` choices argument) so no new import needed; no header/no indent — bare values per line so callers can pipe straight into another tool; new `tests/test_cli.py::test_cli_list_cockpit_styles` covers exit 0 + every member's `.value` present + deterministic enum-declaration order via direct `[line for line in lines if line] == [c.value for c in CockpitStyle]` list comparison (no hard-coded string list, so the test doesn't drift when a new cockpit style is added) + asserts none of the `--list-styles` group headers leak into the output; full `pytest -q` + `ruff check .` both green
 
 - [x] feat-api-weapon-types: add `GET /api/weapon-types` JSON endpoint mirroring weapon enum discovery
       scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components

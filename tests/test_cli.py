@@ -754,6 +754,47 @@ def test_cli_list_weapon_types(capsys):
 
 
 # ---------------------------------------------------------------------------
+# --list-cockpit-styles
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_cockpit_styles(capsys):
+    """``--list-cockpit-styles`` prints every ``CockpitStyle`` value on its
+    own line in enum-declaration order, exit 0.
+
+    Membership is asserted via enum iteration (no hard-coded string list)
+    so the test does not drift when a new cockpit style is added. Narrower
+    sibling of ``--list-shape-styles`` — no group header/indent prefix
+    since there's only one enum to emit. Mirrors
+    ``test_cli_list_greeble_types`` / ``test_cli_list_weapon_types`` exactly.
+    """
+    from spaceship_generator.shape.core import CockpitStyle
+
+    rc = main(["--list-cockpit-styles"])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+
+    # Every enum member appears on its own line, no prefix/indent.
+    for c in CockpitStyle:
+        assert c.value in lines, f"missing CockpitStyle.{c.name}"
+
+    # Deterministic enum-declaration order — the printed lines (modulo any
+    # blank trailers) match the enum's own iteration order exactly.
+    expected = [c.value for c in CockpitStyle]
+    assert [line for line in lines if line] == expected
+
+    # Narrower than --list-styles: hull/engine/wing/cockpit/weapon section
+    # headers must NOT appear.
+    assert "Hull styles:" not in lines
+    assert "Engine styles:" not in lines
+    assert "Wing styles:" not in lines
+    assert "Cockpit styles:" not in lines
+    assert "Weapon types:" not in lines
+
+
+# ---------------------------------------------------------------------------
 # --quiet / -q
 # ---------------------------------------------------------------------------
 
