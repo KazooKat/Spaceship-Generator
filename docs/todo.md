@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-tests-property-weapon-types: add property test asserting `generate()` succeeds for every (`WeaponType` × seed) pair
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over each `WeaponType` enum member × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending weapon-type + seed; CHANGELOG bullet
-      notes: mirror of `feat-tests-property-greeble-types` / `-shape-styles`; weapons plumbed via `weapon_types=[WeaponType(...)]` and `weapon_count > 0`
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
