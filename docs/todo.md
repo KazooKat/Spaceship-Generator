@@ -18,6 +18,20 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-cli-output-json-schema: add `--output-json-schema` flag — emits the JSON Schema for the `--output-json` payload to stdout
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--output-json-schema` prints a single JSON Schema document describing the `--output-json` ship payload (top-level type, `properties` for `seed`, `palette`, `shape`, `blocks`, `download_url`?, `gen_id`?), exits 0; not silenced by `--quiet`; tested with `jsonschema.Draft7Validator.check_schema` for validity; CHANGELOG bullet
+      notes: lets downstream consumers programmatically validate `--output-json` payloads; mirror `_OPENAPI_COMPONENTS["GenerateResult"]` schema since `--output-json` and `POST /api/generate` should share the contract
+
+- [ ] feat-bench-palette-csv: add `--csv` flag to `scripts/bench_palette.py` emitting CSV row instead of fixed-width table
+      scope: `scripts/bench_palette.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits header `palette,mean_ms,p95_ms` followed by one row per palette + a TOTAL row; exits 0; smoke test runs `--csv --iterations 2 --limit 2`; CHANGELOG bullet
+      notes: mirror `feat-bench-summary-csv` pattern — preserves fixed-width default behavior; uses stdlib `csv.writer`
+
+- [ ] feat-docs-architecture-greebles: extend `docs/architecture.md` with a Greeble pipeline section
+      scope: `docs/architecture.md` (extend, do not create new doc), `docs/CHANGELOG.md`
+      accept: new section "Greeble pipeline" describes `greeble_styles.py` (GreebleType + scatter_greebles), `shape/greebles.py`, the role of `greeble_density` in the assembly pipeline, the relationship to `weapon_styles` (weapons stamp into Role.EMPTY only); cross-link to `docs/cli.md --list-greeble-types` and `docs/web_ui.md /api/greeble-types`; ≤80 lines; CHANGELOG bullet
+      notes: companion to the existing Shape pipeline section in `docs/architecture.md` (shipped in `feat-docs-shape-pipeline`); foundation for future greeble-related work
 
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
