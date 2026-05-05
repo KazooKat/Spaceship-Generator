@@ -601,6 +601,58 @@ def test_property_palette_seed_grid_generates_non_empty_litematic(
     )
 
 
+# ----------- preset × seed-grid stability (every named preset, small seed set) -----------
+#
+# Companion to ``test_property_palette_seed_grid_generates_non_empty_litematic``
+# along the *preset* axis instead of the *palette* axis. The Hypothesis-based
+# generator tests sample ``ShapeParams`` directly and never thread through
+# ``apply_preset``, and the older ``test_property_preset_generates_non_empty_ship``
+# pins each preset at a *single* seed (1337). This parametrize test pins every
+# named preset (enumerated dynamically via the presets module API so adding a new
+# preset to ``SHIP_PRESETS`` automatically widens the matrix) crossed with the
+# small fixed seed grid ``[0, 1, 7]`` — same ``_SHAPE_STYLE_STABILITY_SEEDS``
+# the structure/cockpit/wing-style sibling tests use — so a regression in any
+# single preset's bundled (hull, engine, wing, cockpit, greeble, weapon) tuple
+# at a non-1337 seed surfaces as a self-named ``[seed-preset_name]`` failure node.
+
+
+@pytest.mark.parametrize("preset_name", sorted(SHIP_PRESETS), ids=lambda p: p)
+@pytest.mark.parametrize("seed", _PALETTE_STABILITY_SEEDS)
+def test_property_preset_seed_grid_generates_non_empty_litematic(
+    tmp_path, preset_name, seed
+):
+    """Every named preset × small seed grid → ``generate()`` writes a non-empty file.
+
+    Mirrors how the presets module API plumbs into ``generate()`` — callers
+    unpack ``apply_preset(name)`` as kwargs (``generate(seed=..., **apply_preset(name))``)
+    so we do the same here per preset to catch preset-bundle-driven regressions
+    (a hull/engine/wing/cockpit/greeble/weapon combo that crashes at a specific
+    seed, a missing role for the preset's chosen palette, etc.) one tick earlier
+    than ``test_property_preset_generates_non_empty_ship`` would, since that
+    sibling pins each preset at a single seed (1337) while this one explicitly
+    visits a 3-seed grid per preset. Failure messages name both the offending
+    preset and seed via the parametrize IDs, plus an explicit ``pytest.fail``
+    message if the file is missing or zero-bytes. Lets the preset's own
+    declared ``size`` (W, H, L) drive ``ShapeParams`` rather than overriding
+    with the sibling tests' ``length=16/width=8/height=6`` so the preset's
+    intended footprint is exercised.
+    """
+    kwargs = apply_preset(preset_name)
+    res = generate(seed, out_dir=tmp_path, filename="ship.litematic", **kwargs)
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for preset={preset_name} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for preset={preset_name} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"preset={preset_name} seed={seed} produced 0 blocks"
+    )
+
+
 # ----------- shape-style × seed-grid stability (every enum member, small seed set) -----------
 #
 # Companion to ``test_property_palette_seed_grid_generates_non_empty_litematic``.
