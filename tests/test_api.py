@@ -476,6 +476,48 @@ def test_api_wing_styles_listed_in_openapi_spec(client):
     assert "200" in op["responses"]
 
 
+def test_api_roles_ok(client):
+    """``GET /api/roles`` returns the ``Role`` enum as ``{name, value}``
+    pairs in declaration order under a single ``roles`` key.
+
+    Narrower JSON sibling of ``/api/styles`` / ``/api/meta`` exposing the
+    integer values used in the ``shape_grid`` int8 array. Payload mirrors
+    CLI ``--list-roles-json`` exactly.
+    """
+    from spaceship_generator.palette import Role
+
+    resp = client.get("/api/roles")
+    assert resp.status_code == 200
+    ctype = resp.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
+    data = resp.get_json()
+    assert set(data.keys()) == {"roles"}
+    assert isinstance(data["roles"], list)
+    assert len(data["roles"]) > 0
+    for entry in data["roles"]:
+        assert isinstance(entry, dict)
+        assert set(entry.keys()) == {"name", "value"}
+        assert isinstance(entry["name"], str)
+        assert isinstance(entry["value"], int)
+    # Order + content must match enum-declaration order — same contract
+    # as the CLI ``--list-roles-json`` flag.
+    expected = [{"name": r.name, "value": int(r)} for r in Role]
+    assert data["roles"] == expected
+
+
+def test_api_roles_listed_in_openapi_spec(client):
+    """The new ``/api/roles`` path must appear in ``/api/spec``."""
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    spec = rv.get_json()
+    assert "/api/roles" in spec["paths"], (
+        "OpenAPI spec must enumerate /api/roles"
+    )
+    op = spec["paths"]["/api/roles"]["get"]
+    assert "summary" in op
+    assert "200" in op["responses"]
+
+
 def test_api_random_returns_keys(client):
     from spaceship_generator import presets as _presets
     from spaceship_generator.palette import list_palettes as _list_palettes

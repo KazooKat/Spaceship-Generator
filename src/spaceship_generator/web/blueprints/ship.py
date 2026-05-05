@@ -647,6 +647,27 @@ def api_wing_styles():
     })
 
 
+@ship_bp.route("/api/roles", methods=["GET"], endpoint="api_roles")
+def api_roles():
+    """Return the ``Role`` enum as ``{name, value}`` pairs.
+
+    Narrower JSON sibling of ``/api/styles`` / ``/api/meta`` exposing the
+    ``Role`` int-enum used in the ``shape_grid`` int8 array — clients that
+    need to decode a raw shape_grid (e.g. tooling that consumes the
+    voxel/JSON output) can fetch the integer ``value`` for each named
+    role without pulling a larger payload. Companion to the other narrow
+    siblings (``/api/cockpit-styles``, ``/api/structure-styles``,
+    ``/api/hull-styles``, ``/api/engine-styles``, ``/api/wing-styles``,
+    ``/api/weapon-types``). Entries are emitted in enum-declaration order
+    (deterministic + stable across runs); payload mirrors the CLI
+    ``--list-roles-json`` flag exactly so both clients see identical
+    content.
+    """
+    return jsonify({
+        "roles": [{"name": r.name, "value": int(r)} for r in Role],
+    })
+
+
 @ship_bp.route("/api/random", methods=["GET"], endpoint="api_random")
 def api_random():
     """Return a random seed/palette/preset combo as JSON.
@@ -1030,6 +1051,23 @@ _OPENAPI_COMPONENTS: dict = {
                 "weapon_types": {"type": "array", "items": {"type": "string"}},
             },
         },
+        "Roles": {
+            "type": "object",
+            "required": ["roles"],
+            "properties": {
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["name", "value"],
+                        "properties": {
+                            "name": {"type": "string"},
+                            "value": {"type": "integer"},
+                        },
+                    },
+                },
+            },
+        },
         "Random": {
             "type": "object",
             "required": ["seed", "palette", "preset"],
@@ -1318,6 +1356,12 @@ _OPENAPI_PATHS: dict = {
         "get": {
             "summary": "List only the WeaponType enum values",
             "responses": {"200": _json_response("WeaponTypes")},
+        },
+    },
+    "/api/roles": {
+        "get": {
+            "summary": "List Role enum (name + integer value) for tooling that consumes the shape_grid int8 array.",
+            "responses": {"200": _json_response("Roles")},
         },
     },
     "/api/random": {
