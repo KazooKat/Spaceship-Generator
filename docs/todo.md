@@ -23,16 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: `--output-json-schema` prints a single JSON Schema document describing the `--output-json` ship payload (top-level type, `properties` for `seed`, `palette`, `shape`, `blocks`, `download_url`?, `gen_id`?), exits 0; not silenced by `--quiet`; tested with `jsonschema.Draft7Validator.check_schema` for validity; CHANGELOG bullet
       notes: lets downstream consumers programmatically validate `--output-json` payloads; mirror `_OPENAPI_COMPONENTS["GenerateResult"]` schema since `--output-json` and `POST /api/generate` should share the contract
 
-- [ ] feat-bench-palette-csv: add `--csv` flag to `scripts/bench_palette.py` emitting CSV row instead of fixed-width table
-      scope: `scripts/bench_palette.py`, `tests/test_bench_smoke.py` (extend)
-      accept: `--csv` emits header `palette,mean_ms,p95_ms` followed by one row per palette + a TOTAL row; exits 0; smoke test runs `--csv --iterations 2 --limit 2`; CHANGELOG bullet
-      notes: mirror `feat-bench-summary-csv` pattern — preserves fixed-width default behavior; uses stdlib `csv.writer`
-
-- [ ] feat-docs-architecture-greebles: extend `docs/architecture.md` with a Greeble pipeline section
-      scope: `docs/architecture.md` (extend, do not create new doc), `docs/CHANGELOG.md`
-      accept: new section "Greeble pipeline" describes `greeble_styles.py` (GreebleType + scatter_greebles), `shape/greebles.py`, the role of `greeble_density` in the assembly pipeline, the relationship to `weapon_styles` (weapons stamp into Role.EMPTY only); cross-link to `docs/cli.md --list-greeble-types` and `docs/web_ui.md /api/greeble-types`; ≤80 lines; CHANGELOG bullet
-      notes: companion to the existing Shape pipeline section in `docs/architecture.md` (shipped in `feat-docs-shape-pipeline`); foundation for future greeble-related work
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -63,6 +53,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-bench-palette-csv: add `--csv` flag to `scripts/bench_palette.py` emitting CSV row instead of fixed-width table
+      scope: `scripts/bench_palette.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits header `palette,mean_ms,p95_ms` followed by one row per palette + a TOTAL row; exits 0; smoke test runs `--csv --iterations 2 --limit 2`; CHANGELOG bullet
+      notes: shipped 2026-05-05; mirror of `feat-bench-summary-csv` — new `--csv` argparse flag in `scripts/bench_palette.py::parse_args` (action `store_true`, default `False`) declared adjacent to the existing `--iterations` / `--limit` / `--seed` flags with help text `"Emit CSV (palette,mean_ms,p95_ms) instead of fixed-width table; useful for CI / spreadsheet ingest."`; new `print_csv(rows, all_samples_ms)` helper writes through the stdlib `csv.writer(sys.stdout, lineterminator="\n")` so future palette names containing commas / quotes / newlines are escaped correctly without us reinventing it; the helper is a thin sibling of `print_table()` that re-uses the exact same per-iter aggregation (`all_samples_ms.mean()` and `np.percentile(all_samples_ms, 95)`) for the `TOTAL` row so the two output paths can never drift on the summary numbers; in `--csv` mode the run-banner (`bench_palette: palettes=... iterations=... seed=... ...`) is routed to stderr (via a single `progress_stream = sys.stderr if args.csv else sys.stdout` hoist) so the stdout stream stays a clean parseable CSV document an operator can pipe straight into a spreadsheet / CI parser without filtering noise out (in default fixed-width-table mode it stays on stdout where it's always been); absent-flag behavior is byte-identical to the legacy fixed-width formatter (preserved verbatim by routing through the unchanged `print_table()` + `print_total()` pair); new `tests/test_bench_smoke.py::test_bench_palette_csv_emits_csv` runs the script with `--csv --iterations 2 --limit 2 --seed 0` via `subprocess.run` and asserts exit 0 + first stdout line is exactly `palette,mean_ms,p95_ms` + at least one per-palette row appears in the CSV body + a `TOTAL,...` row appears in the body (catches a regression where the header emits but the body / TOTAL row is dropped); existing `tests/test_bench_smoke.py::test_bench_palette_runs_with_two_palettes_two_iterations` still asserts the fixed-width-table contract with `--csv` absent so the no-flag path is also pinned; full `pytest -q` + `ruff check .` both green
 
 - [x] feat-cli-validate-palette: add `--validate-palette PATH` flag — runs strict lint against a single palette YAML and exits 0/1
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`

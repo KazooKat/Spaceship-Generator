@@ -149,6 +149,55 @@ def test_bench_palette_runs_with_two_palettes_two_iterations() -> None:
     assert "TOTAL" in out, f"TOTAL row missing from stdout:\n{out}"
 
 
+def test_bench_palette_csv_emits_csv() -> None:
+    """`--csv` flag produces a CSV header + one row per palette + TOTAL row.
+
+    The per-palette run-banner must NOT pollute the CSV stream in `--csv`
+    mode (it's routed to stderr instead) so the stdout is a clean
+    parseable CSV document an operator can pipe straight into a
+    spreadsheet / CI parser.
+    """
+    assert PALETTE_SCRIPT.is_file(), f"missing bench script: {PALETTE_SCRIPT}"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PALETTE_SCRIPT),
+            "--csv",
+            "--iterations",
+            "2",
+            "--limit",
+            "2",
+            "--seed",
+            "0",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"bench_palette.py --csv exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    out = result.stdout
+    assert out.strip(), f"bench_palette.py --csv produced empty stdout:\n{out!r}"
+    lines = out.splitlines()
+    assert lines[0] == "palette,mean_ms,p95_ms", (
+        f"first stdout line should be the CSV header, got:\n{lines[0]!r}"
+    )
+    # Subsequent rows must include at least one palette name and a TOTAL
+    # row — the test catches a regression where the header emits but the
+    # body is dropped, or where the TOTAL summary row stops being written.
+    body_rows = lines[1:]
+    assert any(
+        row and not row.startswith("TOTAL,") and not row.startswith("palette,")
+        for row in body_rows
+    ), f"no per-palette row in CSV body:\n{body_rows}"
+    assert any(
+        row.startswith("TOTAL,") for row in body_rows
+    ), f"TOTAL row missing from CSV body:\n{body_rows}"
+
+
 def test_bench_greeble_density_runs_minimal() -> None:
     """Per-density bench exits 0 and prints the column headers + TOTAL row."""
     assert GREEBLE_DENSITY_SCRIPT.is_file(), (

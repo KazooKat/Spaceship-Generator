@@ -28,6 +28,7 @@ runs.
 from __future__ import annotations
 
 import argparse
+import csv
 import platform
 import sys
 import tempfile
@@ -109,6 +110,32 @@ def print_total(
     )
 
 
+def print_csv(
+    rows: list[tuple[str, float, float]],
+    all_samples_ms: np.ndarray,
+) -> None:
+    """Emit the per-palette table + TOTAL row as CSV to stdout.
+
+    Header row is ``palette,mean_ms,p95_ms`` followed by one row per
+    palette and a final ``TOTAL`` row computed from the same per-iter
+    aggregation as the fixed-width formatter (so the two paths can never
+    drift on the summary numbers). Uses the stdlib :mod:`csv` module so
+    quoting / escaping (e.g. a future palette name containing a comma) is
+    handled correctly without us reinventing it.
+    """
+    writer = csv.writer(sys.stdout, lineterminator="\n")
+    writer.writerow(["palette", "mean_ms", "p95_ms"])
+    for name, mean_ms, p95_ms in rows:
+        writer.writerow([name, f"{mean_ms:.3f}", f"{p95_ms:.3f}"])
+    if all_samples_ms.size:
+        total_mean_ms = float(all_samples_ms.mean())
+        total_p95_ms = float(np.percentile(all_samples_ms, 95))
+    else:
+        total_mean_ms = 0.0
+        total_p95_ms = 0.0
+    writer.writerow(["TOTAL", f"{total_mean_ms:.3f}", f"{total_p95_ms:.3f}"])
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument(
@@ -125,6 +152,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--seed", type=int, default=0,
         help="base seed; seed_i = seed + i (default: 0)",
+    )
+    p.add_argument(
+        "--csv", action="store_true", default=False,
+        help=(
+            "Emit CSV (palette,mean_ms,p95_ms) instead of fixed-width "
+            "table; useful for CI / spreadsheet ingest."
+        ),
     )
     return p.parse_args(argv)
 
@@ -153,10 +187,17 @@ def main(argv: list[str] | None = None) -> int:
         print("no palettes discovered", file=sys.stderr)
         return 2
 
+    # In CSV mode the run banner goes to stderr so the stdout stream stays
+    # a clean CSV document an operator can pipe straight into a spreadsheet
+    # / CI parser. In the default fixed-width-table mode it stays on stdout
+    # where it's always been (preserves backwards-compatible output for
+    # existing callers).
+    progress_stream = sys.stderr if args.csv else sys.stdout
     print(
         f"bench_palette: palettes={len(palettes)}  iterations={args.iterations}  "
         f"seed={args.seed}  py={sys.version.split()[0]}  "
-        f"proc={(platform.processor() or platform.machine())[:60]}"
+        f"proc={(platform.processor() or platform.machine())[:60]}",
+        file=progress_stream,
     )
 
     rows: list[tuple[str, float, float]] = []
@@ -180,15 +221,19 @@ def main(argv: list[str] | None = None) -> int:
             rows.append((palette, mean_ms, p95_ms))
             all_samples.extend(per_iter_ms.tolist())
 
-    print_table(rows, args.iterations)
-    name_width = max((len(name) for name, _m, _p in rows), default=8)
-    name_width = max(name_width, len("palette"))
-    print_total(
-        np.asarray(all_samples, dtype=np.float64),
-        palette_count=len(palettes),
-        iterations=args.iterations,
-        name_width=name_width,
-    )
+    all_samples_arr = np.asarray(all_samples, dtype=np.float64)
+    if args.csv:
+        print_csv(rows, all_samples_arr)
+    else:
+        print_table(rows, args.iterations)
+        name_width = max((len(name) for name, _m, _p in rows), default=8)
+        name_width = max(name_width, len("palette"))
+        print_total(
+            all_samples_arr,
+            palette_count=len(palettes),
+            iterations=args.iterations,
+            name_width=name_width,
+        )
     return 0
 
 
