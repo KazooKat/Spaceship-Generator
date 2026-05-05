@@ -28,11 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: `--csv` emits a header row + one data row per measured iteration/group; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
       notes: mirror of `feat-bench-summary-csv` / `feat-bench-palette-csv` / `feat-bench-compare-csv`
 
-- [ ] feat-docs-cli-list-json-flags: extend `docs/cli.md` with the newly-shipped `--list-*-json` flag family
-      scope: `docs/cli.md` (extend, not restructure)
-      accept: docs/cli.md documents the four new `--list-cockpit-styles-json`, `--list-structure-styles-json`, `--list-greeble-types-json`, `--list-weapon-types-json` flags + the existing `--list-presets-json`, `--list-shape-styles-json`, `--output-json-schema` siblings as a coherent "machine-readable list/output" block; CHANGELOG bullet
-      notes: pure-docs unit; ≤40 added lines; do not duplicate flag-by-flag schemas (reference the JSON shape inline)
-
 - [ ] feat-tests-property-preset-grid: add property test asserting `generate()` succeeds for every (preset × seed) pair
       scope: `tests/test_properties.py` (extend)
       accept: parametrize over each named preset × seed grid `[0, 1, 7]`; assert `.litematic` exists + non-empty; failure names offending preset + seed; CHANGELOG bullet
@@ -78,6 +73,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-cli-list-json-flags: extend `docs/cli.md` with the newly-shipped `--list-*-json` flag family
+      scope: `docs/cli.md` (extend, not restructure)
+      accept: docs/cli.md documents the four new `--list-cockpit-styles-json`, `--list-structure-styles-json`, `--list-greeble-types-json`, `--list-weapon-types-json` flags + the existing `--list-presets-json`, `--list-shape-styles-json`, `--output-json-schema` siblings as a coherent "machine-readable list/output" block; CHANGELOG bullet
+      notes: pure-docs unit; ≤40 added lines; do not duplicate flag-by-flag schemas (reference the JSON shape inline)
 
 - [x] feat-cli-list-json-pack-2026-05-05: add `--list-cockpit-styles-json`, `--list-structure-styles-json`, `--list-greeble-types-json`, `--list-weapon-types-json` flags
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`

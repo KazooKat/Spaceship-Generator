@@ -135,3 +135,33 @@ For the palette catalog see [palettes.md](palettes.md).
 | `--export-manifest` | flag | off | Write `<name>.json` sidecar (seed, palette, shape, block count, UTC timestamp) alongside each `.litematic`. |
 | `--from-manifest` | FILE (path to manifest JSON) | None | Reproduce a ship from a prior `--export-manifest` sidecar. Mutually exclusive with `--seed` / `--seeds` / `--seed-phrase` / `--repeat` / `--fleet-count`. |
 | `--block-summary` | flag | off | Print `block_id,count` CSV (sorted desc) after generation; useful for survival mode resource planning. |
+
+## Machine-readable list / output flags
+
+Companion JSON-emitting variants of the human-readable `--list-*` flags
+(plus `--output-json-schema`, the JSON Schema describing the
+`--output-json` per-ship payload). Each flag prints a single JSON document
+to stdout and exits 0. All flags in this family share two carve-outs:
+
+1. They bypass the `--quiet` gate (so `--quiet --list-X-json` still prints
+   the JSON document); they exist precisely so downstream tooling can
+   ingest a stable JSON document without parsing human-readable output.
+2. Each `--list-*-json` flag is mutually exclusive with its non-json
+   sibling (`parser.error` → exit 2).
+
+Style enums emit in **enum-declaration order** (deterministic across runs);
+`--list-presets-json` emits **alphabetical by preset name**.
+
+| Flag | JSON shape | API mirror |
+|---|---|---|
+| `--list-presets-json` | JSON array of `{name, ...preset_fields}` objects | — |
+| `--list-shape-styles-json` | `{"hull_styles":[...], "engine_styles":[...], "wing_styles":[...]}` | `GET /api/shape-styles` |
+| `--list-cockpit-styles-json` | `{"cockpit_styles":[...]}` | `GET /api/cockpit-styles` |
+| `--list-structure-styles-json` | `{"structure_styles":[...]}` | `GET /api/structure-styles` |
+| `--list-greeble-types-json` | `{"greeble_types":[...]}` | `GET /api/greeble-types` |
+| `--list-weapon-types-json` | `{"weapon_types":[...]}` | `GET /api/weapon-types` |
+| `--output-json-schema` | Draft-7 JSON Schema for the `--output-json` payload | — |
+
+See [web_ui.md](web_ui.md) for the matching `/api/*` endpoints. Note that
+`--output-json` itself (one NDJSON object per ship) and `--stats-json`
+(stats payload) above share the same `--quiet` carve-out as this family.
