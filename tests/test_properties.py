@@ -978,6 +978,72 @@ def test_property_weapon_type_seed_grid_generates_non_empty_litematic(
     )
 
 
+# ----------- (no_greebles, no_weapons) combos × seed-grid stability -----------
+#
+# Companion to the per-enum-member parametrize tests above. The CLI exposes
+# ``--no-greebles`` and ``--no-weapons`` shortcut flags that translate to
+# ``greeble_density=0.0`` and ``weapon_count=0`` respectively (see
+# ``src/spaceship_generator/cli.py`` around the ``args.no_greebles`` /
+# ``args.no_weapons`` branches). The Hypothesis-based generator tests sample
+# greeble density and weapon count independently but never pin the full
+# 2×2 boolean cross-product, so a regression that only surfaces with *both*
+# flags on (the "bare hull" path: zero greebles + zero weapons → ship must
+# still be a non-empty hull, never zero blocks) would not be caught. This
+# parametrize test deterministically pins all four (no_greebles, no_weapons)
+# combos crossed with the small fixed seed grid ``[0, 1, 7]`` so any
+# regression in the no-greebles or no-weapons code paths surfaces as a
+# self-named ``[seed-no_weapons-no_greebles]`` failure node.
+
+
+@pytest.mark.parametrize("no_greebles", [False, True])
+@pytest.mark.parametrize("no_weapons", [False, True])
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_no_greebles_no_weapons_combos_seed_grid_generates_non_empty_litematic(
+    tmp_path, no_greebles, no_weapons, seed
+):
+    """Every (no_greebles, no_weapons) combo × small seed grid → non-empty ``.litematic``.
+
+    Mirrors how the ``--no-greebles`` and ``--no-weapons`` CLI shortcut flags
+    plumb into ``generate()``: the CLI sets ``greeble_density=0.0`` when
+    ``--no-greebles`` is passed and ``weapon_count=0`` when ``--no-weapons``
+    is passed, so this test does the same per combo. Even with both flags
+    on (the "bare hull" path), the ship must still be a non-empty hull —
+    ``block_count > 0`` — because shape generation always yields a
+    bilaterally symmetric hull silhouette regardless of greeble/weapon
+    decoration. Failure messages name the offending combo and seed via the
+    parametrize IDs, plus an explicit ``pytest.fail`` message if the file
+    is missing or zero-bytes.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    kwargs = {}
+    if no_greebles:
+        kwargs["greeble_density"] = 0.0
+    if no_weapons:
+        kwargs["weapon_count"] = 0
+    res = generate(
+        seed,
+        shape_params=params,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+        **kwargs,
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"no_greebles={no_greebles} no_weapons={no_weapons} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"no_greebles={no_greebles} no_weapons={no_weapons} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"no_greebles={no_greebles} no_weapons={no_weapons} seed={seed} "
+        f"produced 0 blocks"
+    )
+
+
 @pytest.mark.parametrize(
     "palette_name",
     ["sci_fi_industrial", "sleek_modern", "cyberpunk_neon", "neon_arcade"],

@@ -28,11 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: new section "Cockpit pipeline" describes `cockpit_styles.py` (CockpitStyle + placers), the role of `cockpit_style` in the assembly pipeline; cross-link to `docs/cli.md --list-cockpit-styles` and `docs/web_ui.md /api/cockpit-styles`; ≤80 lines; CHANGELOG bullet
       notes: mirror of just-shipped `feat-docs-architecture-greebles` / `feat-docs-architecture-weapons`
 
-- [ ] feat-tests-property-no-greebles-no-weapons-combos: add property test asserting `generate()` succeeds for every (no_greebles, no_weapons) combo × seed grid
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over the 4 boolean combos × seed grid `[0, 1, 7]` (= 12 nodes); assert `.litematic` exists + non-empty; failure names offending combo + seed; CHANGELOG bullet
-      notes: catches regressions in the no-greebles / no-weapons code paths that single-flag tests miss
-
 - [ ] feat-palettes-biome-pack-2026-05-05c: add dawn_meadow, glacial_blue biome palettes
       scope: `palettes/dawn_meadow.yaml`, `palettes/glacial_blue.yaml`
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
@@ -78,6 +73,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-property-no-greebles-no-weapons-combos: add property test asserting `generate()` succeeds for every (no_greebles, no_weapons) combo × seed grid
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over the 4 boolean combos × seed grid `[0, 1, 7]` (= 12 nodes); assert `.litematic` exists + non-empty; failure names offending combo + seed; CHANGELOG bullet
+      notes: catches regressions in the no-greebles / no-weapons code paths that single-flag tests miss
 
 - [x] feat-cli-list-palettes-json: add `--list-palettes-json` flag — machine-readable variant of `--list-palettes`
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`

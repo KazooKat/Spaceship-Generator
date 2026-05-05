@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- test(properties): add (no_greebles, no_weapons) combos x seed-grid stability property test (feat-tests-property-no-greebles-no-weapons-combos)
 - feat(cli): add --list-palettes-json — machine-readable variant of --list-palettes (feat-cli-list-palettes-json)
 - feat(scripts): add --csv flag to bench_fleet.py for CI/spreadsheet ingest (feat-bench-fleet-csv)
 - test(properties): add preset x seed-grid stability property test (feat-tests-property-preset-grid)
