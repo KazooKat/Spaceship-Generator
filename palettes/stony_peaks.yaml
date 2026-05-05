@@ -1,0 +1,26 @@
+name: stony_peaks
+description: Stony peaks summit-runner. Stone hull, andesite HULL_DARK accent, light-blue-stained-glass windows, smooth-stone engines, sea-lantern engine glow, white-stained-glass cockpit, snow-block wings, cobblestone greebles, lantern running lights, diorite interior — Minecraft 1.18 stony peaks mountain biome theme.
+
+blocks:
+  HULL:          minecraft:stone
+  HULL_DARK:     minecraft:andesite
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:smooth_stone
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:white_stained_glass
+  WING:          minecraft:snow_block
+  GREEBLE:       minecraft:cobblestone
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:diorite
+
+preview_colors:
+  HULL:          "#9a9a9a"
+  HULL_DARK:     "#454545"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#b4b4b4"
+  ENGINE_GLOW:   "#eaf4ff"
+  COCKPIT_GLASS: "#f4f4f4"
+  WING:          "#f9faff"
+  GREEBLE:       "#7e7e7e"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#d8d8d8"

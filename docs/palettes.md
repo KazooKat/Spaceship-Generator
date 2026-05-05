@@ -1,6 +1,6 @@
 # Palettes
 
-All 59 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
+All 61 palettes shipped with the Spaceship Generator. Use `--palette NAME` to select one, or `--palette random` to pick at generation time. New palettes are added by dropping a YAML file in `palettes/` — see [palette_authoring.md](palette_authoring.md) for the schema.
 
 | Palette | Description |
 |---|---|
@@ -57,6 +57,8 @@ All 59 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `sparse_jungle` | Sparse jungle scout. Jungle-log hull, stripped-jungle-log dark accent, jungle-leaves wing, ochre-froglight engine glow, lantern running lights — Minecraft sparse jungle biome. |
 | `stealth_black` | Matte-black stealth fighter. Smoky tinted glass, sparse cyan glow, blackstone greebles. |
 | `steampunk_brass` | Victorian airship. Copper plating, weathered verdigris trim, blackstone engine housings, redstone-lamp rivets. |
+| `stony_peaks` | Stony peaks summit-runner. Stone hull, andesite HULL_DARK accent, light-blue-stained-glass windows, smooth-stone engines, sea-lantern engine glow, white-stained-glass cockpit, snow-block wings, cobblestone greebles, lantern running lights, diorite interior — Minecraft 1.18 stony peaks mountain biome theme. |
+| `sunflower_plains` | Sunflower plains biome runner. Grass-block hull, oak-log HULL_DARK accent, yellow-stained-glass sunflower windows, yellow-terracotta engines, ochre-froglight engine glow, orange-stained-glass cockpit, oak-leaves wings, oak-planks greebles, lantern running lights, moss-block interior — Minecraft sunflower plains biome theme. |
 | `swamp` | Swamp biome runner. Mossy-cobblestone hull, oak-log HULL_DARK accent, lime-stained-glass windows, stripped-oak-log engines, ochre-froglight engine glow, oak-leaves vine-canopy wings, stripped-oak-wood greebles, lantern running lights — Minecraft swamp biome theme. |
 | `swamp_bog` | Swamp bog hauler. Mangrove hull, mud underframe, verdant froglight engine glow. |
 | `void_walker` | Deep-space surveyor. Obsidian hull, blue ice viewports, amethyst glow — built for the void. |
