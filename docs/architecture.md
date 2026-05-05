@@ -421,6 +421,87 @@ greeble/wing pickers, and `_apply_hull_noise`.
 
 - CLI ([docs/cli.md](cli.md)): `--hull-style`, `--list-shape-styles`, `--list-shape-styles-json`. Web API ([docs/web_ui.md](web_ui.md)): `GET /api/hull-styles`, `GET /api/shape-styles`.
 
+## Wing pipeline
+
+Wings are the bilateral aerodynamic slabs that give a ship its planform —
+straight, swept, delta, tapered, gull, or split-biplane. Unlike greebles
+and weapons, wings are not a scatter pass: at most one left-side wing is
+stamped per ship inside the shape build between engines and greebles,
+and the right wing is produced later by the assembly mirror.
+
+### Build order
+
+```mermaid
+flowchart LR
+  engines[shape/engines.py<br/>_place_engines]
+  gate[generate_shape<br/>rng.random&lt;wing_prob_override]
+  wings[shape/wings.py<br/>_place_wings<br/>placement-box math]
+  styles[wing_styles.py<br/>place_wings dispatch]
+  greebles[shape/greebles.py<br/>_place_greebles]
+  mirror[assembly.py<br/>mirror+connect+mirror]
+
+  engines --> gate --> wings --> styles --> greebles --> mirror
+```
+
+Whether the stage runs at all is decided in `generate_shape`
+(`shape/core.py`) against `rng.random() <
+wing_prob_override(structure_style, params.wing_prob)`, so some
+structure styles can suppress wings entirely. When it runs, only the
+left half (`x < W/2`) is written; the right wing is produced by the
+final `_enforce_x_symmetry` pass.
+
+### `WingStyle` (in `wing_styles.py`)
+
+`WingStyle` is a `StrEnum` with 6 members today (`STRAIGHT`, `SWEPT`,
+`DELTA`, `TAPERED`, `GULL`, `SPLIT`). `STRAIGHT` is the byte-compat
+legacy default — `_place_straight` MUST reproduce the pre-WingStyle
+placement byte-for-byte; every historical seed depends on it.
+
+### `wing_styles.py`
+
+Top-level dispatcher `place_wings(grid, wing_style, *, span, thickness,
+length, cy, cz, y_lo, y_hi)` routes to one of six private placers, each
+writing only `Role.WING` on the left half: `_place_straight`
+(rectangular slab), `_place_swept` (parallelogram, tip shifted rearward
+~60% of span), `_place_delta` (triangle in plan view, root `span`
+shrinking to 1 at the nose-side tip), `_place_tapered` (straight
+leading edge, chord shrinks to ~40% at tip), `_place_gull` (inner half
+flat, outer half rises one Y per X past the knee), and `_place_split`
+(two thinner wings stacked with a vertical gap — biplane-style). All
+styles clip to grid bounds, so pathologically small inputs cannot write
+out-of-bounds.
+
+### `shape/wings.py`
+
+Single function `_place_wings(grid, rng, params)` owns only the
+placement-box math — the cell-writing pattern lives in
+`wing_styles.place_wings`. Reads `wing_size_scale(params.structure_style)`
+from `structure_styles.py` to scale span / thickness / length, computes
+`cy` from grid height, draws `cz` from a small `rng.integers` offset
+around `L // 3`, clamps wing length to fit the grid, then forwards
+`params.wing_style` and the computed box to `wing_styles.place_wings`.
+
+### `wing_style` and `ShapeParams.wing_style`
+
+`wing_style` is a `WingStyle` field on `ShapeParams` (default
+`WingStyle.STRAIGHT`, validated in `__post_init__`) and the sole input
+that picks which placer runs — `place_wings` reads it directly. The
+CLI plumbs it through `--wing-style` (`WingStyle(args.wing_style)` in
+`build_params_from_source`); the web layer reads `wing_style` from the
+form/JSON field. `presets.py` pins a `WingStyle` per preset; `fleet.py`
+plans a per-ship `wing_style` the caller hands back to `generator.generate`.
+
+### Relationship to symmetry
+
+Every per-style placer writes only `x < W/2`. The right wing is
+produced by the post-greeble `_enforce_x_symmetry` (copies left over
+`x = W/2`). `_connect_floaters` may bridge a wing tip the tapered hull
+left disconnected; the second mirror restamps symmetry over the bridge.
+
+### Cross-references
+
+- CLI ([docs/cli.md](cli.md)): `--wing-style`, `--list-shape-styles`, `--list-shape-styles-json`. Web API ([docs/web_ui.md](web_ui.md)): `GET /api/wing-styles`, `GET /api/shape-styles`.
+
 ## Greeble pipeline
 
 Greebles are the small surface details that sell a Minecraft ship as built
