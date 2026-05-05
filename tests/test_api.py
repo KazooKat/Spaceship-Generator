@@ -353,6 +353,129 @@ def test_api_structure_styles_listed_in_openapi_spec(client):
     assert "200" in op["responses"]
 
 
+def test_api_hull_styles_ok(client):
+    """``GET /api/hull-styles`` returns just the ``HullStyle`` enum values
+    in enum-declaration order under a single ``hull_styles`` key.
+
+    Companion to ``/api/shape-styles`` / ``/api/greeble-types`` /
+    ``/api/weapon-types`` / ``/api/cockpit-styles`` /
+    ``/api/structure-styles`` — narrower JSON sibling of ``/api/styles``
+    exposing only the hull archetype catalog.
+    """
+    from spaceship_generator.structure_styles import HullStyle
+
+    resp = client.get("/api/hull-styles")
+    assert resp.status_code == 200
+    ctype = resp.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
+    data = resp.get_json()
+    assert set(data.keys()) == {"hull_styles"}
+    assert isinstance(data["hull_styles"], list)
+    assert len(data["hull_styles"]) > 0
+    # Every declared HullStyle.value must be present.
+    declared = [h.value for h in HullStyle]
+    for value in declared:
+        assert value in data["hull_styles"], f"missing hull style {value!r}"
+    # Order must match enum-declaration order — same contract as
+    # ``/api/styles`` and ``/api/shape-styles``.
+    assert data["hull_styles"] == declared
+
+
+def test_api_hull_styles_listed_in_openapi_spec(client):
+    """The new ``/api/hull-styles`` path must appear in ``/api/spec``."""
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    spec = rv.get_json()
+    assert "/api/hull-styles" in spec["paths"], (
+        "OpenAPI spec must enumerate /api/hull-styles"
+    )
+    op = spec["paths"]["/api/hull-styles"]["get"]
+    assert "summary" in op
+    assert "200" in op["responses"]
+
+
+def test_api_engine_styles_ok(client):
+    """``GET /api/engine-styles`` returns just the ``EngineStyle`` enum
+    values in enum-declaration order under a single ``engine_styles`` key.
+
+    Companion to ``/api/shape-styles`` / ``/api/greeble-types`` /
+    ``/api/weapon-types`` / ``/api/cockpit-styles`` /
+    ``/api/structure-styles`` — narrower JSON sibling of ``/api/styles``
+    exposing only the engine archetype catalog.
+    """
+    from spaceship_generator.engine_styles import EngineStyle
+
+    resp = client.get("/api/engine-styles")
+    assert resp.status_code == 200
+    ctype = resp.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
+    data = resp.get_json()
+    assert set(data.keys()) == {"engine_styles"}
+    assert isinstance(data["engine_styles"], list)
+    assert len(data["engine_styles"]) > 0
+    # Every declared EngineStyle.value must be present.
+    declared = [e.value for e in EngineStyle]
+    for value in declared:
+        assert value in data["engine_styles"], f"missing engine style {value!r}"
+    # Order must match enum-declaration order — same contract as
+    # ``/api/styles`` and ``/api/shape-styles``.
+    assert data["engine_styles"] == declared
+
+
+def test_api_engine_styles_listed_in_openapi_spec(client):
+    """The new ``/api/engine-styles`` path must appear in ``/api/spec``."""
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    spec = rv.get_json()
+    assert "/api/engine-styles" in spec["paths"], (
+        "OpenAPI spec must enumerate /api/engine-styles"
+    )
+    op = spec["paths"]["/api/engine-styles"]["get"]
+    assert "summary" in op
+    assert "200" in op["responses"]
+
+
+def test_api_wing_styles_ok(client):
+    """``GET /api/wing-styles`` returns just the ``WingStyle`` enum values
+    in enum-declaration order under a single ``wing_styles`` key.
+
+    Companion to ``/api/shape-styles`` / ``/api/greeble-types`` /
+    ``/api/weapon-types`` / ``/api/cockpit-styles`` /
+    ``/api/structure-styles`` — narrower JSON sibling of ``/api/styles``
+    exposing only the wing archetype catalog.
+    """
+    from spaceship_generator.wing_styles import WingStyle
+
+    resp = client.get("/api/wing-styles")
+    assert resp.status_code == 200
+    ctype = resp.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
+    data = resp.get_json()
+    assert set(data.keys()) == {"wing_styles"}
+    assert isinstance(data["wing_styles"], list)
+    assert len(data["wing_styles"]) > 0
+    # Every declared WingStyle.value must be present.
+    declared = [w.value for w in WingStyle]
+    for value in declared:
+        assert value in data["wing_styles"], f"missing wing style {value!r}"
+    # Order must match enum-declaration order — same contract as
+    # ``/api/styles`` and ``/api/shape-styles``.
+    assert data["wing_styles"] == declared
+
+
+def test_api_wing_styles_listed_in_openapi_spec(client):
+    """The new ``/api/wing-styles`` path must appear in ``/api/spec``."""
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    spec = rv.get_json()
+    assert "/api/wing-styles" in spec["paths"], (
+        "OpenAPI spec must enumerate /api/wing-styles"
+    )
+    op = spec["paths"]["/api/wing-styles"]["get"]
+    assert "summary" in op
+    assert "200" in op["responses"]
+
+
 def test_api_random_returns_keys(client):
     from spaceship_generator import presets as _presets
     from spaceship_generator.palette import list_palettes as _list_palettes

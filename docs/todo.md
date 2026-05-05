@@ -18,16 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-cli-list-json-pack-2026-05-05: add `--list-cockpit-styles-json`, `--list-structure-styles-json`, `--list-greeble-types-json`, `--list-weapon-types-json` flags
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: each flag emits a single JSON document (e.g. `{"cockpit_styles":[...]}`) to stdout in enum-declaration order, exits 0; not silenced by `--quiet`; mutually exclusive with non-json sibling; tested per flag; CHANGELOG bullet
-      notes: mirror of `feat-cli-list-shape-styles-json`; one agent owns cli.py + test_cli.py to avoid concurrent-edit conflicts
-
-- [ ] feat-api-narrow-style-endpoints: add `GET /api/hull-styles`, `GET /api/engine-styles`, `GET /api/wing-styles` JSON endpoints
-      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components, `docs/web_ui.md`
-      accept: each route returns `{"<name>_styles":[...]}` JSON in enum-declaration order; OpenAPI spec enumerates them; spec-validate test stays green; CHANGELOG bullet
-      notes: mirror of `feat-api-cockpit-styles` / `feat-api-structure-styles`; one agent owns ship.py + test_api.py
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -58,6 +48,16 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-list-json-pack-2026-05-05: add `--list-cockpit-styles-json`, `--list-structure-styles-json`, `--list-greeble-types-json`, `--list-weapon-types-json` flags
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: each flag emits a single JSON document (e.g. `{"cockpit_styles":[...]}`) to stdout in enum-declaration order, exits 0; not silenced by `--quiet`; mutually exclusive with non-json sibling; tested per flag; CHANGELOG bullet
+      notes: shipped 2026-05-05; mirror of `feat-cli-list-shape-styles-json` — four new `--list-<x>-json` flags (action `store_true`) declared in `src/spaceship_generator/cli.py::build_parser` immediately after each non-json sibling so the help-text grouping reads as sibling pairs; help text reads `"Machine-readable variant of --list-<x>: emits a single JSON document {\"<x>\":[...]} to stdout. Mutually exclusive with --list-<x>. NOT silenced by --quiet."` so the carve-out is documented inline; mutex check via `parser.error("--list-<x> and --list-<x>-json are mutually exclusive")` placed alongside the existing `--list-shape-styles` mutex; short-circuit handler in `cli.main` placed adjacent to the non-json sibling handler emits via `print(json.dumps({...}), file=sys.stdout)` directly rather than the `_emit` funnel so `--quiet --list-<x>-json` still prints — same carve-out as `--stats-json` / `--list-presets-json` / `--list-shape-styles-json`; the `--list-weapon-types-json` handler additionally guards on `_weapon_styles is None` (mirrors the non-json sibling) so the optional weapon module's absence yields exit 1 + diagnostic line on stderr rather than an `AttributeError`; 12 new tests in `tests/test_cli.py` (3 per flag) cover (a) `test_cli_list_<x>_json_emits_valid_json` — exit 0 + `json.loads(captured.out)` is a dict with the single expected key + value matches `[m.value for m in <Enum>]` exactly (declaration order, no hard-coded list, sourced from the enum directly so the two paths can never drift), (b) `test_cli_list_<x>_json_quiet_still_emits` — `--quiet --list-<x>-json` still emits the JSON document, and (c) `test_cli_list_<x>_and_json_mutually_exclusive` — passing both raises `SystemExit` with non-zero code + stderr contains both flag names + `mutually exclusive`; full `pytest -q` + `ruff check .` both green
+
+- [x] feat-api-narrow-style-endpoints: add `GET /api/hull-styles`, `GET /api/engine-styles`, `GET /api/wing-styles` JSON endpoints
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components, `docs/web_ui.md`
+      accept: each route returns `{"<name>_styles":[...]}` JSON in enum-declaration order; OpenAPI spec enumerates them; spec-validate test stays green; CHANGELOG bullet
+      notes: mirror of `feat-api-cockpit-styles` / `feat-api-structure-styles`; one agent owns ship.py + test_api.py
 
 - [x] feat-bench-compare-csv: add `--csv` flag to `scripts/bench_compare.py` emitting CSV row instead of fixed-width table
       scope: `scripts/bench_compare.py`, `tests/test_bench_smoke.py` (extend)

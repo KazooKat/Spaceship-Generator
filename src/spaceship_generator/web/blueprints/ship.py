@@ -590,6 +590,63 @@ def api_structure_styles():
     })
 
 
+@ship_bp.route("/api/hull-styles", methods=["GET"], endpoint="api_hull_styles")
+def api_hull_styles():
+    """Return only the ``HullStyle`` enum list.
+
+    Narrower JSON sibling of ``/api/styles`` exposing just the hull
+    archetype catalog — clients that only need the hull picker can
+    fetch this endpoint instead of pulling the larger ``/api/styles`` /
+    ``/api/meta`` payloads. Companion to ``/api/shape-styles``,
+    ``/api/greeble-types``, ``/api/weapon-types``,
+    ``/api/cockpit-styles``, and ``/api/structure-styles``. Values are
+    the enum ``.value`` strings emitted in enum-declaration order
+    (deterministic + stable across runs), matching the serialization
+    used by ``/api/meta``.
+    """
+    return jsonify({
+        "hull_styles": [h.value for h in HullStyle],
+    })
+
+
+@ship_bp.route("/api/engine-styles", methods=["GET"], endpoint="api_engine_styles")
+def api_engine_styles():
+    """Return only the ``EngineStyle`` enum list.
+
+    Narrower JSON sibling of ``/api/styles`` exposing just the engine
+    archetype catalog — clients that only need the engine picker can
+    fetch this endpoint instead of pulling the larger ``/api/styles`` /
+    ``/api/meta`` payloads. Companion to ``/api/shape-styles``,
+    ``/api/greeble-types``, ``/api/weapon-types``,
+    ``/api/cockpit-styles``, and ``/api/structure-styles``. Values are
+    the enum ``.value`` strings emitted in enum-declaration order
+    (deterministic + stable across runs), matching the serialization
+    used by ``/api/meta``.
+    """
+    return jsonify({
+        "engine_styles": [e.value for e in EngineStyle],
+    })
+
+
+@ship_bp.route("/api/wing-styles", methods=["GET"], endpoint="api_wing_styles")
+def api_wing_styles():
+    """Return only the ``WingStyle`` enum list.
+
+    Narrower JSON sibling of ``/api/styles`` exposing just the wing
+    archetype catalog — clients that only need the wing picker can
+    fetch this endpoint instead of pulling the larger ``/api/styles`` /
+    ``/api/meta`` payloads. Companion to ``/api/shape-styles``,
+    ``/api/greeble-types``, ``/api/weapon-types``,
+    ``/api/cockpit-styles``, and ``/api/structure-styles``. Values are
+    the enum ``.value`` strings emitted in enum-declaration order
+    (deterministic + stable across runs), matching the serialization
+    used by ``/api/meta``.
+    """
+    return jsonify({
+        "wing_styles": [w.value for w in WingStyle],
+    })
+
+
 @ship_bp.route("/api/random", methods=["GET"], endpoint="api_random")
 def api_random():
     """Return a random seed/palette/preset combo as JSON.
@@ -945,6 +1002,27 @@ _OPENAPI_COMPONENTS: dict = {
                 "structure_styles": {"type": "array", "items": {"type": "string"}},
             },
         },
+        "HullStyles": {
+            "type": "object",
+            "required": ["hull_styles"],
+            "properties": {
+                "hull_styles": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        "EngineStyles": {
+            "type": "object",
+            "required": ["engine_styles"],
+            "properties": {
+                "engine_styles": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        "WingStyles": {
+            "type": "object",
+            "required": ["wing_styles"],
+            "properties": {
+                "wing_styles": {"type": "array", "items": {"type": "string"}},
+            },
+        },
         "WeaponTypes": {
             "type": "object",
             "required": ["weapon_types"],
@@ -1216,6 +1294,24 @@ _OPENAPI_PATHS: dict = {
         "get": {
             "summary": "List only the StructureStyle enum values",
             "responses": {"200": _json_response("StructureStyles")},
+        },
+    },
+    "/api/hull-styles": {
+        "get": {
+            "summary": "List only the HullStyle enum values",
+            "responses": {"200": _json_response("HullStyles")},
+        },
+    },
+    "/api/engine-styles": {
+        "get": {
+            "summary": "List only the EngineStyle enum values",
+            "responses": {"200": _json_response("EngineStyles")},
+        },
+    },
+    "/api/wing-styles": {
+        "get": {
+            "summary": "List only the WingStyle enum values",
+            "responses": {"200": _json_response("WingStyles")},
         },
     },
     "/api/weapon-types": {

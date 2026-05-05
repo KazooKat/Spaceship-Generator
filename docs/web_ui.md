@@ -58,6 +58,9 @@ served at `GET /api/spec` (sourced from `_OPENAPI_PATHS` in
 | `GET` | `/api/weapon-types` | — | Narrower sibling of `/api/styles` — only the `WeaponType` enum values (companion to `/api/shape-styles`). | `{weapon_types:[...]}` |
 | `GET` | `/api/cockpit-styles` | — | Narrower sibling of `/api/styles` — only the `CockpitStyle` enum values. | `{cockpit_styles:[...]}` |
 | `GET` | `/api/structure-styles` | — | Narrower sibling of `/api/styles` — only the `StructureStyle` enum values. | `{structure_styles:[...]}` |
+| `GET` | `/api/hull-styles` | — | Narrower sibling of `/api/styles` — only the `HullStyle` enum values. | `{hull_styles:[...]}` |
+| `GET` | `/api/engine-styles` | — | Narrower sibling of `/api/styles` — only the `EngineStyle` enum values. | `{engine_styles:[...]}` |
+| `GET` | `/api/wing-styles` | — | Narrower sibling of `/api/styles` — only the `WingStyle` enum values. | `{wing_styles:[...]}` |
 | `GET` | `/api/presets` | — | Full metadata for every named preset. | `{presets:[<PresetDetail>...]}` (see `/api/presets/<name>` for each entry's shape) |
 | `GET` | `/api/presets/<name>` | path: `name` | Get one named preset's full metadata. 404 on unknown name; 503 if the presets module failed to import. | `{name, description, hull_style, engine_style, wing_style, cockpit_style, greeble_density, weapon_count, weapon_types:[...], size:{width,height,length}}` |
 | `GET` | `/api/meta` | — | UI metadata bundle used by the Alpine.js console: palettes, presets, every enum, the `param_help` tooltip map, defaults, package version, `batch_max`. | `{palettes, presets, cockpit_styles, structure_styles, wing_styles, hull_styles, engine_styles, weapon_types, param_help, defaults, version, batch_max}` |
