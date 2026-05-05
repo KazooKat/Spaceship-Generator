@@ -31,6 +31,7 @@ behind on disk.
 from __future__ import annotations
 
 import argparse
+import csv
 import platform
 import re
 import subprocess
@@ -297,6 +298,26 @@ def print_table(results: list[BenchResult]) -> None:
     print("-" * (name_width + 1 + 16 + 1 + 12))
 
 
+def print_csv(results: list[BenchResult]) -> None:
+    """Emit the aggregate table as CSV to stdout.
+
+    Header row is ``bench,metric,iterations`` followed by one row per
+    bench. Failed rows emit ``metric=FAIL`` and ``iterations=0`` (matching
+    the fixed-width formatter's FAIL sentinel — the iterations column
+    holds 0 since no successful samples were collected). Uses the stdlib
+    :mod:`csv` module so quoting / escaping (e.g. a future bench name
+    containing a comma) is handled correctly without us reinventing it.
+    """
+    writer = csv.writer(sys.stdout, lineterminator="\n")
+    writer.writerow(["bench", "metric", "iterations"])
+    for r in results:
+        if r.ok and r.mean is not None:
+            metric = f"{r.mean:.3f} {r.unit}"
+            writer.writerow([r.name, metric, r.iterations])
+        else:
+            writer.writerow([r.name, "FAIL", 0])
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument(
@@ -314,6 +335,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--fleet-count", type=int, default=2,
         help="ships per fleet for bench_fleet (default: 2)",
+    )
+    p.add_argument(
+        "--csv", action="store_true", default=False,
+        help=(
+            "Emit CSV (bench,metric,iterations) instead of fixed-width "
+            "table; useful for CI / spreadsheet ingest."
+        ),
     )
     return p.parse_args(argv)
 
@@ -335,11 +363,18 @@ def main(argv: list[str] | None = None) -> int:
         print("--fleet-count must be >= 1", file=sys.stderr)
         return 2
 
+    # In CSV mode the run banner and per-bench progress lines go to
+    # stderr so the stdout stream stays a clean CSV document an operator
+    # can pipe straight into a spreadsheet / CI parser. In the default
+    # fixed-width-table mode they stay on stdout where they've always
+    # been (preserves backwards-compatible output for existing callers).
+    progress_stream = sys.stderr if args.csv else sys.stdout
     print(
         f"bench_summary: iterations={args.iterations}  limit={args.limit}  "
         f"seed={args.seed}  fleet_count={args.fleet_count}  "
         f"py={sys.version.split()[0]}  "
-        f"proc={(platform.processor() or platform.machine())[:60]}"
+        f"proc={(platform.processor() or platform.machine())[:60]}",
+        file=progress_stream,
     )
 
     builder = _ArgsBuilder(args)
@@ -351,14 +386,17 @@ def main(argv: list[str] | None = None) -> int:
         factory = getattr(builder, spec.args_factory)
         # Print the bench name *before* running so an operator who
         # ctrl-c's mid-run knows which bench was in flight.
-        print(f"running {spec.name} ...")
+        print(f"running {spec.name} ...", file=progress_stream)
         results.append(_run_bench(
             spec,
             factory(),
             iterations=args.iterations,
         ))
 
-    print_table(results)
+    if args.csv:
+        print_csv(results)
+    else:
+        print_table(results)
 
     # Print captured stderr for any failures *after* the table so the
     # aggregate table stays the last thing scrolled when everything passes

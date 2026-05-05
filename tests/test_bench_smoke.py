@@ -255,3 +255,57 @@ def test_bench_summary_runs_minimal() -> None:
         "bench_fleet",
     ):
         assert name in out, f"bench {name!r} missing from stdout:\n{out}"
+
+
+def test_bench_summary_csv_emits_csv() -> None:
+    """`--csv` flag produces a CSV header + one row per bench on stdout.
+
+    Per-bench "running ..." progress lines must NOT pollute the CSV stream
+    in `--csv` mode (they're routed to stderr instead) so the stdout is a
+    clean parseable CSV document an operator can pipe straight into a
+    spreadsheet / CI parser.
+    """
+    assert SUMMARY_SCRIPT.is_file(), f"missing bench script: {SUMMARY_SCRIPT}"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SUMMARY_SCRIPT),
+            "--csv",
+            "--iterations",
+            "2",
+            "--limit",
+            "2",
+            "--fleet-count",
+            "2",
+            "--seed",
+            "0",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"bench_summary.py --csv exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    out = result.stdout
+    assert out.strip(), f"bench_summary.py --csv produced empty stdout:\n{out!r}"
+    lines = out.splitlines()
+    assert lines[0] == "bench,metric,iterations", (
+        f"first stdout line should be the CSV header, got:\n{lines[0]!r}"
+    )
+    # At least one bench name must appear in the subsequent CSV rows so
+    # the test catches a regression where the body is dropped while the
+    # header still emits.
+    body = "\n".join(lines[1:])
+    assert any(
+        name in body
+        for name in (
+            "bench_shape",
+            "bench_full_pipeline",
+            "bench_palette",
+            "bench_mem",
+            "bench_fleet",
+        )
+    ), f"no bench-name row in CSV body:\n{body}"
