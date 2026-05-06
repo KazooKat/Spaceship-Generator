@@ -48,11 +48,14 @@ def _apply_specular(
     top_exposed = filled & ~above
 
     # Side exposure: any neighbor in ±X missing.
+    # Out-of-bounds neighbors are treated as EMPTY so voxels on the X-boundary
+    # of the grid (e.g. wing tips at x=0 or x=W-1) are correctly flagged as
+    # side-exposed.
     side_exposed = np.zeros_like(filled)
     if W > 1:
-        neg_x = np.ones_like(filled)
+        neg_x = np.zeros_like(filled)
         neg_x[1:, :, :] = filled[:-1, :, :]
-        pos_x = np.ones_like(filled)
+        pos_x = np.zeros_like(filled)
         pos_x[:-1, :, :] = filled[1:, :, :]
         side_exposed |= filled & (~neg_x | ~pos_x)
     else:

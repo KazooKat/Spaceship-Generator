@@ -134,6 +134,29 @@ def test_specular_increases_bright_pixels(role_grid, palette):
     assert bright_count(im_on) > bright_count(im_off)
 
 
+def test_apply_specular_boosts_x_boundary_voxels():
+    """``_apply_specular`` must side-boost voxels at the grid's X-boundary
+    (x=0 or x=W-1) whose out-of-bounds +/- X neighbor is treated as EMPTY.
+
+    Regression test: previously the +/- X neighbor masks were ``np.ones_like``
+    initialized, so out-of-bounds was treated as "filled" and side-only-exposed
+    voxels at the X-boundary got no boost.
+    """
+    from spaceship_generator.preview import _apply_specular
+
+    W, L, H = 4, 3, 3
+    filled = np.ones((W, L, H), dtype=bool)
+    colors = np.full((W, L, H, 4), [0.5, 0.5, 0.5, 1.0], dtype=float)
+    _apply_specular(colors, filled)
+
+    # A non-top voxel at the X-boundary of the cube has an out-of-bounds -X
+    # neighbor, so it must be side-exposed and receive +4% RGB.
+    boundary_voxel = colors[0, 0, 0, :3]
+    assert np.all(boundary_voxel > 0.5 + 1e-9), (
+        f"Expected X-boundary voxel to be brightened by side-specular, got {boundary_voxel}"
+    )
+
+
 def test_transparent_background_preserves_alpha(role_grid, palette):
     data = render_preview(
         role_grid,
