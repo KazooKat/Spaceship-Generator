@@ -151,7 +151,13 @@ def _avg_color(png_bytes: bytes) -> str | None:
     if w and h > w and h % w == 0:
         im = im.crop((0, 0, w, w))
 
-    pixels = im.get_flattened_data()
+    # ``get_flattened_data`` is the Pillow >= 12 name; fall back to
+    # ``getdata`` for older Pillow versions (we declare ``pillow>=10``).
+    pixels = (
+        im.get_flattened_data()
+        if hasattr(im, "get_flattened_data")
+        else im.getdata()
+    )
     r_sum = g_sum = b_sum = a_sum = 0
     for pr, pg, pb, pa in pixels:
         if pa == 0:
