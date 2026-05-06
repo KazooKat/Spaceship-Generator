@@ -271,16 +271,26 @@ def generate(
                 shape_grid[x, y, z] = role
 
     # Optional scattered greebles. Write into empty cells only so existing
-    # hull/cockpit/engine/wing cells aren't clobbered.
+    # hull/cockpit/engine/wing cells aren't clobbered. We also refuse to
+    # stack greeble cells *above* the nose-tip-light column(s) for the same
+    # reason as the weapon writer below: many greeble archetypes emit
+    # ENGINE_GLOW / WINDOW / LIGHT (all protected roles in
+    # :func:`assign_roles`), and stamping one of those above the forward
+    # centerline cell silently drops the nose-tip LIGHT.
     if greeble_density > 0.0:
         W, H, L = shape_grid.shape
+        nose_tips_g = _nose_tip_anchor_cells(shape_grid, texture_params)
         greeble_rng = np.random.default_rng(seed ^ 0x6E)
         for x, y, z, role in scatter_greebles(
             shape_grid, greeble_rng, float(greeble_density), types=allowed_greeble_types
         ):
             if 0 <= x < W and 0 <= y < H and 0 <= z < L:
-                if shape_grid[x, y, z] == Role.EMPTY:
-                    shape_grid[x, y, z] = role
+                if shape_grid[x, y, z] != Role.EMPTY:
+                    continue
+                # Skip writes that would shadow a nose-tip-light slot.
+                if (x, z) in nose_tips_g and y > nose_tips_g[(x, z)]:
+                    continue
+                shape_grid[x, y, z] = role
 
     # Optional scattered weapons. Placements are written into empty cells
     # only so existing hull/cockpit/engine/wing cells are preserved. We

@@ -695,3 +695,45 @@ def test_generate_weapon_writer_does_not_shadow_nose_tip_light(tmp_path: Path):
     # Sanity: the variant grid is not byte-equal to the baseline (weapons
     # actually placed something), so the regression isn't a no-op.
     assert not np.array_equal(baseline.role_grid, variant.role_grid)
+
+
+def test_generate_greeble_writer_does_not_shadow_nose_tip_light(tmp_path: Path):
+    """Regression: bug-greeble-shadows-nose-tip-light.
+
+    Many greeble archetypes (DISH, VENT, PIPE_CLUSTER, SENSOR_POD,
+    ORGANIC_GROWTH, ...) emit ENGINE_GLOW / WINDOW / LIGHT cells. With
+    seed=1 and greeble_density=0.1 a greeble lands directly above the
+    nose-tip-light column at (5, 5, 23) writing ENGINE_GLOW. Pre-fix,
+    :func:`texture._paint_nose_tip_light` then saw a protected role at
+    the new top of the centerline column and silently bailed, dropping
+    the nose-tip LIGHT and yielding fewer LIGHT cells than the
+    no-greeble baseline.
+
+    The fix mirrors the weapon-writer guard: greeble writes that would
+    stack above the nose-tip-light slot at ``(x_centerline, z_tip)`` are
+    skipped so the LIGHT cell is preserved.
+    """
+    import numpy as np
+
+    from spaceship_generator.palette import Role
+
+    params = ShapeParams(length=24, width_max=12, height_max=8)
+    baseline = generate(
+        1, shape_params=params, greeble_density=0.0, out_dir=tmp_path,
+        filename="base.litematic",
+    )
+    variant = generate(
+        1, shape_params=params, greeble_density=0.1, out_dir=tmp_path,
+        filename="var.litematic",
+    )
+    z_tip = 23  # ShapeParams(length=24) → forward-most filled z is 23
+    # Both centerline nose-tip cells (W=12 → x=5,6) must keep their LIGHT.
+    for x in (5, 6):
+        assert variant.role_grid[x, 4, z_tip] == Role.LIGHT, (
+            f"nose-tip LIGHT at ({x}, 4, {z_tip}) was clobbered by a "
+            f"greeble stamped above it; got "
+            f"{Role(int(variant.role_grid[x, 4, z_tip])).name}"
+        )
+    # Sanity: variant differs from baseline (greebles actually placed
+    # cells), so the regression isn't a no-op.
+    assert not np.array_equal(baseline.role_grid, variant.role_grid)
