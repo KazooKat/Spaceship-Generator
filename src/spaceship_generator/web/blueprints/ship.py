@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import io
+import math
 import random
 import tempfile
 import time
@@ -230,10 +231,19 @@ def preview(gen_id: str):
         return send_file(io.BytesIO(result.preview_png), mimetype="image/png")
 
     try:
-        elev = clamp(float(raw_elev) if raw_elev is not None else 22.0, -89.0, 89.0)
-        azim = float(raw_azim) if raw_azim is not None else -62.0
+        elev_raw = float(raw_elev) if raw_elev is not None else 22.0
+        azim_raw = float(raw_azim) if raw_azim is not None else -62.0
     except ValueError:
         abort(400)
+    # ``float("nan")`` and ``float("inf")`` parse without error but propagate
+    # through matplotlib as NaN axis limits / view angles, surfacing as a 500
+    # deep inside the renderer (or as an uncaught ValueError if the renderer
+    # validates them itself). Reject non-finite values at the boundary with
+    # a 400 — same defense as ``_finite_float`` in ``ship_support``.
+    if not (math.isfinite(elev_raw) and math.isfinite(azim_raw)):
+        abort(400)
+    elev = clamp(elev_raw, -89.0, 89.0)
+    azim = azim_raw
 
     try:
         pal = load_palette(result.palette_name)
@@ -440,7 +450,13 @@ _PALETTE_COLORS_CACHE: dict[str, dict[str, str]] | None = None
 
 
 def _rgba_to_hex(r: float, g: float, b: float, a: float) -> str:  # noqa: ANN001
-    return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+    # Clamp each channel to ``[0, 255]`` before formatting. ``f"{x:02x}"``
+    # pads to *at least* 2 chars, so an out-of-range input like ``r=1.05``
+    # would emit ``10b`` (3 chars) and break the ``#rrggbb`` contract that
+    # tests / clients rely on. Mirrors the clamp in ``rgba_to_hex``.
+    def _ch(v: float) -> int:
+        return max(0, min(255, int(round(v * 255))))
+    return f"#{_ch(r):02x}{_ch(g):02x}{_ch(b):02x}"
 
 
 def _build_palette_colors_cache() -> dict[str, dict[str, str]]:
@@ -780,7 +796,13 @@ def api_batch():
         item = dict(payload)
         item.pop("count", None)
         if base_seed is None:
-            item.pop("seed", None)  # let build_params_from_source pick random
+            # ``build_params_from_source`` defaults missing seeds to 0, so
+            # without an explicit value every ship in the batch would be
+            # identical (same seed + same params). Generate fresh per-ship
+            # seeds via ``secrets.randbits`` so omitting ``seed`` really
+            # does yield a varied batch — matches the intent of the original
+            # comment on this branch.
+            item["seed"] = randbits(31)
         else:
             item["seed"] = base_seed + i  # deterministic range from base_seed
         try:
