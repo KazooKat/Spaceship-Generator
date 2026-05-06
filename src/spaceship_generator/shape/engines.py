@@ -69,8 +69,15 @@ def _engine_x_positions(n: int, width: int, radius: int) -> list[int]:
     xs: list[int] = []
     for i in range(1, half + 1):
         offset = spacing * i
-        xs.append(int(round(cx - offset)))
-        xs.append(int(round(cx + offset)))
+        # Compute the right side as the mirror of the left so even-width
+        # ships still produce a symmetric pair. Rounding both ``cx-offset``
+        # and ``cx+offset`` independently can drift them in the same
+        # direction (banker's rounding on half-integer cx for even widths)
+        # and break the mirror invariant ``left + right == width - 1``.
+        left = int(round(cx - offset))
+        right = (width - 1) - left
+        xs.append(left)
+        xs.append(right)
     if n % 2 == 1:
         xs.append(int(round(cx)))
 

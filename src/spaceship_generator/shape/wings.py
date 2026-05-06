@@ -29,7 +29,13 @@ def _place_wings(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams
     # wing still has a valid placement window.
     wing_length = max(2, min(wing_length, L - 1))
     cy = (H - 1) // 2
-    cz = L // 3 + int(rng.integers(-L // 12, L // 12 + 1))
+    # Symmetric jitter around the nominal cz: ``-L // 12`` parses as
+    # ``(-L) // 12`` which floors toward negative infinity (e.g. ``L=20``
+    # gives ``-2`` while ``L // 12 == 1``), biasing ``cz`` toward the
+    # rear. Precompute the half-range so the integer interval is
+    # symmetric around zero.
+    half_jitter = L // 12
+    cz = L // 3 + int(rng.integers(-half_jitter, half_jitter + 1))
     cz = max(0, min(L - wing_length, cz))
 
     y_lo = cy - wing_thickness // 2
