@@ -657,6 +657,7 @@ def _apply_weapons(
     palette_obj,
     author: str,
     schem_name: str,
+    preview_size: tuple[int, int] = (800, 800),
 ) -> None:
     """Scatter weapons into ``result.role_grid`` (in place) and re-export.
 
@@ -695,13 +696,15 @@ def _apply_weapons(
     )
 
     # Refresh the preview PNG if one was rendered originally so the saved
-    # image reflects the weaponised grid.
+    # image reflects the weaponised grid. Use the caller's requested size so
+    # the re-rendered preview matches ``--preview-size`` rather than silently
+    # snapping to the legacy 800x800 hardcoded default.
     if result.preview_png is not None:
         try:
             from .preview import render_preview
 
             result.preview_png = render_preview(
-                grid, palette_obj, size=(800, 800)
+                grid, palette_obj, size=preview_size
             )
         except Exception:  # pragma: no cover - preview is best-effort
             pass
@@ -869,6 +872,7 @@ def _run_one(
                     palette_obj=pal_obj,
                     author=args.author,
                     schem_name=args.name or f"Ship {seed}",
+                    preview_size=args.preview_size,
                 )
             except TypeError as exc:
                 print(f"weapons unavailable: {exc}", file=sys.stderr)
@@ -1311,7 +1315,7 @@ def main(argv: list[str] | None = None) -> int:
             "Error: --seed-phrase is mutually exclusive with --seed and --seeds.",
             file=sys.stderr,
         )
-        return 1
+        return 2
     if args.seed_phrase is not None:
         phrase_seed = (
             int(hashlib.sha256(args.seed_phrase.encode()).hexdigest(), 16) % (2**31 - 1)
@@ -1940,7 +1944,10 @@ def main(argv: list[str] | None = None) -> int:
                     "shape": list(result.shape),
                     "blocks": result.block_count,
                     "litematic": str(result.litematic_path),
-                    "timestamp": _dt.datetime.now(_dt.UTC).isoformat() + "Z",
+                    "timestamp": _dt.datetime.now(_dt.UTC)
+                    .replace(tzinfo=None)
+                    .isoformat()
+                    + "Z",
                 }
                 Path(result.litematic_path).with_suffix(".json").write_text(
                     _json.dumps(_manifest, indent=2), encoding="utf-8"
@@ -2037,7 +2044,10 @@ def main(argv: list[str] | None = None) -> int:
                 "shape": list(result.shape),
                 "blocks": result.block_count,
                 "litematic": str(result.litematic_path),
-                "timestamp": _dt.datetime.now(_dt.UTC).isoformat() + "Z",
+                "timestamp": _dt.datetime.now(_dt.UTC)
+                .replace(tzinfo=None)
+                .isoformat()
+                + "Z",
             }
             Path(result.litematic_path).with_suffix(".json").write_text(
                 _json.dumps(_manifest, indent=2), encoding="utf-8"
