@@ -358,6 +358,44 @@ def test_bio_organic_has_glow(grid):
     assert glow, "bio_organic produced no ENGINE_GLOW cells"
 
 
+def test_bio_organic_y_distribution_is_symmetric():
+    """Regression: ``rng.integers(-spread // 2, spread // 2 + 1)`` parses the
+    first argument as ``(-spread) // 2``. For odd ``spread`` this rounds
+    toward negative infinity (e.g. ``-3 // 2 == -2``) while the upper bound
+    is ``spread // 2 + 1 == 2``, biasing ``by`` toward negative offsets.
+    The fix precomputes ``half = spread // 2`` so the integer range is
+    symmetric across many seeds.
+
+    With buggy ``spread=3``, the y-offset range was ``[-2, 1]`` (4 negative-
+    or-zero cells vs. 2 positive cells, ratio ~ 0.5 above:below). After the
+    fix the range is ``[-1, 1]`` so the above:below ratio sits near 1:1.
+    """
+    shape = np.zeros((40, 24, 30), dtype=np.int16)
+    cx, cy = 20, 12
+    above = 0
+    below = 0
+    # Use odd spread so the buggy ``(-spread) // 2`` would be off by one.
+    sz = (1, 2, 3)
+    for seed in range(2000):
+        glows = [
+            p for p in build_bio_organic(shape, (cx, cy, 0), sz, _rng(seed))
+            if p[3] == Role.ENGINE_GLOW
+        ]
+        for _x, y, _z, _r in glows:
+            if y > cy:
+                above += 1
+            elif y < cy:
+                below += 1
+    assert above > 0 and below > 0
+    # Tight symmetry check — the buggy version skews ~50% (ratio ~0.5); the
+    # fix keeps the ratio near 1.0 (within sampling noise across 2000 seeds).
+    ratio = above / max(1, below)
+    assert 0.85 < ratio < 1.18, (
+        f"bio_organic Y distribution is biased: above={above}, below={below}, "
+        f"ratio={ratio:.3f}"
+    )
+
+
 def test_retro_rocket_cluster_triangle_positions(grid):
     """Three nozzles in a triangle: one above cy and two flanking below."""
     cx, cy = grid.shape[0] // 2, grid.shape[1] // 2

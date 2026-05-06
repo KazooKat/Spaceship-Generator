@@ -325,7 +325,7 @@ def build_plasma_pulse(
 ) -> list[Placement]:
     """Alternating solid-disk / annulus slabs to suggest a pulsed discharge.
 
-    Odd-depth slabs are filled disks (the compression phase); even-depth
+    Even-depth slabs are filled disks (the compression phase); odd-depth
     slabs are annuli (the expansion phase). A glow disk marks the rear
     cap, making the compression slab look hot.
     """
@@ -397,10 +397,11 @@ def build_bio_organic(
     length = max(1, length)
     spread = max(2, spread)
     n_blobs = 4
+    half_y_spread = spread // 2
     placements: list[Placement] = []
     for _ in range(n_blobs):
         bx = int(cx + rng.integers(-spread, spread + 1))
-        by = int(cy + rng.integers(-spread // 2, spread // 2 + 1))
+        by = int(cy + rng.integers(-half_y_spread, half_y_spread + 1))
         br = max(1, int(rng.integers(1, radius + 2)))
         blob_len = max(1, int(rng.integers(1, length + 1)))
         for z_off in range(blob_len):
