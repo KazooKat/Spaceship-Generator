@@ -1516,6 +1516,94 @@ def test_property_greeble_density_x_weapon_count_seed_grid_generates_non_empty_l
     )
 
 
+# --------- palette × cockpit_style × seed-grid stability (cross-axis) ---------
+#
+# Cross-axis sibling of the enum/numeric cross-product tests above
+# (cockpit×hull / cockpit×wing / hull×engine / greeble_density×weapon_count).
+# The single-axis ``test_property_palette_seed_grid_generates_non_empty_litematic``
+# pins every shipped palette × seed and the single-axis
+# ``test_property_cockpit_style_seed_grid_generates_non_empty_litematic`` pins
+# every ``CockpitStyle`` × seed, but neither exercises the CROSS-axis
+# interaction between palette role coverage (palette YAML in ``palettes/`` →
+# block-id mapping in ``palette.py``) and cockpit placement
+# (``ShapeParams.cockpit_style`` → cockpit placer dispatch in
+# ``shape/cockpit.py``). A regression that only surfaces when, e.g., a palette
+# missing or stubbing the ``cockpit`` role is combined with a cockpit placer
+# that emits a role variant the palette can't map (silent no-op → zero-block
+# .litematic) would slip past both single-axis tests. We slice the palette
+# list dynamically (first / middle / last alphabetically of ``_PALETTE_NAMES``,
+# which is already ``sorted(p.stem for p in palettes_dir().glob("*.yaml"))``)
+# and ``CockpitStyle`` to first / middle / last via the existing
+# ``_slice_first_middle_last`` helper for 3 × 3 × 3 = 27 representative nodes.
+# Failure node IDs read ``[seed-cockpit_style-palette_name]`` so a regression
+# in any single (palette, cockpit) interaction is self-naming.
+
+
+_PALETTE_COCKPIT_GRID_PALETTES = _slice_first_middle_last(_PALETTE_NAMES)
+_PALETTE_COCKPIT_GRID_COCKPITS = _slice_first_middle_last(list(CockpitStyle))
+
+
+@pytest.mark.parametrize(
+    "palette_name", _PALETTE_COCKPIT_GRID_PALETTES, ids=lambda p: p,
+)
+@pytest.mark.parametrize(
+    "cockpit_style", _PALETTE_COCKPIT_GRID_COCKPITS, ids=lambda c: c.value,
+)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_palette_x_cockpit_style_seed_grid_generates_non_empty_litematic(
+    tmp_path, palette_name, cockpit_style, seed
+):
+    """``palette`` × ``CockpitStyle`` × small seed grid → non-empty ``.litematic``.
+
+    Cross-axis companion to the single-axis ``palette_seed_grid`` and
+    ``cockpit_style_seed_grid`` parametrize tests above. Palette is plumbed
+    via ``generate(palette=...)`` (palette YAML → block-id mapping in
+    ``palette.py``) while ``CockpitStyle`` is plumbed via
+    ``ShapeParams.cockpit_style`` (cockpit placer dispatch in
+    ``shape/cockpit.py``); a regression that only surfaces in the interaction
+    between a specific palette and a specific cockpit placement (e.g., a
+    palette missing or stubbing the ``cockpit`` role combined with a cockpit
+    placer that emits a role variant the palette can't map) would slip past
+    both single-axis tests. We slice the palette list dynamically — first /
+    middle / last alphabetically of ``_PALETTE_NAMES`` (already
+    ``sorted(p.stem for p in palettes_dir().glob("*.yaml"))``) — and slice
+    ``CockpitStyle`` to first / middle / last in declaration order via the
+    existing ``_slice_first_middle_last`` helper for 3 × 3 × 3 = 27
+    representative nodes that hit the extremes of both axes without
+    inflating the suite to the full palette-corpus × cockpit cross-product.
+    Failure messages name the offending ``(palette, cockpit_style, seed)``
+    tuple via the parametrize IDs plus an explicit ``pytest.fail`` message
+    so a regression localizes immediately.
+    """
+    params = ShapeParams(
+        length=16, width_max=8, height_max=6, cockpit_style=cockpit_style,
+    )
+    res = generate(
+        seed,
+        palette=palette_name,
+        shape_params=params,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"palette={palette_name} "
+            f"cockpit_style={cockpit_style.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"palette={palette_name} "
+            f"cockpit_style={cockpit_style.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"palette={palette_name} "
+        f"cockpit_style={cockpit_style.value} seed={seed} produced 0 blocks"
+    )
+
+
 @pytest.mark.parametrize(
     "palette_name",
     ["sci_fi_industrial", "sleek_modern", "cyberpunk_neon", "neon_arcade"],
