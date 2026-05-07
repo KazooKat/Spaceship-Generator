@@ -156,11 +156,22 @@ Style enums emit in **enum-declaration order** (deterministic across runs);
 |---|---|---|
 | `--list-presets-json` | JSON array of `{name, ...preset_fields}` objects | — |
 | `--list-shape-styles-json` | `{"hull_styles":[...], "engine_styles":[...], "wing_styles":[...]}` | `GET /api/shape-styles` |
+| `--list-engine-styles-json` | `{"engine_styles":[...]}` (narrower sibling of `--list-shape-styles-json` — `EngineStyle` members only) | `GET /api/engine-styles` |
+| `--list-hull-styles-json` | `{"hull_styles":[...]}` (narrower sibling of `--list-shape-styles-json` — `HullStyle` members only) | `GET /api/hull-styles` |
+| `--list-wing-styles-json` | `{"wing_styles":[...]}` (narrower sibling of `--list-shape-styles-json` — `WingStyle` members only) | `GET /api/wing-styles` |
 | `--list-cockpit-styles-json` | `{"cockpit_styles":[...]}` | `GET /api/cockpit-styles` |
 | `--list-structure-styles-json` | `{"structure_styles":[...]}` | `GET /api/structure-styles` |
 | `--list-greeble-types-json` | `{"greeble_types":[...]}` | `GET /api/greeble-types` |
 | `--list-weapon-types-json` | `{"weapon_types":[...]}` | `GET /api/weapon-types` |
 | `--output-json-schema` | Draft-7 JSON Schema for the `--output-json` payload | — |
+
+The narrower per-component `--list-{engine,hull,wing}-styles[-json]` flags
+each print enum members one per line (non-json sibling, silenced by
+`--quiet` like the rest of the human-readable `--list-*` family) or as a
+single JSON document `{"<component>_styles":[...]}` (json sibling,
+exempt from `--quiet`). Each pair is mutually exclusive
+(`parser.error` → exit 2). They are narrower siblings of
+`--list-shape-styles[-json]`, which emits all three enums at once.
 
 See [web_ui.md](web_ui.md) for the matching `/api/*` endpoints. Note that
 `--output-json` itself (one NDJSON object per ship) and `--stats-json`
