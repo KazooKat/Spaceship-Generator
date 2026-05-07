@@ -14,6 +14,7 @@ not a perf test.
 
 from __future__ import annotations
 
+import csv
 import json
 import subprocess
 import sys
@@ -216,6 +217,55 @@ def test_bench_mem_runs_with_two_iterations() -> None:
     assert "max_mb" in out
 
 
+def test_bench_mem_csv_emits_csv() -> None:
+    """`--csv` flag produces a CSV header + exactly one summary data row.
+
+    The run-banner must NOT pollute the CSV stream in `--csv` mode (it's
+    routed to stderr instead) so the stdout is a clean parseable CSV
+    document an operator can pipe straight into a spreadsheet / CI parser.
+    bench_mem reports a single mean / p95 / max summary over N iterations
+    (no per-stage breakdown) so the CSV body is exactly one data row.
+    """
+    assert MEM_SCRIPT.is_file(), f"missing bench script: {MEM_SCRIPT}"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(MEM_SCRIPT),
+            "--csv",
+            "--iterations",
+            "2",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"bench_mem.py --csv exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    out = result.stdout
+    assert out.strip(), f"bench_mem.py --csv produced empty stdout:\n{out!r}"
+    lines = out.splitlines()
+    header = "iters,mean_mb,p95_mb,max_mb"
+    assert lines[0] == header, (
+        f"first stdout line should be the CSV header, got:\n{lines[0]!r}"
+    )
+    # Exactly one data row must follow the header — bench_mem reports a
+    # single summary row (no per-stage breakdown).
+    body_rows = [row for row in lines[1:] if row.strip()]
+    assert len(body_rows) == 1, (
+        f"expected exactly one CSV data row, got {len(body_rows)}:\n{body_rows}"
+    )
+    parsed = list(csv.reader(body_rows))
+    assert len(parsed) == 1
+    header_cols = header.split(",")
+    assert len(parsed[0]) == len(header_cols), (
+        f"data row column count {len(parsed[0])} != header column count "
+        f"{len(header_cols)}:\nrow={parsed[0]!r}"
+    )
+
+
 def test_bench_palette_runs_with_two_palettes_two_iterations() -> None:
     """Per-palette bench exits 0 and prints the column headers + TOTAL row."""
     assert PALETTE_SCRIPT.is_file(), f"missing bench script: {PALETTE_SCRIPT}"
@@ -329,6 +379,66 @@ def test_bench_greeble_density_runs_minimal() -> None:
     assert "mean_ms" in out
     assert "p95_ms" in out
     assert "TOTAL" in out, f"TOTAL row missing from stdout:\n{out}"
+
+
+def test_bench_greeble_density_csv_emits_csv() -> None:
+    """`--csv` flag produces a CSV header + per-density rows + TOTAL row.
+
+    The run-banner must NOT pollute the CSV stream in `--csv` mode (it's
+    routed to stderr instead) so the stdout is a clean parseable CSV
+    document an operator can pipe straight into a spreadsheet / CI parser.
+    """
+    assert GREEBLE_DENSITY_SCRIPT.is_file(), (
+        f"missing bench script: {GREEBLE_DENSITY_SCRIPT}"
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(GREEBLE_DENSITY_SCRIPT),
+            "--csv",
+            "--iterations",
+            "2",
+            "--densities",
+            "0.0,0.5",
+            "--seed",
+            "0",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"bench_greeble_density.py --csv exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    out = result.stdout
+    assert out.strip(), (
+        f"bench_greeble_density.py --csv produced empty stdout:\n{out!r}"
+    )
+    lines = out.splitlines()
+    assert lines[0] == "density,mean_ms,p95_ms", (
+        f"first stdout line should be the CSV header, got:\n{lines[0]!r}"
+    )
+    # Subsequent rows must include at least one per-density data row and a
+    # TOTAL row — catches a regression where the header emits but the body
+    # / TOTAL summary row is dropped.
+    body_rows = lines[1:]
+    assert any(
+        row and not row.startswith("TOTAL,") and not row.startswith("density,")
+        for row in body_rows
+    ), f"no per-density row in CSV body:\n{body_rows}"
+    assert any(
+        row.startswith("TOTAL,") for row in body_rows
+    ), f"TOTAL row missing from CSV body:\n{body_rows}"
+    # Every non-header line must parse with csv.reader and have exactly 3
+    # columns (density, mean_ms, p95_ms) — catches a regression where a
+    # row leaks an extra/missing column or fails to escape a future
+    # comma-bearing value.
+    parsed = list(csv.reader(lines))
+    assert all(len(row) == 3 for row in parsed), (
+        f"every CSV row must have 3 columns; got:\n{parsed}"
+    )
 
 
 def test_bench_fleet_runs_with_two_ships_two_iterations() -> None:

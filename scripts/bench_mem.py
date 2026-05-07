@@ -26,6 +26,7 @@ sample reflects only that iteration's peak.
 from __future__ import annotations
 
 import argparse
+import csv
 import platform
 import statistics
 import sys
@@ -109,6 +110,25 @@ def print_table(per_iter_mb: list[float], iterations: int) -> None:
     )
 
 
+def print_csv(per_iter_mb: list[float], iterations: int) -> None:
+    """Emit the single mean/p95/max summary row as CSV to stdout.
+
+    Header row is ``iters,mean_mb,p95_mb,max_mb`` followed by exactly one
+    data row carrying the aggregate of the timed iterations. The
+    fixed-width :func:`print_table` path emits the same three aggregates
+    (mean / p95 / max in MB) so the two output paths consume the same
+    underlying numbers and cannot drift. Uses the stdlib :mod:`csv`
+    module so quoting / escaping is handled correctly without us
+    reinventing it.
+    """
+    mean_mb = statistics.fmean(per_iter_mb) if per_iter_mb else 0.0
+    p95_mb = _percentile(per_iter_mb, 95.0)
+    max_mb = max(per_iter_mb) if per_iter_mb else 0.0
+    writer = csv.writer(sys.stdout, lineterminator="\n")
+    writer.writerow(["iters", "mean_mb", "p95_mb", "max_mb"])
+    writer.writerow([iterations, mean_mb, p95_mb, max_mb])
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument(
@@ -123,6 +143,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--palette", type=str, default="sci_fi_industrial",
         help="palette name passed through to generate() (default: sci_fi_industrial)",
     )
+    p.add_argument(
+        "--csv", action="store_true", default=False,
+        help=(
+            "Emit CSV (iters,mean_mb,p95_mb,max_mb) instead of fixed-width "
+            "table; useful for CI / spreadsheet ingest."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -132,10 +159,18 @@ def main(argv: list[str] | None = None) -> int:
         print("--iterations must be >= 1", file=sys.stderr)
         return 2
 
+    # In CSV mode the run banner is routed to stderr so the stdout
+    # stream stays a clean parseable CSV document an operator can pipe
+    # straight into a spreadsheet / CI parser. In the default
+    # fixed-width-table mode the banner stays on stdout where it's
+    # always been (preserves backwards-compatible output for existing
+    # callers — the no-flag path is byte-identical to pre-CSV).
+    banner_stream = sys.stderr if args.csv else sys.stdout
     print(
         f"bench_mem: iterations={args.iterations}  seed={args.seed}  "
         f"palette={args.palette}  py={sys.version.split()[0]}  "
-        f"proc={(platform.processor() or platform.machine())[:60]}"
+        f"proc={(platform.processor() or platform.machine())[:60]}",
+        file=banner_stream,
     )
 
     tracemalloc.start()
@@ -157,7 +192,10 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         tracemalloc.stop()
 
-    print_table(per_iter_mb, args.iterations)
+    if args.csv:
+        print_csv(per_iter_mb, args.iterations)
+    else:
+        print_table(per_iter_mb, args.iterations)
     return 0
 
 
