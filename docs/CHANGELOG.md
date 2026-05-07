@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(bench): document --csv output format for every bench_*.py script (feat-docs-bench-csv-format)
 - feat(scripts): add palette_stats.py — cross-corpus palette stats with --csv (feat-scripts-palette-stats)
 - test(properties): add cockpit_style x hull_style x seed-grid stability property test (feat-tests-property-cockpit-x-hull-style-grid)
 - feat(palettes): add desert_oasis, foggy_marsh biome palettes (feat-palettes-biome-pack-2026-05-07b)

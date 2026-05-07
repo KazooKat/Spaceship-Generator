@@ -40,3 +40,83 @@ For a one-shot perf snapshot before/after a refactor, run
 `bench_summary.py` — it invokes `bench_shape`, `bench_full_pipeline`,
 `bench_palette`, `bench_mem`, and `bench_fleet` in sequence and prints
 their TOTAL rows in a single consolidated table.
+
+## CSV output format
+
+Every `bench_*.py` script accepts `--csv` to emit CSV instead of the
+default fixed-width table. CSV goes to **stdout** (pipes straight into
+a spreadsheet or CI parser); banner + per-iter progress moves to
+**stderr**. Row semantics differ per script — see below.
+
+### bench_shape.py — per-stage shape-pipeline wall-clock
+
+Header `stage,mean_ms,p95_ms,total_ms`. One row per stage (`hull`,
+`cockpit`, `engines`, `wings`, `greebles`, `assembly`) plus a `TOTAL`
+row from the same aggregate the fixed-width formatter consumes.
+
+### bench_full_pipeline.py — end-to-end `generate()` wall-clock
+
+Header `stage,mean_ms,p95_ms,total_ms`. Two rows: a `pipeline` row
+carrying the per-iteration aggregate and a `TOTAL` row that echoes
+the same numbers (matches `bench_shape.py`'s shape).
+
+### bench_palette.py — per-palette `generate()` wall-clock
+
+Header `palette,mean_ms,p95_ms`. One row per palette (fixed-width
+order) plus a final `TOTAL` row aggregated across the per-iter sample
+pool of all palettes.
+
+### bench_greeble_density.py — per-density `generate()` sweep
+
+Header `density,mean_ms,p95_ms`. One row per density (3-decimal
+format, in `--densities` order) plus a `TOTAL` row aggregated across
+all per-iter samples.
+
+### bench_mem.py — peak Python heap (MB) via `tracemalloc`
+
+Header `iters,mean_mb,p95_mb,max_mb`. Exactly one data row carrying
+the aggregate; no per-iter rows, no `TOTAL` row (the single row **is**
+the total).
+
+### bench_fleet.py — fleet-build wall-clock
+
+Header `stage,mean_ms,p95_ms`. Three rows: `per_ship` (fleet wall /
+`--fleet-count`), `fleet` (raw per-iter fleet wall), and `TOTAL`
+(echoes `fleet`, since `per_ship` is a divided-by-N average).
+
+### bench_generator.py — cProfile phase attribution over N ships
+
+Header `phase,total_s,mean_s,pct`. One row per phase in fixed order
+(`shape_build`, `role_assign`, `palette_lookup`, `export`, `other`)
+plus a `WALL TOTAL` row whose `total_s` is summed walls, `mean_s` is
+wall-per-ship, and `pct` is empty.
+
+### bench_compare.py — diff between two `--save` baselines
+
+Header `phase,baseline_s,current_s,delta_pct,status`. One row per
+phase (`shape_build`, `role_assign`, `palette_lookup`, `export`,
+`other`, `total`); no separate summary row (`total` **is** the
+summary). `delta_pct` emits `+inf` for new phases; `status` is the
+same `OK` / `WARN` / `FAIL` glyph as the markdown render.
+
+### bench_summary.py — umbrella driver of all sibling benches
+
+Header `bench,metric,iterations`. One row per child bench. `metric`
+is `"<mean> <unit>"` on success (e.g. `12.345 ms`); failures emit
+`metric=FAIL` and `iterations=0`. No separate `TOTAL` row.
+
+### Quick reference
+
+| script | columns | row meaning | TOTAL row? |
+|---|---|---|---|
+| `bench_shape.py` | `stage,mean_ms,p95_ms,total_ms` | per-stage | yes |
+| `bench_full_pipeline.py` | `stage,mean_ms,p95_ms,total_ms` | single `pipeline` stage | yes (echoes `pipeline`) |
+| `bench_palette.py` | `palette,mean_ms,p95_ms` | per-palette | yes |
+| `bench_greeble_density.py` | `density,mean_ms,p95_ms` | per-density | yes |
+| `bench_mem.py` | `iters,mean_mb,p95_mb,max_mb` | single summary | no (only row) |
+| `bench_fleet.py` | `stage,mean_ms,p95_ms` | `per_ship` + `fleet` | yes (echoes `fleet`) |
+| `bench_generator.py` | `phase,total_s,mean_s,pct` | per-phase | `WALL TOTAL` |
+| `bench_compare.py` | `phase,baseline_s,current_s,delta_pct,status` | per-phase (incl. `total`) | no separate row |
+| `bench_summary.py` | `bench,metric,iterations` | per-child-bench | no |
+
+See [`bench-ci.md`](bench-ci.md) for ingest-into-CI patterns.
