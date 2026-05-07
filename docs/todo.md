@@ -18,36 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-05-07d: add autumn_canopy, glow_lagoon biome palettes
-      scope: `palettes/autumn_canopy.yaml`, `palettes/glow_lagoon.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
-- [ ] feat-docs-cli-config-dump: document `--config-dump` flag in `docs/cli.md`
-      scope: `docs/cli.md` (extend, not restructure)
-      accept: new section / row documenting `--config-dump` (purpose, output shape `{"effective_config":{...}}`, mutex with `--output*`, `--quiet` carve-out); ≤30 added lines; CHANGELOG bullet
-      notes: pure-docs unit; pair with the just-shipped `feat-cli-config-dump` agent's implementation
-
-- [ ] feat-tests-property-greeble-density-x-weapon-count-grid: add (greeble_density × weapon_count × seed) property test
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over greeble_density `[0.0, 0.5, 1.0]` × weapon_count `[0, 2, 8]` × seed `[0, 1, 7]` (= 27 nodes); assert `.litematic` exists + non-empty; failure names offending tuple; CHANGELOG bullet
-      notes: complements existing single-axis numeric property tests; extends the cross-axis pattern from cycle 2/3 to numeric (non-enum) axes
-
-- [ ] feat-scripts-palette-merge: add `scripts/palette_merge.py` merging two palettes into a new one
-      scope: `scripts/palette_merge.py` (new), `tests/test_palette_merge.py` (new)
-      accept: `python scripts/palette_merge.py palettes/A.yaml palettes/B.yaml --strategy {prefer-a|prefer-b|prefer-defined}` writes a new palette to stdout (or `--out path.yaml`); the merged palette must pass `palette_lint.py --strict`; smoke test asserts exit 0 + lints clean; CHANGELOG bullet
-      notes: complements `palette_diff.py`; "prefer-defined" picks whichever side has a defined block when one is `<missing>`
-
-- [ ] feat-docs-bench-ci-extension: extend `docs/bench-ci.md` with concrete CI snippet examples
-      scope: `docs/bench-ci.md` (extend, not restructure)
-      accept: new section "Example CI snippets" with concrete GitHub Actions / GitLab CI workflow stanzas invoking `bench_summary.py --csv`, `bench_compare.py --csv` against a baseline, archiving CSV as artifacts; ≤80 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do NOT add real workflow files under `.github/workflows/`
-
-- [ ] feat-docs-presets-extension: extend `docs/presets.md` with a per-preset parameter breakdown table
-      scope: `docs/presets.md` (extend, not restructure)
-      accept: new section "Preset parameter breakdown" with a fixed-width table listing every named preset and its key params (palette / shape_style / hull_style / wing_style / cockpit / weapon_count / greeble_density); generate the table from the actual presets module so it cannot drift (or note the truth source as the module if a static table is included); ≤80 added lines; CHANGELOG bullet
-      notes: pure-docs unit; complement existing preset narrative
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -78,6 +48,36 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-scripts-palette-merge: add `scripts/palette_merge.py` merging two palettes into a new one
+      scope: `scripts/palette_merge.py` (new), `tests/test_palette_merge.py` (new)
+      accept: prefer-a/prefer-b/prefer-defined strategies; merged palette passes `palette_lint.py --strict`; smoke test green; CHANGELOG bullet
+      notes: complements `palette_diff.py`
+
+- [x] feat-docs-presets-extension: extend `docs/presets.md` with per-preset parameter breakdown table
+      scope: `docs/presets.md` (extend, not restructure)
+      accept: new section with table of all 9 named presets + key params; values verified against `--list-presets-json`; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [x] feat-tests-property-greeble-density-x-weapon-count-grid: add (greeble_density × weapon_count × seed) property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 × 3 × 3 = 27 nodes); CHANGELOG bullet
+      notes: extends cross-axis pattern to numeric axes
+
+- [x] feat-docs-bench-ci-extension: extend `docs/bench-ci.md` with concrete CI snippet examples
+      scope: `docs/bench-ci.md` (extend, not restructure)
+      accept: GitHub Actions + GitLab CI + regression-detection stanzas; ≤80 added lines; CHANGELOG bullet
+      notes: pure-docs unit; no real workflow files added
+
+- [x] feat-palettes-biome-pack-2026-05-07d: add autumn_canopy, glow_lagoon biome palettes
+      scope: `palettes/autumn_canopy.yaml`, `palettes/glow_lagoon.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [x] feat-docs-cli-config-dump: document `--config-dump` flag in `docs/cli.md`
+      scope: `docs/cli.md` (extend, not restructure)
+      accept: new section documenting `--config-dump`; ≤30 added lines; CHANGELOG bullet
+      notes: pure-docs unit; pair with `feat-cli-config-dump` implementation
 
 - [x] feat-cli-config-dump: add `--config-dump` flag emitting effective config as JSON
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
