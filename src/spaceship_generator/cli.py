@@ -368,6 +368,19 @@ def build_parser() -> argparse.ArgumentParser:
                         "stdout matching whatever --version prints. "
                         "Mutually exclusive with --version. "
                         "NOT silenced by --quiet.")
+    p.add_argument("--config-dump", action="store_true",
+                   help="Emit the effective generator config (the args that "
+                        "WOULD be passed into generate()) as a single JSON "
+                        "document {\"effective_config\":{...}} to stdout, "
+                        "then exit 0 without producing a ship. Useful for "
+                        "debugging / reproducing weirdness ('what did I "
+                        "actually run'). Resolved values from --preset are "
+                        "shown, so the JSON reflects what generate() would "
+                        "actually receive. Mutually exclusive with --output, "
+                        "--output-json, and --output-json-schema. NOT "
+                        "silenced by --quiet — same carve-out as "
+                        "--stats-json / --list-presets-json / "
+                        "--list-shape-styles-json.")
     p.add_argument("--list-roles", action="store_true",
                    help="Print every Role enum name (one per line, "
                         "declaration order) and exit. Useful for tooling "
@@ -1355,6 +1368,24 @@ def main(argv: list[str] | None = None) -> int:
             "--list-roles and --list-roles-json are mutually exclusive"
         )
 
+    # ``--config-dump`` short-circuits before any ship is generated, so it
+    # makes no sense to combine it with output-file flags. Reject early via
+    # ``parser.error`` (exit 2 + stderr) — same shape as the other mutex
+    # checks above.
+    if getattr(args, "config_dump", False):
+        if args.output is not None:
+            parser.error(
+                "--config-dump and --output are mutually exclusive"
+            )
+        if getattr(args, "output_json", False):
+            parser.error(
+                "--config-dump and --output-json are mutually exclusive"
+            )
+        if getattr(args, "output_json_schema", False):
+            parser.error(
+                "--config-dump and --output-json-schema are mutually exclusive"
+            )
+
     if args.verbose and args.quiet:
         print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
         return 2
@@ -2023,6 +2054,79 @@ def main(argv: list[str] | None = None) -> int:
     # seeds loop, weapon pass) receives the same resolved name.
     if args.palette == "random":
         args.palette = random.choice(list_palettes())
+
+    # ``--config-dump``: emit the resolved generator-relevant args as a
+    # single JSON document and exit 0 without producing a ship. Runs AFTER
+    # preset resolution and ``--palette random`` resolution so the dump
+    # reflects what ``generate()`` would actually receive (preset-resolved
+    # values for fields the user didn't override, the chosen concrete
+    # palette name when ``--palette random`` was passed). Deliberately NOT
+    # routed through ``_emit`` so ``--quiet --config-dump`` still prints —
+    # same carve-out as ``--stats-json`` / ``--list-presets-json`` /
+    # ``--list-shape-styles-json``.
+    if getattr(args, "config_dump", False):
+        import json
+
+        # ``--ship-size WxHxL`` overrides individual width/height/length
+        # flags inside ``_run_one``; mirror that here so the dump matches
+        # what ``generate()`` would actually see.
+        if getattr(args, "ship_size", None) is not None:
+            cfg_w, cfg_h, cfg_l = args.ship_size
+        else:
+            cfg_w, cfg_h, cfg_l = args.width, args.height, args.length
+
+        effective_config: dict[str, object] = {
+            "preset": getattr(args, "preset", None),
+            "palette": args.palette,
+            "seed": args.seed,
+            "seeds": list(args.seeds) if args.seeds is not None else None,
+            "seed_phrase": args.seed_phrase,
+            "length": cfg_l,
+            "width": cfg_w,
+            "height": cfg_h,
+            "engines": args.engines,
+            "wing_prob": args.wing_prob,
+            "greeble_density": args.greeble_density,
+            "no_greebles": bool(args.no_greebles),
+            "greeble_style": getattr(args, "greeble_style", None),
+            "cockpit": args.cockpit,
+            "cockpit_style": args.cockpit_style,
+            "structure_style": args.structure_style,
+            "wing_style": args.wing_style,
+            "hull_style": args.hull_style,
+            "hull_style_front": getattr(args, "hull_style_front", None),
+            "hull_style_rear": getattr(args, "hull_style_rear", None),
+            "engine_style": args.engine_style,
+            "hull_noise": float(getattr(args, "hull_noise", 0.0) or 0.0),
+            "window_period": args.window_period,
+            "stripe_period": args.stripe_period,
+            "engine_glow_depth": args.engine_glow_depth,
+            "hull_noise_ratio": args.hull_noise_ratio,
+            "panel_bands": args.panel_bands,
+            "rivet_period": args.rivet_period,
+            "engine_glow_ring": bool(args.engine_glow_ring),
+            "weapon_count": int(getattr(args, "weapon_count", 0) or 0),
+            "no_weapons": bool(args.no_weapons),
+            "weapon_types": (
+                list(args.weapon_types)
+                if getattr(args, "weapon_types", None) is not None
+                else None
+            ),
+            "repeat": args.repeat,
+            "fleet_count": int(getattr(args, "fleet_count", 1) or 1),
+            "fleet_size_tier": args.fleet_size_tier,
+            "fleet_style_coherence": args.fleet_style_coherence,
+            "ship_size": (
+                list(args.ship_size)
+                if getattr(args, "ship_size", None) is not None
+                else None
+            ),
+        }
+        print(
+            json.dumps({"effective_config": effective_config}, sort_keys=True),
+            file=sys.stdout,
+        )
+        return 0
 
     # --dry-run: resolve params, print JSON summary, write nothing, exit 0.
     if getattr(args, "dry_run", False):

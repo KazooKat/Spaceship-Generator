@@ -2141,3 +2141,66 @@ def test_cli_version_and_version_json_mutually_exclusive(capsys):
     assert "--version" in err
     assert "--version-json" in err
     assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --config-dump
+# ---------------------------------------------------------------------------
+
+
+def test_cli_config_dump_emits_json_with_effective_config_key(capsys):
+    """``--config-dump`` prints a single JSON document to stdout under the
+    ``effective_config`` top-level key, including every generator-relevant
+    arg the CLI resolved (preset/palette/seed/dimensions/...). Exits 0
+    without producing a ship — mirrors the ``--list-*-json`` short-circuit
+    handler pattern."""
+    rc = main(
+        [
+            "--config-dump",
+            "--seed",
+            "42",
+            "--palette",
+            "desert_oasis",
+        ]
+    )
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict), f"expected JSON object, got {type(obj)}"
+    assert set(obj.keys()) == {"effective_config"}, (
+        f"unexpected key set: {sorted(obj.keys())}"
+    )
+    cfg = obj["effective_config"]
+    assert isinstance(cfg, dict)
+    assert cfg["seed"] == 42
+    assert cfg["palette"] == "desert_oasis"
+
+
+def test_cli_config_dump_quiet_still_emits(capsys):
+    """``--quiet --config-dump`` still produces the JSON document on stdout
+    (carve-out parallels ``--quiet --list-presets-json`` /
+    ``--quiet --list-shape-styles-json`` / ``--quiet --stats-json``)."""
+    rc = main(["--quiet", "--config-dump", "--seed", "7"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert "effective_config" in obj
+    assert obj["effective_config"]["seed"] == 7
+
+
+def test_cli_config_dump_mutually_exclusive_with_output(capsys):
+    """Passing both ``--config-dump`` and ``--output`` exits non-zero via
+    ``parser.error`` with a clear stderr message — mirrors the
+    ``--list-presets`` vs ``--list-presets-json`` mutex pattern."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--config-dump", "--output", "ship.litematic"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--config-dump" in err
+    assert "mutually exclusive" in err
