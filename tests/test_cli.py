@@ -1876,3 +1876,268 @@ def test_cli_list_roles_and_json_mutually_exclusive(capsys):
     assert "--list-roles" in err
     assert "--list-roles-json" in err
     assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --list-engine-styles / --list-engine-styles-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_engine_styles_emits_enum_names(capsys):
+    """``--list-engine-styles`` prints every ``EngineStyle`` value on its
+    own line in enum-declaration order, exit 0.
+
+    Membership is asserted via enum iteration (no hard-coded string list)
+    so the test does not drift when a new engine style is added.
+    """
+    from spaceship_generator.engine_styles import EngineStyle
+
+    rc = main(["--list-engine-styles"])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+
+    for e in EngineStyle:
+        assert e.value in lines, f"missing EngineStyle.{e.name}"
+
+    expected = [e.value for e in EngineStyle]
+    assert [line for line in lines if line] == expected
+
+
+def test_cli_list_engine_styles_json_emits_enum_names(capsys):
+    """``--list-engine-styles-json`` prints a single JSON document to stdout
+    with key ``engine_styles`` whose value is the enum's declaration-order
+    value list."""
+    from spaceship_generator.engine_styles import EngineStyle
+
+    rc = main(["--list-engine-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict)
+    assert obj == {"engine_styles": [e.value for e in EngineStyle]}
+
+
+def test_cli_list_engine_styles_json_quiet_still_emits(capsys):
+    """``--quiet --list-engine-styles-json`` still produces the JSON
+    document on stdout."""
+    from spaceship_generator.engine_styles import EngineStyle
+
+    rc = main(["--quiet", "--list-engine-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["engine_styles"] == [e.value for e in EngineStyle]
+
+
+def test_cli_list_engine_styles_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-engine-styles`` and ``--list-engine-styles-json``
+    exits non-zero via ``parser.error`` with a clear stderr message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-engine-styles", "--list-engine-styles-json"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-engine-styles" in err
+    assert "--list-engine-styles-json" in err
+    assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --list-hull-styles / --list-hull-styles-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_hull_styles_emits_enum_names(capsys):
+    """``--list-hull-styles`` prints every ``HullStyle`` value on its own
+    line in enum-declaration order, exit 0.
+
+    Membership is asserted via enum iteration (no hard-coded string list)
+    so the test does not drift when a new hull style is added.
+    """
+    from spaceship_generator.structure_styles import HullStyle
+
+    rc = main(["--list-hull-styles"])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+
+    for h in HullStyle:
+        assert h.value in lines, f"missing HullStyle.{h.name}"
+
+    expected = [h.value for h in HullStyle]
+    assert [line for line in lines if line] == expected
+
+
+def test_cli_list_hull_styles_json_emits_enum_names(capsys):
+    """``--list-hull-styles-json`` prints a single JSON document to stdout
+    with key ``hull_styles`` whose value is the enum's declaration-order
+    value list."""
+    from spaceship_generator.structure_styles import HullStyle
+
+    rc = main(["--list-hull-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict)
+    assert obj == {"hull_styles": [h.value for h in HullStyle]}
+
+
+def test_cli_list_hull_styles_json_quiet_still_emits(capsys):
+    """``--quiet --list-hull-styles-json`` still produces the JSON
+    document on stdout."""
+    from spaceship_generator.structure_styles import HullStyle
+
+    rc = main(["--quiet", "--list-hull-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["hull_styles"] == [h.value for h in HullStyle]
+
+
+def test_cli_list_hull_styles_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-hull-styles`` and ``--list-hull-styles-json``
+    exits non-zero via ``parser.error`` with a clear stderr message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-hull-styles", "--list-hull-styles-json"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-hull-styles" in err
+    assert "--list-hull-styles-json" in err
+    assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --list-wing-styles / --list-wing-styles-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_list_wing_styles_emits_enum_names(capsys):
+    """``--list-wing-styles`` prints every ``WingStyle`` value on its own
+    line in enum-declaration order, exit 0.
+
+    Membership is asserted via enum iteration (no hard-coded string list)
+    so the test does not drift when a new wing style is added.
+    """
+    from spaceship_generator.wing_styles import WingStyle
+
+    rc = main(["--list-wing-styles"])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+
+    for w in WingStyle:
+        assert w.value in lines, f"missing WingStyle.{w.name}"
+
+    expected = [w.value for w in WingStyle]
+    assert [line for line in lines if line] == expected
+
+
+def test_cli_list_wing_styles_json_emits_enum_names(capsys):
+    """``--list-wing-styles-json`` prints a single JSON document to stdout
+    with key ``wing_styles`` whose value is the enum's declaration-order
+    value list."""
+    from spaceship_generator.wing_styles import WingStyle
+
+    rc = main(["--list-wing-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    assert isinstance(obj, dict)
+    assert obj == {"wing_styles": [w.value for w in WingStyle]}
+
+
+def test_cli_list_wing_styles_json_quiet_still_emits(capsys):
+    """``--quiet --list-wing-styles-json`` still produces the JSON
+    document on stdout."""
+    from spaceship_generator.wing_styles import WingStyle
+
+    rc = main(["--quiet", "--list-wing-styles-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["wing_styles"] == [w.value for w in WingStyle]
+
+
+def test_cli_list_wing_styles_and_json_mutually_exclusive(capsys):
+    """Passing both ``--list-wing-styles`` and ``--list-wing-styles-json``
+    exits non-zero via ``parser.error`` with a clear stderr message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--list-wing-styles", "--list-wing-styles-json"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--list-wing-styles" in err
+    assert "--list-wing-styles-json" in err
+    assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --version-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_version_json_emits_version(capsys):
+    """``--version-json`` prints a single JSON document
+    ``{"version": "<X.Y.Z>"}`` to stdout and exits 0. The version string
+    matches whatever ``--version`` prints (same source:
+    ``spaceship_generator.__version__``)."""
+    from spaceship_generator import __version__ as pkg_version
+
+    rc = main(["--version-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj == {"version": pkg_version}
+
+
+def test_cli_version_json_quiet_still_emits(capsys):
+    """``--quiet --version-json`` still produces the JSON document on
+    stdout (carve-out parallels ``--quiet --list-presets-json`` /
+    ``--quiet --list-shape-styles-json``)."""
+    from spaceship_generator import __version__ as pkg_version
+
+    rc = main(["--quiet", "--version-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["version"] == pkg_version
+
+
+def test_cli_version_and_version_json_mutually_exclusive(capsys):
+    """Passing both ``--version`` and ``--version-json`` exits non-zero
+    via ``parser.error`` with a clear stderr message. The check runs
+    before ``parse_args`` so the argparse ``version`` action does not
+    win the race."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--version", "--version-json"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--version" in err
+    assert "--version-json" in err
+    assert "mutually exclusive" in err

@@ -329,6 +329,45 @@ def build_parser() -> argparse.ArgumentParser:
                         "{\"structure_styles\":[...]} to stdout. "
                         "Mutually exclusive with --list-structure-styles. "
                         "NOT silenced by --quiet.")
+    p.add_argument("--list-engine-styles", action="store_true",
+                   help="List EngineStyle members (one per line) in "
+                        "enum-declaration order and exit. Narrower sibling "
+                        "of --list-styles, which also includes hull / wing "
+                        "/ cockpit / greeble / weapon types.")
+    p.add_argument("--list-engine-styles-json", action="store_true",
+                   help="Machine-readable variant of --list-engine-styles: "
+                        "emits a single JSON document "
+                        "{\"engine_styles\":[...]} to stdout. "
+                        "Mutually exclusive with --list-engine-styles. "
+                        "NOT silenced by --quiet.")
+    p.add_argument("--list-hull-styles", action="store_true",
+                   help="List HullStyle members (one per line) in "
+                        "enum-declaration order and exit. Narrower sibling "
+                        "of --list-styles, which also includes engine / wing "
+                        "/ cockpit / greeble / weapon types.")
+    p.add_argument("--list-hull-styles-json", action="store_true",
+                   help="Machine-readable variant of --list-hull-styles: "
+                        "emits a single JSON document "
+                        "{\"hull_styles\":[...]} to stdout. "
+                        "Mutually exclusive with --list-hull-styles. "
+                        "NOT silenced by --quiet.")
+    p.add_argument("--list-wing-styles", action="store_true",
+                   help="List WingStyle members (one per line) in "
+                        "enum-declaration order and exit. Narrower sibling "
+                        "of --list-styles, which also includes hull / engine "
+                        "/ cockpit / greeble / weapon types.")
+    p.add_argument("--list-wing-styles-json", action="store_true",
+                   help="Machine-readable variant of --list-wing-styles: "
+                        "emits a single JSON document "
+                        "{\"wing_styles\":[...]} to stdout. "
+                        "Mutually exclusive with --list-wing-styles. "
+                        "NOT silenced by --quiet.")
+    p.add_argument("--version-json", action="store_true",
+                   help="Machine-readable variant of --version: emits a "
+                        "single JSON document {\"version\":\"<X.Y.Z>\"} to "
+                        "stdout matching whatever --version prints. "
+                        "Mutually exclusive with --version. "
+                        "NOT silenced by --quiet.")
     p.add_argument("--list-roles", action="store_true",
                    help="Print every Role enum name (one per line, "
                         "declaration order) and exit. Useful for tooling "
@@ -1172,6 +1211,24 @@ def _explicit_flags(argv: list[str] | None) -> set[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
+
+    # ``--version`` uses argparse's ``action="version"`` which calls
+    # ``parser.exit()`` *during* parsing — so by the time
+    # ``parse_args`` returns, a passed ``--version`` has already short-
+    # circuited. To enforce mutual-exclusion with ``--version-json`` we
+    # have to inspect argv before ``parse_args`` runs and surface the
+    # same ``parser.error`` (exit 2 + stderr message) that the other
+    # ``--list-<x>`` vs ``--list-<x>-json`` mutex checks below produce.
+    _pre_explicit = _explicit_flags(argv)
+    if "--version-json" in _pre_explicit and (
+        "--version" in _pre_explicit
+        or (argv is not None and "-V" in argv)
+        or (argv is None and "-V" in sys.argv[1:])
+    ):
+        parser.error(
+            "--version and --version-json are mutually exclusive"
+        )
+
     args = parser.parse_args(argv)
     explicit = _explicit_flags(argv)
 
@@ -1254,6 +1311,27 @@ def main(argv: list[str] | None = None) -> int:
     ):
         parser.error(
             "--list-structure-styles and --list-structure-styles-json are "
+            "mutually exclusive"
+        )
+    if getattr(args, "list_engine_styles", False) and getattr(
+        args, "list_engine_styles_json", False
+    ):
+        parser.error(
+            "--list-engine-styles and --list-engine-styles-json are "
+            "mutually exclusive"
+        )
+    if getattr(args, "list_hull_styles", False) and getattr(
+        args, "list_hull_styles_json", False
+    ):
+        parser.error(
+            "--list-hull-styles and --list-hull-styles-json are "
+            "mutually exclusive"
+        )
+    if getattr(args, "list_wing_styles", False) and getattr(
+        args, "list_wing_styles_json", False
+    ):
+        parser.error(
+            "--list-wing-styles and --list-wing-styles-json are "
             "mutually exclusive"
         )
     if getattr(args, "list_greeble_types", False) and getattr(
@@ -1599,6 +1677,101 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps({"structure_styles": [s.value for s in StructureStyle]}),
             file=sys.stdout,
         )
+        return 0
+
+    if args.list_engine_styles:
+        # Narrower sibling of --list-styles: only the EngineStyle enum.
+        # One member per line in enum-declaration order (no header/indent
+        # prefix) so callers can pipe straight into another tool. Members
+        # emit deterministically and stably across runs. Mirrors the
+        # ``--list-cockpit-styles`` / ``--list-structure-styles`` handlers
+        # exactly.
+        for e in EngineStyle:
+            _emit(args, e.value)
+        return 0
+
+    if getattr(args, "list_engine_styles_json", False):
+        # Machine-readable variant of ``--list-engine-styles``: a single JSON
+        # document with a single ``engine_styles`` array in enum-declaration
+        # order. Deliberately NOT routed through ``_emit`` so
+        # ``--quiet --list-engine-styles-json`` still prints — same carve-out
+        # as ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``.
+        import json
+
+        print(
+            json.dumps({"engine_styles": [e.value for e in EngineStyle]}),
+            file=sys.stdout,
+        )
+        return 0
+
+    if args.list_hull_styles:
+        # Narrower sibling of --list-styles: only the HullStyle enum.
+        # One member per line in enum-declaration order (no header/indent
+        # prefix) so callers can pipe straight into another tool. Members
+        # emit deterministically and stably across runs. Mirrors the
+        # ``--list-engine-styles`` / ``--list-cockpit-styles`` handlers
+        # exactly.
+        for h in HullStyle:
+            _emit(args, h.value)
+        return 0
+
+    if getattr(args, "list_hull_styles_json", False):
+        # Machine-readable variant of ``--list-hull-styles``: a single JSON
+        # document with a single ``hull_styles`` array in enum-declaration
+        # order. Deliberately NOT routed through ``_emit`` so
+        # ``--quiet --list-hull-styles-json`` still prints — same carve-out
+        # as ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``.
+        import json
+
+        print(
+            json.dumps({"hull_styles": [h.value for h in HullStyle]}),
+            file=sys.stdout,
+        )
+        return 0
+
+    if args.list_wing_styles:
+        # Narrower sibling of --list-styles: only the WingStyle enum.
+        # One member per line in enum-declaration order (no header/indent
+        # prefix) so callers can pipe straight into another tool. Members
+        # emit deterministically and stably across runs. Mirrors the
+        # ``--list-engine-styles`` / ``--list-hull-styles`` handlers
+        # exactly.
+        for w in WingStyle:
+            _emit(args, w.value)
+        return 0
+
+    if getattr(args, "list_wing_styles_json", False):
+        # Machine-readable variant of ``--list-wing-styles``: a single JSON
+        # document with a single ``wing_styles`` array in enum-declaration
+        # order. Deliberately NOT routed through ``_emit`` so
+        # ``--quiet --list-wing-styles-json`` still prints — same carve-out
+        # as ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``.
+        import json
+
+        print(
+            json.dumps({"wing_styles": [w.value for w in WingStyle]}),
+            file=sys.stdout,
+        )
+        return 0
+
+    if getattr(args, "version_json", False):
+        # Machine-readable variant of ``--version``: a single JSON document
+        # ``{"version": "<X.Y.Z>"}`` whose value matches whatever
+        # ``--version`` prints (sourced from the same
+        # ``spaceship_generator.__version__`` module attribute, exposed as
+        # ``_pkg_version`` at the top of this file). Deliberately NOT routed
+        # through ``_emit`` so ``--quiet --version-json`` still prints —
+        # same carve-out as ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``. Mutex with ``--version`` is enforced
+        # at the top of ``main`` (before ``parse_args``) because argparse's
+        # ``action="version"`` short-circuits during parsing and would
+        # otherwise win the race.
+        import json
+
+        print(json.dumps({"version": _pkg_version}), file=sys.stdout)
         return 0
 
     if args.list_roles:
