@@ -1270,6 +1270,167 @@ def test_property_cockpit_x_hull_style_seed_grid_generates_non_empty_litematic(
     )
 
 
+# --------- cockpit_style × wing_style × seed-grid stability (cross-axis) ---------
+#
+# Cross-axis sibling of the cockpit_style × hull_style cross-product test above:
+# pins (CockpitStyle × WingStyle × seed) deterministically to catch regressions
+# that only surface in the interaction between cockpit placement
+# (``ShapeParams.cockpit_style`` → cockpit placer dispatch in ``shape/cockpit.py``)
+# and wing placement (``ShapeParams.wing_style`` → wing placer dispatch in
+# ``shape/wings.py``). A regression that only surfaces when, e.g., a tall
+# canopy/dome cockpit is combined with a gull-wing layout (the wings'
+# anchor-row interfering with the cockpit silhouette) would slip past both
+# single-axis tests. We slice each enum to first / middle / last members in
+# declaration order via the existing ``_slice_first_middle_last`` helper for
+# 3 × 3 × 3 = 27 representative nodes. Failure node IDs read
+# ``[seed-wing_style-cockpit_style]`` so a regression in any single
+# (cockpit, wing) interaction is self-naming.
+
+
+_COCKPIT_WING_GRID_COCKPITS = _slice_first_middle_last(list(CockpitStyle))
+_COCKPIT_WING_GRID_WINGS = _slice_first_middle_last(list(WingStyle))
+
+
+@pytest.mark.parametrize(
+    "cockpit_style", _COCKPIT_WING_GRID_COCKPITS, ids=lambda c: c.value,
+)
+@pytest.mark.parametrize(
+    "wing_style", _COCKPIT_WING_GRID_WINGS, ids=lambda w: w.value,
+)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_cockpit_x_wing_style_seed_grid_generates_non_empty_litematic(
+    tmp_path, cockpit_style, wing_style, seed
+):
+    """``CockpitStyle`` × ``WingStyle`` × small seed grid → non-empty ``.litematic``.
+
+    Cross-axis companion to the single-axis ``cockpit_style_seed_grid`` and
+    ``wing_style_seed_grid`` parametrize tests above. Both ``CockpitStyle``
+    and ``WingStyle`` are plumbed via ``ShapeParams`` (cockpit placer dispatch
+    in ``shape/cockpit.py``; wing placer dispatch in ``shape/wings.py``); a
+    regression that only surfaces in the interaction between a specific
+    cockpit placement and a specific wing layout (e.g., a gull-wing anchor
+    row interfering with a tall canopy/dome cockpit silhouette) would slip
+    past both single-axis tests. We slice each enum to first / middle / last
+    in declaration order via the existing ``_slice_first_middle_last`` helper
+    for 3 × 3 × 3 = 27 representative nodes that still hit the extremes of
+    both axes without inflating the suite to the full cross-product. Failure
+    messages name the offending ``(cockpit_style, wing_style, seed)`` tuple
+    via the parametrize IDs plus an explicit ``pytest.fail`` message so a
+    regression localizes immediately.
+    """
+    params = ShapeParams(
+        length=16,
+        width_max=8,
+        height_max=6,
+        cockpit_style=cockpit_style,
+        wing_style=wing_style,
+    )
+    res = generate(
+        seed,
+        shape_params=params,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"cockpit_style={cockpit_style.value} "
+            f"wing_style={wing_style.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"cockpit_style={cockpit_style.value} "
+            f"wing_style={wing_style.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"cockpit_style={cockpit_style.value} "
+        f"wing_style={wing_style.value} seed={seed} produced 0 blocks"
+    )
+
+
+# --------- hull_style × engine_style × seed-grid stability (cross-axis) ---------
+#
+# Cross-axis sibling of the cockpit×hull and cockpit×wing cross-product tests
+# above: pins (HullStyle × EngineStyle × seed) deterministically to catch
+# regressions that only surface in the interaction between hull silhouette
+# (``hull_style=`` → hull profile in ``structure_styles.py``) and engine
+# placement (``engine_style=`` → engine builder dispatch in
+# ``engine_styles.py``). A regression that only surfaces when, e.g., a narrow
+# dagger hull is combined with a wide quad-cluster engine layout (the engine
+# anchor falling outside the dagger's thin Z-band stern) would slip past both
+# single-axis tests. The Hypothesis-based ``hull_x_engine_matrix`` test above
+# samples 20 random pairs and may legitimately skip representative pairs on
+# any given run; this parametrize test deterministically pins first/middle/
+# last × first/middle/last × seed for 3 × 3 × 3 = 27 nodes. Failure node IDs
+# read ``[seed-engine_style-hull_style]`` so a regression in any single
+# (hull, engine) interaction is self-naming.
+
+
+_HULL_ENGINE_GRID_HULLS = _slice_first_middle_last(list(HullStyle))
+_HULL_ENGINE_GRID_ENGINES = _slice_first_middle_last(list(EngineStyle))
+
+
+@pytest.mark.parametrize(
+    "hull_style", _HULL_ENGINE_GRID_HULLS, ids=lambda h: h.value,
+)
+@pytest.mark.parametrize(
+    "engine_style", _HULL_ENGINE_GRID_ENGINES, ids=lambda e: e.value,
+)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_hull_x_engine_style_seed_grid_generates_non_empty_litematic(
+    tmp_path, hull_style, engine_style, seed
+):
+    """``HullStyle`` × ``EngineStyle`` × small seed grid → non-empty ``.litematic``.
+
+    Cross-axis companion to the single-axis ``hull_style_seed_grid`` and
+    ``engine_style_seed_grid`` parametrize tests above, and a deterministic
+    counterpart to the Hypothesis-sampled ``hull_x_engine_matrix`` test.
+    Both ``HullStyle`` and ``EngineStyle`` are passed directly to
+    ``generate()`` via top-level kwargs (``hull_style=`` for the hull
+    silhouette profile in ``structure_styles.py``; ``engine_style=`` for the
+    engine builder dispatch in ``engine_styles.py``); a regression that only
+    surfaces in the interaction between a specific hull silhouette and a
+    specific engine layout (e.g., a narrow dagger hull combined with a wide
+    quad-cluster engine layout where the engine anchor falls outside the
+    dagger's thin Z-band stern) would slip past both single-axis tests and
+    may also be missed by the 20-sample Hypothesis matrix. We slice each
+    enum to first / middle / last in declaration order via the existing
+    ``_slice_first_middle_last`` helper for 3 × 3 × 3 = 27 representative
+    nodes that still hit the extremes of both axes. Failure messages name
+    the offending ``(hull_style, engine_style, seed)`` tuple via the
+    parametrize IDs plus an explicit ``pytest.fail`` message so a regression
+    localizes immediately.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        shape_params=params,
+        hull_style=hull_style,
+        engine_style=engine_style,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"hull_style={hull_style.value} "
+            f"engine_style={engine_style.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"hull_style={hull_style.value} "
+            f"engine_style={engine_style.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"hull_style={hull_style.value} "
+        f"engine_style={engine_style.value} seed={seed} produced 0 blocks"
+    )
+
+
 @pytest.mark.parametrize(
     "palette_name",
     ["sci_fi_industrial", "sleek_modern", "cyberpunk_neon", "neon_arcade"],
