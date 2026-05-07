@@ -668,6 +668,41 @@ def api_roles():
     })
 
 
+@ship_bp.route("/api/version", methods=["GET"], endpoint="api_version")
+def api_version():
+    """Return the installed package version as JSON.
+
+    Narrower JSON sibling of ``/api/health`` / ``/api/meta`` exposing
+    only the package version string — clients that just want to display
+    or log the running build (e.g. about-box dialogs, deploy probes) can
+    hit this endpoint instead of pulling the larger payloads. Companion
+    to the other narrow siblings (``/api/roles``, ``/api/hull-styles``,
+    ``/api/engine-styles``, ``/api/wing-styles``, etc.).
+
+    The version is read from the package ``__version__`` attribute,
+    falling back to the installed distribution metadata via
+    :func:`importlib.metadata.version`. If both fail (e.g. an editable
+    install with broken metadata) we return a defensive
+    ``"0.0.0+unknown"`` so the endpoint never 500s.
+    """
+    try:
+        from ... import __version__ as _pkg_version  # type: ignore
+        v = str(_pkg_version) or ""
+    except Exception:  # pragma: no cover - defensive
+        v = ""
+    if not v:
+        try:
+            from importlib.metadata import PackageNotFoundError
+            from importlib.metadata import version as _dist_version
+            try:
+                v = _dist_version("spaceship-generator")
+            except PackageNotFoundError:
+                v = "0.0.0+unknown"
+        except Exception:  # pragma: no cover - defensive
+            v = "0.0.0+unknown"
+    return jsonify({"version": v})
+
+
 @ship_bp.route("/api/random", methods=["GET"], endpoint="api_random")
 def api_random():
     """Return a random seed/palette/preset combo as JSON.
@@ -1068,6 +1103,13 @@ _OPENAPI_COMPONENTS: dict = {
                 },
             },
         },
+        "Version": {
+            "type": "object",
+            "required": ["version"],
+            "properties": {
+                "version": {"type": "string", "example": "0.2.0"},
+            },
+        },
         "Random": {
             "type": "object",
             "required": ["seed", "palette", "preset"],
@@ -1362,6 +1404,12 @@ _OPENAPI_PATHS: dict = {
         "get": {
             "summary": "List Role enum (name + integer value) for tooling that consumes the shape_grid int8 array.",
             "responses": {"200": _json_response("Roles")},
+        },
+    },
+    "/api/version": {
+        "get": {
+            "summary": "Return the installed package version as JSON.",
+            "responses": {"200": _json_response("Version")},
         },
     },
     "/api/random": {

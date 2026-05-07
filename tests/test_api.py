@@ -518,6 +518,39 @@ def test_api_roles_listed_in_openapi_spec(client):
     assert "200" in op["responses"]
 
 
+def test_api_version_returns_json_with_version_key(client):
+    """``GET /api/version`` returns ``{"version": "<X.Y.Z>"}`` — narrower
+    JSON sibling of ``/api/health`` / ``/api/meta`` exposing only the
+    package version string. Companion to ``/api/roles``,
+    ``/api/hull-styles``, etc.
+    """
+    resp = client.get("/api/version")
+    assert resp.status_code == 200
+    ctype = resp.headers.get("Content-Type", "")
+    assert ctype.startswith("application/json"), ctype
+    data = resp.get_json()
+    assert set(data.keys()) == {"version"}
+    assert isinstance(data["version"], str)
+    assert data["version"] != "", "version must be a non-empty string"
+    # The endpoint must agree with whatever ``/api/health`` reports — same
+    # source of truth, two different shapes.
+    health = client.get("/api/health").get_json()
+    assert data["version"] == health["version"]
+
+
+def test_api_version_in_openapi_spec(client):
+    """The new ``/api/version`` path must appear in ``/api/spec``."""
+    rv = client.get("/api/spec")
+    assert rv.status_code == 200
+    spec = rv.get_json()
+    assert "/api/version" in spec["paths"], (
+        "OpenAPI spec must enumerate /api/version"
+    )
+    op = spec["paths"]["/api/version"]["get"]
+    assert "summary" in op
+    assert "200" in op["responses"]
+
+
 def test_api_random_returns_keys(client):
     from spaceship_generator import presets as _presets
     from spaceship_generator.palette import list_palettes as _list_palettes
