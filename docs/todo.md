@@ -18,36 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-bench-greeble-density-csv: add `--csv` flag to `scripts/bench_greeble_density.py`
-      scope: `scripts/bench_greeble_density.py`, `tests/test_bench_smoke.py` (extend)
-      accept: `--csv` emits CSV header + per-density / TOTAL rows; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
-      notes: mirror of every other prior `feat-bench-*-csv` unit (summary / palette / compare / fleet / shape / full_pipeline / generator); preserve the existing fixed-width default output
-
-- [ ] feat-bench-mem-csv: add `--csv` flag to `scripts/bench_mem.py`
-      scope: `scripts/bench_mem.py`, `tests/test_bench_smoke.py` (extend)
-      accept: `--csv` emits CSV header + a single mean/p95/max-MB summary row; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
-      notes: mirror of `feat-bench-*-csv` family; bench_mem.py reports peak Python heap (one summary row, no per-stage breakdown) so the CSV payload is a single data row + header
-
-- [ ] feat-docs-architecture-engines: extend `docs/architecture.md` with an Engine pipeline section
-      scope: `docs/architecture.md` (extend, not restructure)
-      accept: new section "Engine pipeline" describes `engine_styles.py` (EngineStyle + per-style placers) and the role of `engine_style` in the assembly pipeline; cross-link to `docs/cli.md --list-engine-styles` and `docs/web_ui.md /api/engine-styles`; ≤80 lines; CHANGELOG bullet
-      notes: completes the per-component pipeline series (greebles + weapons + cockpit + hull + wing already shipped; engines is the missing one)
-
-- [ ] feat-palettes-biome-pack-2026-05-07: add volcanic_island, crystal_caves biome palettes
-      scope: `palettes/volcanic_island.yaml`, `palettes/crystal_caves.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
-- [ ] feat-api-version: add `GET /api/version` JSON endpoint exposing the installed package version
-      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components, `docs/web_ui.md`
-      accept: route returns `{"version":"<X.Y.Z>"}` JSON sourced from package metadata (`importlib.metadata.version("spaceship_generator")` with a fallback for editable installs); OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
-      notes: useful for clients/tooling to detect server version without scraping HTML; mirrors the narrow-endpoint family pattern
-
-- [ ] feat-docs-glossary: add `docs/glossary.md` defining recurring terms
-      scope: `docs/glossary.md` (new), one-line link from `README.md`
-      accept: file defines key terms (HullStyle, EngineStyle, WingStyle, CockpitStyle, StructureStyle, GreebleType, WeaponType, Role, ShapeParams, .litematic, palette, preset, gen_id) one short paragraph each; cross-link to `docs/cli.md`, `docs/web_ui.md`, `docs/configuration.md`, `docs/architecture.md`; ≤140 lines; CHANGELOG bullet; one-line README link
-      notes: complements `docs/recipes.md` / `docs/configuration.md` by giving an A-Z term reference for new contributors
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -78,6 +48,36 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-architecture-engines: extend `docs/architecture.md` with an Engine pipeline section
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new section "Engine pipeline" describes `engine_styles.py` (EngineStyle + per-style placers) and the role of `engine_style` in the assembly pipeline; cross-link to `docs/cli.md --list-engine-styles` and `docs/web_ui.md /api/engine-styles`; ≤80 lines; CHANGELOG bullet
+      notes: completes the per-component pipeline series (greebles + weapons + cockpit + hull + wing already shipped; engines is the missing one)
+
+- [x] feat-api-version: add `GET /api/version` JSON endpoint exposing the installed package version
+      scope: `src/spaceship_generator/web/blueprints/ship.py`, `tests/test_api.py`, OpenAPI components, `docs/web_ui.md`
+      accept: route returns `{"version":"<X.Y.Z>"}` JSON sourced from package metadata (`importlib.metadata.version("spaceship_generator")` with a fallback for editable installs); OpenAPI spec enumerates it; spec-validate test stays green; CHANGELOG bullet
+      notes: useful for clients/tooling to detect server version without scraping HTML; mirrors the narrow-endpoint family pattern
+
+- [x] feat-docs-glossary: add `docs/glossary.md` defining recurring terms
+      scope: `docs/glossary.md` (new), one-line link from `README.md`
+      accept: file defines key terms (HullStyle, EngineStyle, WingStyle, CockpitStyle, StructureStyle, GreebleType, WeaponType, Role, ShapeParams, .litematic, palette, preset, gen_id) one short paragraph each; cross-link to `docs/cli.md`, `docs/web_ui.md`, `docs/configuration.md`, `docs/architecture.md`; ≤140 lines; CHANGELOG bullet; one-line README link
+      notes: complements `docs/recipes.md` / `docs/configuration.md` by giving an A-Z term reference for new contributors
+
+- [x] feat-palettes-biome-pack-2026-05-07: add volcanic_island, crystal_caves biome palettes
+      scope: `palettes/volcanic_island.yaml`, `palettes/crystal_caves.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [x] feat-bench-greeble-density-csv: add `--csv` flag to `scripts/bench_greeble_density.py`
+      scope: `scripts/bench_greeble_density.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits CSV header + per-density / TOTAL rows; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
+      notes: mirror of every other prior `feat-bench-*-csv` unit (summary / palette / compare / fleet / shape / full_pipeline / generator); preserve the existing fixed-width default output
+
+- [x] feat-bench-mem-csv: add `--csv` flag to `scripts/bench_mem.py`
+      scope: `scripts/bench_mem.py`, `tests/test_bench_smoke.py` (extend)
+      accept: `--csv` emits CSV header + a single mean/p95/max-MB summary row; exits 0; smoke test runs `--csv --iterations 2`; CHANGELOG bullet
+      notes: mirror of `feat-bench-*-csv` family; bench_mem.py reports peak Python heap (one summary row, no per-stage breakdown) so the CSV payload is a single data row + header
 
 - [x] feat-bench-generator-csv: add `--csv` flag to `scripts/bench_generator.py`
       scope: `scripts/bench_generator.py`, `tests/test_bench_smoke.py` (extend)
