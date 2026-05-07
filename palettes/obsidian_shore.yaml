@@ -1,0 +1,26 @@
+name: obsidian_shore
+description: Obsidian shore runner. Obsidian hull, crying-obsidian HULL_DARK accent, gray-stained-glass dark-tinted windows, magma-block engines, jack-o-lantern engine glow, tinted-glass cockpit, basalt wing accents, polished-blackstone greebles, soul-lantern eerie cold running lights, smooth-basalt interior — dark volcanic-shoreline obsidian-and-basalt theme with magma-glow accents.
+
+blocks:
+  HULL:          minecraft:obsidian
+  HULL_DARK:     minecraft:crying_obsidian
+  WINDOW:        minecraft:gray_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:jack_o_lantern
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:basalt
+  GREEBLE:       minecraft:polished_blackstone
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:smooth_basalt
+
+preview_colors:
+  HULL:          "#1a0e28"
+  HULL_DARK:     "#4a2870"
+  WINDOW:        "#707880"
+  ENGINE:        "#8a3018"
+  ENGINE_GLOW:   "#e89a30"
+  COCKPIT_GLASS: "#2c262e"
+  WING:          "#3a3640"
+  GREEBLE:       "#2a2630"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#3a3840"

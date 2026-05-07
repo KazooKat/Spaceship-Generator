@@ -1,0 +1,26 @@
+name: starlight_temple
+description: Starlight temple cruiser. Quartz-block hull, smooth-quartz HULL_DARK accent, light-blue-stained-glass starlight windows, end-rod engines, sea-lantern engine glow, tinted-glass cockpit, end-stone-bricks wing accents, chiseled-quartz-block greebles, soul-lantern soft star running lights, polished-diorite interior — celestial night-sky temple quartz-and-end-stone theme with sea-lantern glow accents.
+
+blocks:
+  HULL:          minecraft:quartz_block
+  HULL_DARK:     minecraft:smooth_quartz
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:end_rod
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:end_stone_bricks
+  GREEBLE:       minecraft:chiseled_quartz_block
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:polished_diorite
+
+preview_colors:
+  HULL:          "#e8e4dc"
+  HULL_DARK:     "#8b8783"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#f4e8d0"
+  ENGINE_GLOW:   "#d8e8c4"
+  COCKPIT_GLASS: "#2c262e"
+  WING:          "#ded7a2"
+  GREEBLE:       "#e8e2d7"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#dadada"
