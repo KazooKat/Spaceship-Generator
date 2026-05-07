@@ -1431,6 +1431,91 @@ def test_property_hull_x_engine_style_seed_grid_generates_non_empty_litematic(
     )
 
 
+# --------- greeble_density × weapon_count × seed-grid stability (cross-axis) ---------
+#
+# Numeric-axis cross-product sibling of the enum cross-axis tests above
+# (cockpit×hull / cockpit×wing / hull×engine). The single-axis siblings
+# ``test_property_greeble_density_seed_grid_generates_non_empty_litematic``
+# and ``test_property_weapon_count_seed_grid_generates_non_empty_litematic``
+# pin each axis deterministically on its own, but a regression that only
+# surfaces in the interaction between a specific greeble density and a
+# specific weapon count (e.g., a maxed-out greeble scatter at
+# ``greeble_density=1.0`` claiming every surface anchor so the weapon
+# scatter at ``weapon_count=8`` cannot find empty cells to write into and
+# silently no-ops, or a zero-greeble bare-hull at ``greeble_density=0.0``
+# combined with ``weapon_count=0`` collapsing to a degenerate silhouette
+# that fails to write blocks) would slip past both single-axis tests.
+# We pin three densities (``0.0`` no-greebles bare-hull / ``0.5`` mid /
+# ``1.0`` max scatter — same extremes as the
+# ``test_property_greeble_density_monotonic_in_block_count`` companion) ×
+# three weapon counts (``0`` no-weapons / ``2`` mid / ``8`` max — same
+# upper/lower bounds as the weapon-count single-axis sweep) × the small
+# fixed seed grid ``[0, 1, 7]`` (``_SHAPE_STYLE_STABILITY_SEEDS``) for
+# 3 × 3 × 3 = 27 representative nodes. Failure node IDs read
+# ``[seed-weapon_count-greeble_density]`` so a regression in any single
+# (density, weapon_count) interaction is self-naming.
+
+
+@pytest.mark.parametrize("greeble_density", [0.0, 0.5, 1.0])
+@pytest.mark.parametrize("weapon_count", [0, 2, 8])
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_greeble_density_x_weapon_count_seed_grid_generates_non_empty_litematic(
+    tmp_path, greeble_density, weapon_count, seed
+):
+    """``greeble_density`` × ``weapon_count`` × small seed grid → non-empty ``.litematic``.
+
+    Numeric-axis cross-product companion to the single-axis
+    ``greeble_density_seed_grid`` and ``weapon_count_seed_grid`` parametrize
+    tests above, and the numeric-axis sibling of the enum cross-axis tests
+    (cockpit×hull / cockpit×wing / hull×engine). Both axes are passed
+    directly to ``generate()`` via top-level kwargs (``greeble_density=`` for
+    the multi-cell scatter pass in ``greeble_styles.scatter_greebles``,
+    ``weapon_count=`` for the weapon scatter dispatch in
+    ``weapon_styles.scatter_weapons``); a regression that only surfaces in
+    the interaction between a specific density and a specific count (e.g.,
+    a maxed-out greeble scatter at ``greeble_density=1.0`` claiming every
+    surface anchor so the weapon scatter at ``weapon_count=8`` cannot find
+    empty cells to write into) would slip past both single-axis tests. We
+    pin three densities (``0.0`` / ``0.5`` / ``1.0``) × three weapon counts
+    (``0`` / ``2`` / ``8``) × the small fixed seed grid ``[0, 1, 7]`` for
+    3 × 3 × 3 = 27 representative nodes that hit the extremes of both
+    numeric axes. At ``greeble_density=0.0`` the greeble scatter no-ops and
+    at ``weapon_count=0`` the weapon scatter no-ops, but the ship still
+    generates a non-empty hull/cockpit/engines/wings silhouette so
+    ``block_count > 0`` is the right floor invariant for every node
+    including the (0.0, 0) corner. Failure messages name the offending
+    ``(greeble_density, weapon_count, seed)`` tuple via the parametrize
+    IDs plus an explicit ``pytest.fail`` message so a regression localizes
+    immediately.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        shape_params=params,
+        greeble_density=greeble_density,
+        weapon_count=weapon_count,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"greeble_density={greeble_density} "
+            f"weapon_count={weapon_count} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"greeble_density={greeble_density} "
+            f"weapon_count={weapon_count} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"greeble_density={greeble_density} "
+        f"weapon_count={weapon_count} seed={seed} produced 0 blocks"
+    )
+
+
 @pytest.mark.parametrize(
     "palette_name",
     ["sci_fi_industrial", "sleek_modern", "cyberpunk_neon", "neon_arcade"],
