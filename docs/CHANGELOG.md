@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(architecture): add Engine pipeline section (feat-docs-architecture-engines)
 - docs(glossary): add docs/glossary.md term reference (feat-docs-glossary)
 - feat(api): add GET /api/version — exposes installed package version to clients (feat-api-version)
 - feat(palettes): add volcanic_island, crystal_caves biome palettes (feat-palettes-biome-pack-2026-05-07)

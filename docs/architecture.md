@@ -723,6 +723,87 @@ archetypes, each pinning a `cockpit_style`.
 - CLI ([docs/cli.md](cli.md)): `--cockpit-style`, `--list-cockpit-styles`, `--list-cockpit-styles-json`.
 - Web API ([docs/web_ui.md](web_ui.md)): `GET /api/cockpit-styles`.
 
+## Engine pipeline
+
+Engines are the rear-thrust archetypes that anchor a ship's tail end:
+single-core, twin-nacelle, quad-cluster, ring, ion-array, plasma-pulse,
+magnetic-rail, bio-organic, and retro-rocket-cluster. Like the cockpit,
+the engine block is not a scatter pass — it is stamped once per ship at
+the rear slab (`z = 0`), in two possible passes depending on whether
+the caller asked for an `EngineStyle` archetype.
+
+### Build order
+
+```mermaid
+flowchart LR
+  cockpit[shape/cockpit.py<br/>_place_cockpit]
+  default[shape/engines.py<br/>_place_engines<br/>cylinder fallback]
+  rest[wings → greebles → mirror+connect+mirror]
+  wipe[generator.py<br/>clear ENGINE/ENGINE_GLOW<br/>if engine_style set]
+  override[engine_styles.py<br/>build_engines dispatch]
+
+  cockpit --> default --> rest --> wipe --> override
+```
+
+The default cylinder pass runs **inside** `generate_shape` (between
+cockpit and wings), so engines exist before wings, greebles, mirroring,
+and floater bridging see the grid. When the caller passes
+`engine_style=...` to `generator.generate`, the override pass runs
+**after** `generate_shape` returns: it wipes every `Role.ENGINE` and
+`Role.ENGINE_GLOW` cell, then writes the chosen archetype's placements
+seeded by `seed ^ 0xE5`.
+
+### `EngineStyle` (in `engine_styles.py`)
+
+`EngineStyle` is a `StrEnum` with 9 members today (`SINGLE_CORE`,
+`TWIN_NACELLE`, `QUAD_CLUSTER`, `RING`, `ION_ARRAY`, `PLASMA_PULSE`,
+`MAGNETIC_RAIL`, `BIO_ORGANIC`, `RETRO_ROCKET_CLUSTER`). It lives in
+its own `engine_styles.py` module because builders are **pure** —
+they return `list[Placement]` tuples instead of mutating the grid, so
+the generator can clip / de-duplicate placements without re-running
+layout logic.
+
+### `shape/engines.py`
+
+Hosts the legacy in-shape pass: `_place_engines(grid, rng, params)` and
+`_engine_x_positions(n, width, radius)`. Reads `engine_count_override`
+for `n` (zero short-circuits), `engine_length = max(2, L // 8)`, base
+radius from `min(W, H) // 10`, and final radius from
+`engine_radius_scale(structure_style)`. `_engine_x_positions` lays out
+`n` symmetric X positions clamped into `[radius, W - 1 - radius]` (and
+collapses to the ship center if too narrow). Each position stamps a
+circular cross-section of `Role.ENGINE` voxels from `z = 0` for
+`engine_length` steps along Z. RNG is not consumed — engine geometry
+is deterministic in style + dimensions.
+
+### `engine_style` and the override pass
+
+Unlike `cockpit_style` / `wing_style` / `structure_style`, `engine_style`
+is **not** a field on `ShapeParams` — it is a keyword-only argument on
+`generator.generate(..., engine_style=None, ...)`. `None` preserves the
+legacy cylinder pass byte-for-byte. When set, `generator.generate` calls
+`build_engines(grid, engine_style, position=(W//2, cy_engine, 0),
+size=(base_radius, engine_length, spread), rng=...)` — dispatching to
+one of nine `build_<style>` builders that emit only `Role.ENGINE` /
+`Role.ENGINE_GLOW` placements bounds-checked via `_in_bounds`. The CLI
+plumbs it through `--engine-style`; the web layer reads it via
+`_parse_optional_enum(source, "engine_style", EngineStyle)`. `presets.py`
+and `fleet.py` both pin a per-ship `EngineStyle`.
+
+### Relationship to hull / cockpit
+
+Engines anchor at `cy_engine = max(base_radius + 1, H // 2 - 1)` on the
+rear slab `z = 0`, clear of the forward upper-hull cockpit zone. They
+write directly through hull voxels they overlap — engines are not gated
+by an `if grid == EMPTY` check. The post-greeble `_connect_floaters`
+bridges any nacelle the tapered hull left disconnected; the second
+`_enforce_x_symmetry` then restamps symmetry over those bridge lines.
+
+### Cross-references
+
+- CLI ([docs/cli.md](cli.md)): `--engine-style`, `--list-shape-styles`, `--list-shape-styles-json`.
+- Web API ([docs/web_ui.md](web_ui.md)): `GET /api/engine-styles`, `GET /api/shape-styles`.
+
 ## Related documentation
 
 - [faq.md](faq.md) — common questions and troubleshooting.
