@@ -165,3 +165,25 @@ Style enums emit in **enum-declaration order** (deterministic across runs);
 See [web_ui.md](web_ui.md) for the matching `/api/*` endpoints. Note that
 `--output-json` itself (one NDJSON object per ship) and `--stats-json`
 (stats payload) above share the same `--quiet` carve-out as this family.
+
+## Effective config dump
+
+`--config-dump` emits the effective generator config — i.e. the
+preset-resolved palette / shape / style / weapon args that WOULD be
+passed into `generate()` — as a single JSON document
+`{"effective_config":{...}}` to stdout, then exits 0 without producing
+a ship. The dump runs after `--preset` resolution and `--palette random`
+resolution, so the JSON reflects the values `generate()` would actually
+receive. Useful for debugging / reproducing weirdness ("what did I
+actually run").
+
+| Flag | JSON shape | Behavior |
+|---|---|---|
+| `--config-dump` | `{"effective_config":{...}}` (resolved generator args) | Mutually exclusive with `--output`, `--output-json`, `--output-json-schema` (`parser.error` → exit 2). NOT silenced by `--quiet` — same carve-out as the `--list-*-json` family above. |
+
+Example:
+
+```bash
+$ python -m spaceship_generator --config-dump --seed 42 --palette desert_oasis
+{"effective_config": {"palette": "desert_oasis", "seed": 42, ...}}
+```
