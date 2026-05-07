@@ -41,3 +41,19 @@ Pass `--no-weapons` (shorthand for `--weapon-count 0`) and/or `--no-greebles` (s
 ### How do I benchmark generation speed?
 
 Run `python scripts/bench_full_pipeline.py` for end-to-end ship-build wall-clock, `scripts/bench_shape.py` for per-stage shape timings, `scripts/bench_palette.py` for per-palette cost variance, `scripts/bench_mem.py` for peak Python heap, or `scripts/bench_summary.py` to drive every sibling bench in one fixed-width aggregate table. See [performance.md](performance.md) for baseline numbers and [bench-ci.md](bench-ci.md) for the CI regression gate.
+
+### How do I get the package version programmatically?
+
+For HTTP clients use `GET /api/version`, which returns a `{"version":"X.Y.Z"}` JSON document — see [web_ui.md](web_ui.md) for the full `/api/*` route table. For shell pipelines and tooling use `--version-json` (machine-readable JSON, mutually exclusive with `--version`); `--version` itself prints the plain `spaceship_generator <ver>` line. See [cli.md](cli.md) for the full flag reference.
+
+### What's the difference between a palette and a preset?
+
+A *palette* is a YAML mapping of role → Minecraft block ID (a visual skin only — no shape parameters). A *preset* is a named bundle of generator parameters (shape style, dimensions, weapon count, etc.) and may itself reference a palette. See [palette_authoring.md](palette_authoring.md) for the palette role schema, [presets.md](presets.md) for the preset catalog, and [glossary.md](glossary.md) for the canonical one-line definitions.
+
+### How do I run benchmarks in CI?
+
+Every `scripts/bench_*.py` script accepts a `--csv` flag that emits a clean CSV document on stdout (uniform across all 9 bench scripts), suitable for spreadsheet diffing or piping into a CI parser. The run-banner and progress lines are routed to stderr in `--csv` mode so the stdout stream stays parseable. See [bench.md](bench.md) for the full bench-script catalog and [bench-ci.md](bench-ci.md) for the existing CI regression gate.
+
+### Where do I find the list of every CLI flag?
+
+`python -m spaceship_generator --help` is authoritative — the curated reference (grouped by category, with examples) lives in [cli.md](cli.md). For enum discovery use the `--list-*` flag family (`--list-presets`, `--list-palettes`, `--list-shape-styles`, `--list-cockpit-styles`, `--list-structure-styles`, `--list-greeble-types`, `--list-weapon-types`, `--list-roles`); each has a sibling `--list-*-json` variant for tooling. See [cli.md](cli.md) § "Style discovery" / "Presets".

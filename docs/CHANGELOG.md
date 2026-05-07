@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(scripts): add palette_stats.py — cross-corpus palette stats with --csv (feat-scripts-palette-stats)
+- test(properties): add cockpit_style x hull_style x seed-grid stability property test (feat-tests-property-cockpit-x-hull-style-grid)
 - feat(palettes): add desert_oasis, foggy_marsh biome palettes (feat-palettes-biome-pack-2026-05-07b)
 - docs(architecture): add Engine pipeline section (feat-docs-architecture-engines)
 - docs(glossary): add docs/glossary.md term reference (feat-docs-glossary)
