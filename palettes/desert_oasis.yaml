@@ -1,0 +1,26 @@
+name: desert_oasis
+description: Desert oasis runner. Sandstone hull, smooth-sandstone HULL_DARK accent, cyan-stained-glass oasis-pool windows, orange-terracotta engines, ochre-froglight engine glow, yellow-stained-glass cockpit, lime-terracotta wings, jungle-log palm-tree greebles, lantern running lights, green-terracotta interior — warm desert oasis sandstone-and-vegetation theme with cyan water-lily accents.
+
+blocks:
+  HULL:          minecraft:sandstone
+  HULL_DARK:     minecraft:smooth_sandstone
+  WINDOW:        minecraft:cyan_stained_glass
+  ENGINE:        minecraft:orange_terracotta
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:lime_terracotta
+  GREEBLE:       minecraft:jungle_log
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:green_terracotta
+
+preview_colors:
+  HULL:          "#d7c99c"
+  HULL_DARK:     "#7a6e4a"
+  WINDOW:        "#3aafce"
+  ENGINE:        "#a44b1f"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#ffd84a"
+  WING:          "#9aa820"
+  GREEBLE:       "#5e4520"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#4f6c2a"
