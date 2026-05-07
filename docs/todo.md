@@ -18,36 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-cli-flags-pack-2026-05-07: add `--list-engine-styles[-json]`, `--list-hull-styles[-json]`, `--list-wing-styles[-json]`, `--version-json` flags
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: each `--list-<x>-styles` prints one enum-name per line in declaration order; each `-json` sibling emits `{"<x>_styles":[...]}`; `--version-json` emits `{"version":"<X.Y.Z>"}` matching `--version` value; siblings mutually exclusive with non-json variant; not silenced by `--quiet`; per-flag tests; CHANGELOG bullets
-      notes: closes the engine/hull/wing CLI gap surfaced by the `feat-docs-architecture-engines` agent (which noted there is no dedicated `--list-engine-styles` flag despite parallel `/api/engine-styles` etc. existing); mirror of `feat-cli-list-json-pack-2026-05-05` exactly — add flags adjacent to existing `--list-shape-styles` block; one agent owns all of cli.py to avoid concurrent-edit conflicts
-
-- [ ] feat-palettes-biome-pack-2026-05-07b: add desert_oasis, foggy_marsh biome palettes
-      scope: `palettes/desert_oasis.yaml`, `palettes/foggy_marsh.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
-- [ ] feat-docs-bench-csv-format: document the `--csv` schema family in `docs/bench.md`
-      scope: `docs/bench.md` (extend, not restructure)
-      accept: new section "CSV output format" lists every `bench_*.py` script's `--csv` header columns + row semantics (per-stage / TOTAL / single-summary distinction); cross-link to `docs/bench-ci.md`; ≤80 added lines; CHANGELOG bullet
-      notes: closes the operator gap left after shipping `--csv` across all 9 bench scripts; pure-docs unit, no code touched
-
-- [ ] feat-scripts-palette-stats: add `scripts/palette_stats.py` printing global palette stats
-      scope: `scripts/palette_stats.py` (new), `tests/test_palette_stats.py` (new, lightweight)
-      accept: script enumerates `palettes/*.yaml`, prints (palette count, distinct MC blocks used, top-10 most-used blocks, role coverage histogram) as a fixed-width table; `--csv` flag emits same data as CSV; exits 0; one smoke test asserting exit 0 + non-empty stdout; CHANGELOG bullet
-      notes: complements `palette_lint.py` (per-file validation) with cross-corpus stats; reuse the existing palette-loader to avoid YAML drift; do NOT modify any existing palette
-
-- [ ] feat-tests-property-cockpit-x-hull-style-grid: add property test asserting `generate()` succeeds for (`cockpit_style` × `hull_style` × seed) grid
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over a representative slice (3 cockpit styles × 3 hull styles × seed grid `[0, 1, 7]` = 27 nodes max); assert `.litematic` exists + non-empty; failure names offending pair + seed; CHANGELOG bullet
-      notes: complements existing single-axis property tests (`test_property_cockpit_style_seed_grid_*`, `test_property_hull_style_seed_grid_*`) by stress-testing CROSS-axis interaction; keep slice small to avoid blow-up
-
-- [ ] feat-docs-faq-extension: extend `docs/faq.md` with 4-6 new Q&As covering recently-shipped surfaces
-      scope: `docs/faq.md` (extend, not restructure)
-      accept: new Q&As cover (a) "How do I get the package version programmatically?" pointing at `/api/version` + `--version`, (b) "What's the difference between a palette and a preset?", (c) "How do I run benchmarks in CI?" pointing at `--csv` + `docs/bench-ci.md`, (d) "Where do I find the list of every CLI flag?" pointing at `docs/cli.md` + `--list-*` flags; ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do not duplicate content already in `docs/glossary.md` / `docs/recipes.md` (cross-link instead)
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -78,6 +48,36 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-flags-pack-2026-05-07: add `--list-engine-styles[-json]`, `--list-hull-styles[-json]`, `--list-wing-styles[-json]`, `--version-json` flags
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: each `--list-<x>-styles` prints one enum-name per line in declaration order; each `-json` sibling emits `{"<x>_styles":[...]}`; `--version-json` emits `{"version":"<X.Y.Z>"}` matching `--version` value; siblings mutually exclusive with non-json variant; not silenced by `--quiet`; per-flag tests; CHANGELOG bullets
+      notes: closes the engine/hull/wing CLI gap surfaced by the `feat-docs-architecture-engines` agent
+
+- [x] feat-docs-bench-csv-format: document the `--csv` schema family in `docs/bench.md`
+      scope: `docs/bench.md` (extend, not restructure)
+      accept: new section "CSV output format" lists every `bench_*.py` script's `--csv` header columns + row semantics (per-stage / TOTAL / single-summary distinction); cross-link to `docs/bench-ci.md`; ≤80 added lines; CHANGELOG bullet
+      notes: closes the operator gap left after shipping `--csv` across all 9 bench scripts; pure-docs unit, no code touched
+
+- [x] feat-tests-property-cockpit-x-hull-style-grid: add property test asserting `generate()` succeeds for (`cockpit_style` × `hull_style` × seed) grid
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over a representative slice (3 cockpit styles × 3 hull styles × seed grid `[0, 1, 7]` = 27 nodes max); assert `.litematic` exists + non-empty; failure names offending pair + seed; CHANGELOG bullet
+      notes: complements existing single-axis property tests by stress-testing CROSS-axis interaction
+
+- [x] feat-scripts-palette-stats: add `scripts/palette_stats.py` printing global palette stats
+      scope: `scripts/palette_stats.py` (new), `tests/test_palette_stats.py` (new, lightweight)
+      accept: script enumerates `palettes/*.yaml`, prints (palette count, distinct MC blocks used, top-10 most-used blocks, role coverage histogram) as a fixed-width table; `--csv` flag emits same data as CSV; exits 0; one smoke test asserting exit 0 + non-empty stdout; CHANGELOG bullet
+      notes: complements `palette_lint.py` (per-file validation) with cross-corpus stats
+
+- [x] feat-docs-faq-extension: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
+      scope: `docs/faq.md` (extend, not restructure)
+      accept: new Q&As cover versioning, palette/preset distinction, CI bench, CLI flag discovery; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [x] feat-palettes-biome-pack-2026-05-07b: add desert_oasis, foggy_marsh biome palettes
+      scope: `palettes/desert_oasis.yaml`, `palettes/foggy_marsh.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
 
 - [x] feat-docs-architecture-engines: extend `docs/architecture.md` with an Engine pipeline section
       scope: `docs/architecture.md` (extend, not restructure)
