@@ -18,36 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-tests-property-cross-axis-pack-2026-05-07: add (cockpit × wing) + (hull × engine) cross-axis property tests
-      scope: `tests/test_properties.py` (extend)
-      accept: TWO new tests `test_property_cockpit_x_wing_style_seed_grid_*` and `test_property_hull_x_engine_style_seed_grid_*`, each parametrized over a representative slice (first/middle/last × first/middle/last × seed `[0, 1, 7]` = 27 nodes each); assert `.litematic` exists + non-empty; failure names offending tuple; CHANGELOG bullet
-      notes: complements just-shipped `test_property_cockpit_x_hull_style_seed_grid_*`; reuse the `_slice_first_middle_last` helper added in that test; one agent owns both new tests to avoid concurrent edits to the same file
-
-- [ ] feat-palettes-biome-pack-2026-05-07c: add enchanted_grove, asteroid_belt biome palettes
-      scope: `palettes/enchanted_grove.yaml`, `palettes/asteroid_belt.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
-- [ ] feat-scripts-palette-diff: add `scripts/palette_diff.py` printing role-by-role block diff between two palettes
-      scope: `scripts/palette_diff.py` (new), `tests/test_palette_diff.py` (new, lightweight)
-      accept: `python scripts/palette_diff.py palettes/A.yaml palettes/B.yaml` prints a fixed-width table `role | A_block | B_block | same?` for every role; `--csv` flag emits the same as CSV (`role,a_block,b_block,same`); exits 0 if both palettes load cleanly, 1 if either fails to load; smoke test asserts exit 0 + non-empty stdout when comparing two real palettes; CHANGELOG bullet
-      notes: complements `palette_lint.py` (per-file validation) and `palette_stats.py` (cross-corpus stats); reuse the `palette_lint` YAML loader to avoid drift; do NOT modify any palette
-
-- [ ] feat-docs-troubleshooting-extension: extend `docs/troubleshooting.md` with new entries
-      scope: `docs/troubleshooting.md` (extend, not restructure)
-      accept: 4-6 new entries covering recently-shipped surfaces (e.g. "`--list-engine-styles` says command not found" → upgrade reminder; "CSV output is empty" → check stdout vs stderr split; "palette_stats.py shows fewer palettes than I have" → role-coverage warning; "`/api/version` returns 0.0.0+unknown" → editable-install fallback explained); ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do not duplicate FAQ content (cross-link instead)
-
-- [ ] feat-cli-config-dump: add `--config-dump` flag emitting effective config as JSON
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--config-dump` parses provided generator-relevant args (preset / palette / shape / hull / wing / cockpit / structure / engine / greeble_density / weapon_count / seed / etc.) and emits a single JSON document `{"effective_config":{...}}` to stdout summarizing the values that WOULD be passed into `generate()`; exits 0 without generating a ship; mutually exclusive with output-file flags; not silenced by `--quiet`; per-flag tests; CHANGELOG bullet
-      notes: useful for debugging / reproducing weirdness ("what config did I actually run"); should mirror the `--list-*-json` carve-out from `--quiet`
-
-- [ ] feat-docs-recipes-extension: extend `docs/recipes.md` with 3-4 new task-oriented recipes
-      scope: `docs/recipes.md` (extend, not restructure)
-      accept: new recipes cover (a) "diff two palettes" pointing at `palette_diff.py`, (b) "audit my palette corpus" pointing at `palette_stats.py`, (c) "check the server version programmatically" pointing at `/api/version` + `--version-json`, (d) "run benchmarks for CI" pointing at the `bench_*.py --csv` family; ≤50 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do not duplicate FAQ content (cross-link instead)
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -78,6 +48,36 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-cli-config-dump: add `--config-dump` flag emitting effective config as JSON
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--config-dump` emits `{"effective_config":{...}}` to stdout; exits 0 without generating a ship; mutually exclusive with output-file flags; not silenced by `--quiet`; per-flag tests; CHANGELOG bullet
+      notes: useful for debugging / reproducing weirdness
+
+- [x] feat-scripts-palette-diff: add `scripts/palette_diff.py` printing role-by-role block diff between two palettes
+      scope: `scripts/palette_diff.py` (new), `tests/test_palette_diff.py` (new, lightweight)
+      accept: prints a fixed-width table `role | A_block | B_block | same?`; `--csv` flag emits the same as CSV; exits 0 if both palettes load cleanly, 1 if either fails to load; smoke test asserts exit 0 + non-empty stdout; CHANGELOG bullet
+      notes: complements `palette_lint.py` and `palette_stats.py`
+
+- [x] feat-docs-recipes-extension: extend `docs/recipes.md` with 4 new task-oriented recipes
+      scope: `docs/recipes.md` (extend, not restructure)
+      accept: 4 new recipes cover palette diff, palette stats, /api/version, CI bench; ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [x] feat-tests-property-cross-axis-pack-2026-05-07: add (cockpit × wing) + (hull × engine) cross-axis property tests
+      scope: `tests/test_properties.py` (extend)
+      accept: TWO new tests, each parametrized over (3 × 3 × 3 = 27 nodes); CHANGELOG bullet
+      notes: complements cockpit×hull cross-axis test from cycle 2
+
+- [x] feat-docs-troubleshooting-extension: extend `docs/troubleshooting.md` with 6 new entries
+      scope: `docs/troubleshooting.md` (extend, not restructure)
+      accept: 6 new rows cover --list-engine-styles, CSV piping, palette_stats parse drops, /api/version fallback, palette_diff <missing>, cross-axis test failures; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [x] feat-palettes-biome-pack-2026-05-07c: add enchanted_grove, asteroid_belt biome palettes
+      scope: `palettes/enchanted_grove.yaml`, `palettes/asteroid_belt.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
 
 - [x] feat-cli-flags-pack-2026-05-07: add `--list-engine-styles[-json]`, `--list-hull-styles[-json]`, `--list-wing-styles[-json]`, `--version-json` flags
       scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
