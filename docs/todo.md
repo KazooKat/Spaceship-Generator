@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-palettes-biome-pack-2026-05-07e: add obsidian_shore, starlight_temple biome palettes
+      scope: `palettes/obsidian_shore.yaml`, `palettes/starlight_temple.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [ ] feat-docs-cli-list-narrow-styles: document `--list-{engine,hull,wing}-styles[-json]` in `docs/cli.md`
+      scope: `docs/cli.md` (extend, not restructure)
+      accept: new rows / paragraphs in the existing machine-readable list-flag block documenting the three new pairs added in `feat-cli-flags-pack-2026-05-07`; ≤30 added lines; CHANGELOG bullet
+      notes: pure-docs follow-up; mirror the `feat-docs-cli-list-json-flags` documentation pattern
+
+- [ ] feat-tests-property-palette-x-cockpit-style-grid: add (palette × cockpit_style × seed) property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over 3 representative palettes × 3 cockpit_styles × seed `[0, 1, 7]` (= 27 nodes); assert `.litematic` exists + non-empty; failure names offending tuple; CHANGELOG bullet
+      notes: another cross-axis variant; reuse `_slice_first_middle_last` for cockpit, sample palettes via dynamic enumeration
+
+- [ ] feat-docs-glossary-extension: extend `docs/glossary.md` with new terms shipped recently
+      scope: `docs/glossary.md` (extend, not restructure)
+      accept: new entries for `palette_diff.py`, `palette_stats.py`, `palette_merge.py`, `--config-dump`, `--version-json`, `/api/version`, alphabetized into existing list; ≤40 added lines; CHANGELOG bullet
+      notes: pure-docs follow-up
+
+- [ ] feat-scripts-palette-to-json: add `scripts/palette_to_json.py` converting palette YAML to JSON
+      scope: `scripts/palette_to_json.py` (new), `tests/test_palette_to_json.py` (new)
+      accept: `python scripts/palette_to_json.py palettes/X.yaml` emits the palette as a JSON document to stdout; preserves schema (name/description/blocks/preview_colors); `--out path.json` flag; smoke test asserts exit 0 + parses as JSON; CHANGELOG bullet
+      notes: useful for tooling that wants palettes in JSON without parsing YAML; reuse the existing palette loader
+
+- [ ] feat-docs-architecture-pipeline-index: add a top-of-doc pipeline index in `docs/architecture.md`
+      scope: `docs/architecture.md` (extend, not restructure existing sections)
+      accept: short bulleted index near the top (immediately after the existing intro / TOC) listing the 7 per-component pipeline sections (Shape / Hull / Wing / Cockpit / Weapon / Greeble / Engine) with anchor links so readers can jump directly; ≤25 added lines; CHANGELOG bullet
+      notes: pure-docs follow-up; closes the navigation gap left after the per-component series shipped across cycles
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
