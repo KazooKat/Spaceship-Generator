@@ -1167,6 +1167,109 @@ def test_property_no_greebles_no_weapons_combos_seed_grid_generates_non_empty_li
     )
 
 
+# --------- cockpit_style × hull_style × seed-grid stability (cross-axis) ---------
+#
+# Companion to the single-axis sibling parametrize tests
+# ``test_property_cockpit_style_seed_grid_generates_non_empty_litematic`` and
+# ``test_property_hull_style_seed_grid_generates_non_empty_litematic``: those
+# two pin every member of *one* enum at fixed seeds, but neither exercises the
+# CROSS-axis interaction between cockpit placement (``ShapeParams.cockpit_style``
+# → cockpit placer dispatch in ``shape/cockpit.py``) and hull silhouette
+# (``hull_style=`` → hull profile in ``structure_styles.py``). A regression that
+# only surfaces when, e.g., ``CockpitStyle.OFFSET_TURRET`` is combined with
+# ``HullStyle.DAGGER`` (the narrowest hull) — say, the turret anchor falling
+# outside the dagger's thin X-band — would slip past both single-axis tests.
+# The full 6×5 cross-product would be 30 cockpit/hull pairs × 3 seeds = 90
+# nodes, which inflates the suite without much marginal coverage; instead we
+# slice each enum dynamically (first / middle / last members in declaration
+# order, driven from ``list(CockpitStyle)`` / ``list(HullStyle)`` so the slice
+# follows future enum reorderings or extensions) for 3 cockpit × 3 hull × 3
+# seeds = 27 representative nodes that still hit the extremes of both axes.
+# Failure node IDs read ``[seed-hull_style-cockpit_style]`` so a regression in
+# any single (cockpit, hull) interaction is self-naming.
+
+
+def _slice_first_middle_last(members):
+    """Pick first / middle / last members of a sequence in declaration order.
+
+    Driven dynamically off ``list(EnumCls)`` so the slice tracks future
+    additions/reorderings of the enum without manual edits. For sequences
+    shorter than 3 members the result is deduplicated while preserving order
+    so the parametrize grid never accidentally repeats a node ID.
+    """
+    if len(members) <= 3:
+        # Small enums: just dedupe-preserve all members so we still cover the
+        # extremes (and the middle, if there is one).
+        seen = []
+        for m in members:
+            if m not in seen:
+                seen.append(m)
+        return seen
+    return [members[0], members[len(members) // 2], members[-1]]
+
+
+_COCKPIT_HULL_GRID_COCKPITS = _slice_first_middle_last(list(CockpitStyle))
+_COCKPIT_HULL_GRID_HULLS = _slice_first_middle_last(list(HullStyle))
+
+
+@pytest.mark.parametrize(
+    "cockpit_style", _COCKPIT_HULL_GRID_COCKPITS, ids=lambda c: c.value,
+)
+@pytest.mark.parametrize(
+    "hull_style", _COCKPIT_HULL_GRID_HULLS, ids=lambda h: h.value,
+)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_cockpit_x_hull_style_seed_grid_generates_non_empty_litematic(
+    tmp_path, cockpit_style, hull_style, seed
+):
+    """``CockpitStyle`` × ``HullStyle`` × small seed grid → non-empty ``.litematic``.
+
+    Cross-axis companion to the single-axis ``cockpit_style_seed_grid`` and
+    ``hull_style_seed_grid`` parametrize tests above. ``CockpitStyle`` is
+    plumbed via ``ShapeParams.cockpit_style`` (cockpit placer dispatch in
+    ``shape/cockpit.py``) while ``HullStyle`` is passed directly to
+    ``generate(hull_style=...)`` (hull silhouette profile in
+    ``structure_styles.py``); a regression that only surfaces in the
+    interaction between a specific cockpit placement and a specific hull
+    profile (e.g., a turret anchor landing outside a narrow dagger hull's
+    X-band) would slip past both single-axis tests. We slice each enum to
+    first / middle / last in declaration order — driven dynamically off
+    ``list(EnumCls)`` so the slice tracks future enum additions — for 3 × 3
+    × 3 = 27 representative nodes that still hit the extremes of both axes
+    without inflating the suite to the full 6×5×3 = 90-node cross-product.
+    Failure messages name the offending ``(cockpit_style, hull_style, seed)``
+    tuple via the parametrize IDs plus an explicit ``pytest.fail`` message
+    so a regression localizes immediately.
+    """
+    params = ShapeParams(
+        length=16, width_max=8, height_max=6, cockpit_style=cockpit_style,
+    )
+    res = generate(
+        seed,
+        shape_params=params,
+        hull_style=hull_style,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"cockpit_style={cockpit_style.value} "
+            f"hull_style={hull_style.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"cockpit_style={cockpit_style.value} "
+            f"hull_style={hull_style.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"cockpit_style={cockpit_style.value} "
+        f"hull_style={hull_style.value} seed={seed} produced 0 blocks"
+    )
+
+
 @pytest.mark.parametrize(
     "palette_name",
     ["sci_fi_industrial", "sleek_modern", "cyberpunk_neon", "neon_arcade"],
