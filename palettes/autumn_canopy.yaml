@@ -1,0 +1,26 @@
+name: autumn_canopy
+description: Autumn canopy runner. Stripped-birch-log hull, dark-oak-log HULL_DARK accent, orange-stained-glass sunset-light windows, mangrove-planks engines, jack-o-lantern engine glow, light-blue-stained-glass cockpit, jungle-log wing accents, oak-log branch greebles, lantern running lights, brown-terracotta interior — warm autumn forest birch-and-oak canopy theme with rich orange-and-red foliage accents.
+
+blocks:
+  HULL:          minecraft:stripped_birch_log
+  HULL_DARK:     minecraft:dark_oak_log
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:mangrove_planks
+  ENGINE_GLOW:   minecraft:jack_o_lantern
+  COCKPIT_GLASS: minecraft:light_blue_stained_glass
+  WING:          minecraft:jungle_log
+  GREEBLE:       minecraft:oak_log
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:brown_terracotta
+
+preview_colors:
+  HULL:          "#d8c98a"
+  HULL_DARK:     "#3a2614"
+  WINDOW:        "#d87f33"
+  ENGINE:        "#8a3a2a"
+  ENGINE_GLOW:   "#e89a30"
+  COCKPIT_GLASS: "#a8d4f0"
+  WING:          "#5e4520"
+  GREEBLE:       "#7a5836"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#714032"

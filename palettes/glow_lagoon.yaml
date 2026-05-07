@@ -1,0 +1,26 @@
+name: glow_lagoon
+description: Glow lagoon runner. Prismarine hull, dark-prismarine HULL_DARK accent, light-blue-stained-glass shallow-water windows, sea-lantern engines, ochre-froglight engine glow, tinted-glass cockpit, glow-lichen wing accents, prismarine-bricks greebles, soul-lantern soft-cyan running lights, prismarine-slab interior — bioluminescent shallow-lagoon prismarine-and-froglight theme with glow-lichen accents.
+
+blocks:
+  HULL:          minecraft:prismarine
+  HULL_DARK:     minecraft:dark_prismarine
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:sea_lantern
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:glow_lichen
+  GREEBLE:       minecraft:prismarine_bricks
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:prismarine_slab
+
+preview_colors:
+  HULL:          "#6a9a8a"
+  HULL_DARK:     "#2a4438"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#d8e8c4"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#3a3a3a"
+  WING:          "#7ab078"
+  GREEBLE:       "#7aa890"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#5a8478"
