@@ -72,3 +72,29 @@ for name, spec in SHIP_PRESETS.items():
    `h >= 4`, `l >= 8`.
 4. Add a row to the table above (alphabetical by name) and run
    `.venv/Scripts/python -m pytest tests/test_presets.py -q`.
+
+## Preset parameter breakdown
+
+The table below is sourced from the `SHIP_PRESETS` dict in
+`src/spaceship_generator/presets.py` — if you suspect it has drifted, regenerate
+it from that module directly (or via `--list-presets-json`, see [cli.md](cli.md)).
+Note that `palette` is **not** a preset field — it's a separate `generate(...)`
+kwarg you pass alongside the unpacked preset (see the [Usage from Python](#usage-from-python)
+example above). Style cells are `hull / engine / wing / cockpit`. Enum values
+use the lowercase `StrEnum` `.value` form (matches `--list-presets-json` output).
+
+| preset | hull / engine / wing / cockpit | size (w,h,l) | weapon_count | greeble_density | weapon_types |
+|---|---|---|---|---|---|
+| `battlecruiser` | arrow / quad_cluster / delta / wrap_bridge | (22, 12, 40) | 6 | 0.20 | turret_large, missile_pod, point_defense |
+| `capital_carrier` | modular_block / ring / straight / offset_turret | (30, 16, 50) | 8 | 0.15 | turret_large, missile_pod, point_defense |
+| `corvette` | dagger / twin_nacelle / swept / bubble | (20, 12, 50) | 2 | 0.10 | turret_large, point_defense |
+| `dropship` | blocky_freighter / quad_cluster / tapered / integrated | (25, 15, 35) | 0 | 0.05 | (none) |
+| `freighter_heavy` | whale / single_core / straight / wrap_bridge | (40, 20, 80) | 0 | 0.03 | (none) |
+| `gunship` | arrow / ion_array / delta / offset_turret | (22, 13, 55) | 4 | 0.05 | missile_pod, turret_large |
+| `interceptor` | dagger / ion_array / split / pointed | (15, 10, 45) | 1 | 0.02 | laser_lance |
+| `science_vessel` | saucer / ring / gull / canopy_dome | (30, 15, 50) | 1 | 0.08 | plasma_core |
+| `scout` | sleek_racing / ion_array / swept / bubble | (8, 5, 14) | 1 | 0.05 | point_defense |
+
+Run `python -m spaceship_generator --list-presets-json` for the same data in
+machine-readable form (see [`docs/cli.md`](cli.md) for the flag's
+`--quiet` carve-out and JSON shape).
