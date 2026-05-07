@@ -184,6 +184,18 @@ flowchart LR
   and the web form's cockpit dropdown pick it up through
   `build_params_from_source`.
 
+## Per-component pipelines
+
+The ship-build pipeline is decomposed into per-component sub-pipelines documented below. Jump to a specific one:
+
+- [Shape pipeline](#shape-pipeline)
+- [Hull pipeline](#hull-pipeline)
+- [Wing pipeline](#wing-pipeline)
+- [Greeble pipeline](#greeble-pipeline)
+- [Weapon pipeline](#weapon-pipeline)
+- [Cockpit pipeline](#cockpit-pipeline)
+- [Engine pipeline](#engine-pipeline)
+
 ## Shape pipeline
 
 The shape pipeline turns a deterministic integer seed plus a handful of style
