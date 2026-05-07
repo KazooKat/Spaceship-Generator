@@ -2,6 +2,19 @@
 
 Definitions for recurring project terms. Cross-link to per-doc deep dives.
 
+## `--config-dump`
+
+CLI flag in `src/spaceship_generator/__main__.py` emitting the
+preset-resolved args that WOULD be passed into `generate()` as
+`{"effective_config":{...}}`, then exits 0 without producing a ship.
+See [cli.md — Effective config dump](cli.md#effective-config-dump).
+
+## `--version-json`
+
+CLI flag in `src/spaceship_generator/__main__.py` — machine-readable
+sibling of `--version` emitting `{"version": __version__}` from
+`spaceship_generator.__version__`. See [cli.md — Machine-readable list / output flags](cli.md#machine-readable-list--output-flags).
+
 ## `.litematic`
 
 The primary output artifact — a gzipped NBT schematic file used by the
@@ -10,6 +23,13 @@ world. Spaceship Generator writes one `.litematic` per ship via
 `export.py::export_litematic`. See
 [output-formats.md](output-formats.md#litematic-schematic) for the full
 file-shape reference.
+
+## `/api/version`
+
+Read-only Flask endpoint in `src/spaceship_generator/web/blueprints/ship.py`
+returning `{"version":"<X.Y.Z>"}` — narrower JSON sibling of
+`/api/health` / `/api/meta` for about-box dialogs and deploy probes.
+See [web_ui.md — Discovery & metadata](web_ui.md#discovery--metadata).
 
 ## `CockpitStyle`
 
@@ -68,6 +88,26 @@ optional preview hex color. Loaded into a `Palette` dataclass by
 `palette.py::load_palette`. See
 [configuration.md — Palette](configuration.md#palette) and the web
 endpoint [`GET /api/palettes`](web_ui.md#json-api-api).
+
+## `palette_diff.py`
+
+Authoring helper in `scripts/palette_diff.py` printing a role-by-role
+block diff between two palette YAMLs (also `--csv`); one-sided roles
+surface as `<missing>`. See [recipes.md — Recipe 11](recipes.md#recipe-11--diff-two-palettes).
+
+## `palette_merge.py`
+
+Authoring helper in `scripts/palette_merge.py` that merges two palette
+YAML files into a third via `--out` per `--strategy` (`prefer-a` /
+`prefer-b` / `prefer-defined`) for role-conflict resolution. See
+[recipes.md](recipes.md).
+
+## `palette_stats.py`
+
+Authoring helper in `scripts/palette_stats.py` printing cross-corpus
+palette stats — palette count, block-ID frequency across roles, most
+common block per role (also `--csv`, `--top N`). See
+[recipes.md — Recipe 12](recipes.md#recipe-12--audit-my-palette-corpus).
 
 ## preset
 
