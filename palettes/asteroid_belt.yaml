@@ -1,0 +1,26 @@
+name: asteroid_belt
+description: Asteroid belt miner. Cobbled-deepslate hull, basalt HULL_DARK accent, light-gray-stained-glass dust-frosted windows, smooth-stone neutral engines, redstone-lamp engine glow, tinted-glass cockpit, gray-concrete wings, polished-andesite greebles, soul-torch cold running lights, deepslate interior — dark airless space-rock deepslate-and-basalt theme with red running-light accents.
+
+blocks:
+  HULL:          minecraft:cobbled_deepslate
+  HULL_DARK:     minecraft:basalt
+  WINDOW:        minecraft:light_gray_stained_glass
+  ENGINE:        minecraft:smooth_stone
+  ENGINE_GLOW:   minecraft:redstone_lamp
+  COCKPIT_GLASS: minecraft:tinted_glass
+  WING:          minecraft:gray_concrete
+  GREEBLE:       minecraft:polished_andesite
+  LIGHT:         minecraft:soul_torch
+  INTERIOR:      minecraft:deepslate
+
+preview_colors:
+  HULL:          "#4a4a4f"
+  HULL_DARK:     "#262226"
+  WINDOW:        "#a8a8a8"
+  ENGINE:        "#b8b8b8"
+  ENGINE_GLOW:   "#cc8a4a"
+  COCKPIT_GLASS: "#2c262e"
+  WING:          "#3a3e44"
+  GREEBLE:       "#9a9a9a"
+  LIGHT:         "#6090c8"
+  INTERIOR:      "#525355"

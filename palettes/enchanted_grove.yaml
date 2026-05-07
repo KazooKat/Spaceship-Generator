@@ -1,0 +1,26 @@
+name: enchanted_grove
+description: Enchanted grove runner. Moss-block hull, dark-oak-log HULL_DARK accent, lime-stained-glass mystical-glow windows, amethyst-block crystal engines, verdant-froglight engine glow, light-blue-stained-glass cockpit, cherry-log wing accents, mushroom-stem greebles, soul-lantern eerie running lights, mossy-cobblestone interior — lush mystical forest moss-and-amethyst theme with fairy-light accents.
+
+blocks:
+  HULL:          minecraft:moss_block
+  HULL_DARK:     minecraft:dark_oak_log
+  WINDOW:        minecraft:lime_stained_glass
+  ENGINE:        minecraft:amethyst_block
+  ENGINE_GLOW:   minecraft:verdant_froglight
+  COCKPIT_GLASS: minecraft:light_blue_stained_glass
+  WING:          minecraft:cherry_log
+  GREEBLE:       minecraft:mushroom_stem
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:mossy_cobblestone
+
+preview_colors:
+  HULL:          "#5a7838"
+  HULL_DARK:     "#3a2614"
+  WINDOW:        "#80c71f"
+  ENGINE:        "#8b6dcb"
+  ENGINE_GLOW:   "#c4e76c"
+  COCKPIT_GLASS: "#a8d4f0"
+  WING:          "#7a3050"
+  GREEBLE:       "#cdc6b4"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#585850"
