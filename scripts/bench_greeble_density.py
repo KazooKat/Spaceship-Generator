@@ -29,6 +29,7 @@ wall-clock at production-sized footprints.
 from __future__ import annotations
 
 import argparse
+import csv
 import platform
 import sys
 import tempfile
@@ -147,6 +148,32 @@ def print_total(
     )
 
 
+def print_csv(
+    rows: list[tuple[float, float, float]],
+    all_samples_ms: np.ndarray,
+) -> None:
+    """Emit the per-density table + TOTAL row as CSV to stdout.
+
+    Header row is ``density,mean_ms,p95_ms`` followed by one row per
+    density (in the same order the human-readable table prints them) and
+    a final ``TOTAL`` row computed from the same per-iter aggregation as
+    :func:`print_total` (so the two output paths can never drift on the
+    summary numbers). Uses the stdlib :mod:`csv` module so quoting /
+    escaping is handled correctly without us reinventing it.
+    """
+    writer = csv.writer(sys.stdout, lineterminator="\n")
+    writer.writerow(["density", "mean_ms", "p95_ms"])
+    for density, mean_ms, p95_ms in rows:
+        writer.writerow([f"{density:.3f}", f"{mean_ms:.3f}", f"{p95_ms:.3f}"])
+    if all_samples_ms.size:
+        total_mean_ms = float(all_samples_ms.mean())
+        total_p95_ms = float(np.percentile(all_samples_ms, 95))
+    else:
+        total_mean_ms = 0.0
+        total_p95_ms = 0.0
+    writer.writerow(["TOTAL", f"{total_mean_ms:.3f}", f"{total_p95_ms:.3f}"])
+
+
 def _parse_densities(raw: str) -> list[float]:
     """Parse a comma-separated list of floats in ``[0.0, 1.0]``.
 
@@ -195,6 +222,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--seed", type=int, default=0,
         help="base seed; seed_i = seed + i (default: 0)",
     )
+    p.add_argument(
+        "--csv", action="store_true", default=False,
+        help=(
+            "Emit CSV (density,mean_ms,p95_ms) instead of fixed-width "
+            "table; useful for CI / spreadsheet ingest."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -209,11 +243,18 @@ def main(argv: list[str] | None = None) -> int:
         print("no densities supplied", file=sys.stderr)
         return 2
 
+    # In CSV mode the run banner goes to stderr so the stdout stream stays
+    # a clean CSV document an operator can pipe straight into a spreadsheet
+    # / CI parser. In the default fixed-width-table mode it stays on stdout
+    # where it's always been (preserves backwards-compatible output for
+    # existing callers).
+    progress_stream = sys.stderr if args.csv else sys.stdout
     print(
         f"bench_greeble_density: densities={len(densities)}  "
         f"iterations={args.iterations}  seed={args.seed}  "
         f"py={sys.version.split()[0]}  "
-        f"proc={(platform.processor() or platform.machine())[:60]}"
+        f"proc={(platform.processor() or platform.machine())[:60]}",
+        file=progress_stream,
     )
 
     rows: list[tuple[float, float, float]] = []
@@ -237,17 +278,21 @@ def main(argv: list[str] | None = None) -> int:
             rows.append((density, mean_ms, p95_ms))
             all_samples.extend(per_iter_ms.tolist())
 
-    print_table(rows, args.iterations)
-    # Recompute the column width the table just used so the TOTAL row
-    # lines up cleanly under it.
-    name_width = max((len(f"{d:.3f}") for d, _m, _p in rows), default=8)
-    name_width = max(name_width, len("density"))
-    print_total(
-        np.asarray(all_samples, dtype=np.float64),
-        density_count=len(densities),
-        iterations=args.iterations,
-        name_width=name_width,
-    )
+    all_samples_arr = np.asarray(all_samples, dtype=np.float64)
+    if args.csv:
+        print_csv(rows, all_samples_arr)
+    else:
+        print_table(rows, args.iterations)
+        # Recompute the column width the table just used so the TOTAL row
+        # lines up cleanly under it.
+        name_width = max((len(f"{d:.3f}") for d, _m, _p in rows), default=8)
+        name_width = max(name_width, len("density"))
+        print_total(
+            all_samples_arr,
+            density_count=len(densities),
+            iterations=args.iterations,
+            name_width=name_width,
+        )
     return 0
 
 
