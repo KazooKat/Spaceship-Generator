@@ -1,0 +1,26 @@
+name: crystal_caves
+description: Crystal caves runner. Calcite hull, deepslate HULL_DARK accent, light-blue-stained-glass windows, amethyst-block engines, sea-lantern engine glow, purple-stained-glass cockpit, smooth-basalt wings, polished-deepslate greebles, soul-lantern running lights, tuff interior — cool subterranean amethyst-and-deepslate cavern theme.
+
+blocks:
+  HULL:          minecraft:calcite
+  HULL_DARK:     minecraft:deepslate
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:amethyst_block
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:purple_stained_glass
+  WING:          minecraft:smooth_basalt
+  GREEBLE:       minecraft:polished_deepslate
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:tuff
+
+preview_colors:
+  HULL:          "#e0e0dd"
+  HULL_DARK:     "#525355"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#8b6dcb"
+  ENGINE_GLOW:   "#acc8be"
+  COCKPIT_GLASS: "#7f3fb2"
+  WING:          "#5e5d63"
+  GREEBLE:       "#444446"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#6b6660"

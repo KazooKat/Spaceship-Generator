@@ -1,0 +1,26 @@
+name: volcanic_island
+description: Volcanic island runner. Smooth-basalt hull, polished-blackstone HULL_DARK accent, orange-stained-glass windows, magma-block engines, shroomlight engine glow, yellow-stained-glass cockpit, terracotta wings, orange-terracotta greebles, jack-o-lantern running lights, basalt interior — warm volcanic-island basalt-and-magma theme with sparse green vegetation accents.
+
+blocks:
+  HULL:          minecraft:smooth_basalt
+  HULL_DARK:     minecraft:polished_blackstone
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:terracotta
+  GREEBLE:       minecraft:orange_terracotta
+  LIGHT:         minecraft:jack_o_lantern
+  INTERIOR:      minecraft:basalt
+
+preview_colors:
+  HULL:          "#5e5d63"
+  HULL_DARK:     "#262226"
+  WINDOW:        "#d87f33"
+  ENGINE:        "#8a3018"
+  ENGINE_GLOW:   "#ffb048"
+  COCKPIT_GLASS: "#ffd84a"
+  WING:          "#985d3a"
+  GREEBLE:       "#a44b1f"
+  LIGHT:         "#f0a040"
+  INTERIOR:      "#3a3640"

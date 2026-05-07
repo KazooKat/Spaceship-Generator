@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(palettes): add volcanic_island, crystal_caves biome palettes (feat-palettes-biome-pack-2026-05-07)
 - feat(scripts): add --csv flag to bench_greeble_density.py for CI/spreadsheet ingest (feat-bench-greeble-density-csv)
 - feat(scripts): add --csv flag to bench_mem.py for CI/spreadsheet ingest (feat-bench-mem-csv)
 - feat(scripts): add --csv flag to bench_generator.py for CI/spreadsheet ingest (feat-bench-generator-csv)
