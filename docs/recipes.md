@@ -108,6 +108,54 @@ curl -X POST http://127.0.0.1:5000/api/generate \
     -d '{"seed":42,"palette":"sci_fi_industrial"}'
 ```
 
+### Recipe 11 — Diff two palettes
+
+Role-by-role diff between two palette YAMLs. Useful when porting one
+palette's accent role over to another, or auditing role drift between a
+biome variant and its base. See [palette_authoring.md](palette_authoring.md).
+
+```bash
+python scripts/palette_diff.py palettes/desert_oasis.yaml palettes/foggy_marsh.yaml
+python scripts/palette_diff.py --csv palettes/desert_oasis.yaml palettes/foggy_marsh.yaml
+```
+
+### Recipe 12 — Audit my palette corpus
+
+Cross-corpus stats over `palettes/*.yaml` — role coverage, block
+diversity, most-referenced blocks. Run after adding a palette to
+confirm role coverage and block diversity are healthy. See
+[palette_authoring.md](palette_authoring.md).
+
+```bash
+python scripts/palette_stats.py
+python scripts/palette_stats.py --csv
+python scripts/palette_stats.py --top 5
+```
+
+### Recipe 13 — Check the server version programmatically
+
+Two parallel paths for fetching the installed version: `GET /api/version`
+for a running web client, and `--version-json` for shell pipelines
+without a server. Both emit the same `{"version": "..."}` document. See
+[web_ui.md](web_ui.md), [cli.md](cli.md).
+
+```bash
+curl http://localhost:5000/api/version
+python -m spaceship_generator --version-json
+```
+
+### Recipe 14 — Run benchmarks for CI
+
+Every `scripts/bench_*.py` script has a `--csv` flag for spreadsheet /
+CI ingest; `bench_summary.py --csv` is the umbrella driver that emits
+one row per child bench. See [bench.md](bench.md), [bench-ci.md](bench-ci.md).
+
+```bash
+python scripts/bench_summary.py --csv > bench-summary.csv
+python scripts/bench_palette.py --csv > bench-palette.csv
+python scripts/bench_shape.py --csv > bench-shape.csv
+```
+
 ## See also
 
 - [quickstart.md](quickstart.md) — 5-minute getting-started walk
