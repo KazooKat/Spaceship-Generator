@@ -205,6 +205,52 @@ gate catches mandatory-role gaps and unknown-block ids too.
 python scripts/palette_lint.py --all --strict
 ```
 
+### Recipe 19 — Discover every enum / palette / preset in one call
+
+`--meta-json` emits a single JSON document combining every payload the
+`--list-*-json` family emits (palettes, presets, hull/engine/wing/cockpit/
+structure styles, greeble types, weapon types, roles, version) — one
+subprocess instead of ten. Mirror of the web `/api/meta` endpoint.
+
+```bash
+python -m spaceship_generator --meta-json | jq 'keys'
+```
+
+### Recipe 20 — Batch a fleet from one master seed
+
+`--fleet-count N` derives every per-ship seed from a single
+`random.Random(--seed)` stream, so the whole fleet is reproducible from
+one master seed. Outputs land at `ship_<seed>_<idx>.litematic`. See
+[Fleet pipeline](architecture.md#fleet-pipeline) for the underlying
+batch driver.
+
+```bash
+python -m spaceship_generator --fleet-count 20 --seed 42 --out fleet_out
+```
+
+### Recipe 21 — Extract ship metadata in shell scripts via `--output-json`
+
+`--output-json` prints one JSON summary per generated ship to stdout
+(filename, seed, palette, dims, blocks). Pipe into `jq` for tab-
+separated rows usable in `awk` / spreadsheets. Errors stay on stderr
+(do not `2>&1`) so the stream-split convention stays clean.
+
+```bash
+python -m spaceship_generator --output-json --seed 42 --palette sci_fi_industrial --out out/ \
+    | jq -r '"\(.seed)\t\(.palette)\t\(.blocks)"'
+```
+
+### Recipe 22 — Wire palette lint into a CI gate as JSON
+
+`palette_lint.py --all --format json` emits one machine-readable
+document over every `palettes/*.yaml` with per-palette error / warning
+arrays — ingest in CI to fail builds on regressions and post structured
+annotations. Cross-link `feat-scripts-palette-lint-json` once shipped.
+
+```bash
+python scripts/palette_lint.py --all --format json | jq '.[] | select(.errors | length > 0)'
+```
+
 ## See also
 
 - [quickstart.md](quickstart.md) — 5-minute getting-started walk
