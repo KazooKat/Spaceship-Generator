@@ -18,6 +18,41 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-palettes-biome-pack-2026-05-08: add meteor_shower, solar_corona biome palettes
+      scope: `palettes/meteor_shower.yaml`, `palettes/solar_corona.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [ ] feat-tests-property-engine-x-wing-style-grid: add (engine_style × wing_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 engine × 3 wing × 3 seed = 27 nodes); CHANGELOG bullet
+      notes: extends cross-axis pattern to engine × wing pair — last untested style cross combo
+
+- [ ] feat-tests-property-cockpit-x-engine-style-grid: add (cockpit_style × engine_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 cockpit × 3 engine × 3 seed = 27 nodes); CHANGELOG bullet
+      notes: complements existing cross-axis pack
+
+- [ ] feat-scripts-palette-search: add `scripts/palette_search.py` searching palettes for a given MC block id
+      scope: `scripts/palette_search.py` (new), `tests/test_palette_search.py` (new)
+      accept: `palette_search.py --block minecraft:stone` prints `palette_name | role` rows for every palette using that block, exits 0 if any hit / 1 if none; `--csv` flag emits same as CSV; smoke test asserts exit 0 on a known-present block; CHANGELOG bullet
+      notes: complements `palette_diff.py` / `palette_stats.py` / `palette_merge.py` / `palette_to_json.py` / `palette_lint.py`
+
+- [ ] feat-docs-architecture-structure: extend `docs/architecture.md` with a Structure pipeline section
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new section "Structure pipeline" describes `structure_styles.py` (`StructureStyle` + `apply_hull_style` + `default_cockpit_for` + style-specific overrides), the role of `structure_style` in the assembly pipeline; cross-link to `docs/cli.md --list-structure-styles` and `docs/web_ui.md /api/structure-styles`; ≤80 lines; ALSO add `[Structure pipeline](#structure-pipeline)` bullet to the per-component pipeline index near top; CHANGELOG bullet
+      notes: completes the per-component pipeline series — existing sections cover Hull, Wing, Greeble, Weapon, Cockpit, Engine but not Structure
+
+- [ ] feat-docs-faq-extension-2: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
+      scope: `docs/faq.md` (extend, not restructure)
+      accept: 4 new Q&As cover (palette tooling family — diff/stats/merge/to_json/search), (cross-axis property tests — what they catch), (architecture pipeline doc index — how to navigate), (--config-dump for repro); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing entries
+
+- [ ] feat-docs-palette-authoring-pitfalls: extend `docs/palette_authoring.md` with a "Common pitfalls" section
+      scope: `docs/palette_authoring.md` (extend, not restructure)
+      accept: new "Common pitfalls" section with 4-5 entries (e.g. missing namespace prefix, role typos, non-existent block ids, indent/yaml errors, role-coverage gaps); cross-link to `scripts/palette_lint.py --strict`; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing content
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
