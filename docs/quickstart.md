@@ -58,6 +58,18 @@ flask --app spaceship_generator.web.app run
 
 Open `http://127.0.0.1:5000`, fill in the form, and download your ship. The full HTML page list and `/api/*` JSON route reference lives in [web_ui.md](web_ui.md).
 
+## 6. Running a fleet
+
+Pass `--fleet-count N` to build a batch of ships in a single invocation. Each ship gets a deterministic per-ship seed derived from a single `random.Random(--seed)` stream, so the whole fleet is reproducible from one master seed.
+
+```bash
+python -m spaceship_generator --fleet-count 3 --seed 42 --out fleet_out
+```
+
+Output filenames follow the convention `ship_<seed>_<idx>.litematic`, where `<seed>` is the per-ship seed pulled from the master stream and `<idx>` is the zero-based fleet index. Re-running with the same `--seed` and `--out` overwrites the previous fleet.
+
+For the full fleet flag pack (`--fleet-size-tier`, `--fleet-style-coherence`, ...) see [cli.md](cli.md). For the underlying batch driver and per-ship seed/dims/style planning, see the [Fleet pipeline](architecture.md#fleet-pipeline) section in `docs/architecture.md`.
+
 ## Next steps
 
 - Browse the full CLI flag list in [cli.md](cli.md) — fleet mode, manifest export, preview rendering, weapon scatter, and more.
