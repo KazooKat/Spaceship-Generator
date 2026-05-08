@@ -368,6 +368,22 @@ def build_parser() -> argparse.ArgumentParser:
                         "stdout matching whatever --version prints. "
                         "Mutually exclusive with --version. "
                         "NOT silenced by --quiet.")
+    p.add_argument("--meta-json", action="store_true",
+                   help="Combined machine-readable metadata bundle: emits a "
+                        "single JSON document containing every "
+                        "--list-<x>-json payload (palettes, presets, "
+                        "hull_styles, engine_styles, wing_styles, "
+                        "cockpit_styles, structure_styles, greeble_types, "
+                        "weapon_types, roles) plus the package version. "
+                        "CLI mirror of the web /api/meta endpoint. Each "
+                        "value is sourced from the same function the "
+                        "individual --list-<x>-json flag uses, so adding "
+                        "a palette / preset is automatically reflected. "
+                        "Mutually exclusive with --output, --output-json, "
+                        "--output-json-schema, and --config-dump. NOT "
+                        "silenced by --quiet — same carve-out as "
+                        "--stats-json / --list-presets-json / "
+                        "--list-shape-styles-json.")
     p.add_argument("--config-dump", action="store_true",
                    help="Emit the effective generator config (the args that "
                         "WOULD be passed into generate()) as a single JSON "
@@ -1386,6 +1402,29 @@ def main(argv: list[str] | None = None) -> int:
                 "--config-dump and --output-json-schema are mutually exclusive"
             )
 
+    # ``--meta-json`` short-circuits before any ship is generated and emits
+    # a single combined metadata bundle, so it makes no sense to combine it
+    # with output-file flags or with ``--config-dump`` (which is also a
+    # short-circuit emit). Reject early via ``parser.error`` (exit 2 +
+    # stderr) — same shape as the ``--config-dump`` mutex checks above.
+    if getattr(args, "meta_json", False):
+        if args.output is not None:
+            parser.error(
+                "--meta-json and --output are mutually exclusive"
+            )
+        if getattr(args, "output_json", False):
+            parser.error(
+                "--meta-json and --output-json are mutually exclusive"
+            )
+        if getattr(args, "output_json_schema", False):
+            parser.error(
+                "--meta-json and --output-json-schema are mutually exclusive"
+            )
+        if getattr(args, "config_dump", False):
+            parser.error(
+                "--meta-json and --config-dump are mutually exclusive"
+            )
+
     if args.verbose and args.quiet:
         print("Error: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
         return 2
@@ -1837,6 +1876,68 @@ def main(argv: list[str] | None = None) -> int:
             ),
             file=sys.stdout,
         )
+        return 0
+
+    if getattr(args, "meta_json", False):
+        # Combined machine-readable metadata bundle: a single JSON document
+        # containing every per-enum / palette / preset / version payload
+        # the individual ``--list-<x>-json`` flags emit, sourced from the
+        # SAME functions / enums those flags use so the two paths cannot
+        # drift (adding a palette or preset is automatically reflected).
+        # CLI mirror of the web ``/api/meta`` endpoint. Deliberately NOT
+        # routed through ``_emit`` so ``--quiet --meta-json`` still prints
+        # — same carve-out as ``--stats-json`` / ``--list-presets-json`` /
+        # ``--list-shape-styles-json``.
+        import json
+
+        from .palette import Role
+
+        # Palettes — sourced from ``list_palettes()`` (same as
+        # ``--list-palettes-json``), alphabetical.
+        palettes_payload = sorted(list_palettes())
+
+        # Presets — sourced from ``_presets.list_presets()`` /
+        # ``_presets.SHIP_PRESETS`` (same as ``--list-presets-json``).
+        # Defensive fallback to an empty list if the optional module is
+        # unavailable (parallels the ``--list-presets-json`` handler).
+        presets_payload: list[dict[str, object]] = []
+        if _presets is not None:
+            for n in _presets.list_presets():
+                spec = _presets.SHIP_PRESETS[n]
+                entry: dict[str, object] = {"name": n}
+                for k, v in spec.items():
+                    if k.startswith("_"):
+                        continue
+                    entry[k] = v
+                presets_payload.append(entry)
+
+        # Weapon types — guarded since the optional ``weapon_styles``
+        # module may be missing in a partial rollout (parallels the
+        # ``--list-weapon-types-json`` handler). Empty list when missing.
+        if _weapon_styles is not None:
+            weapon_types_payload = [
+                wt.value for wt in _weapon_styles.WeaponType
+            ]
+        else:
+            weapon_types_payload = []
+
+        payload = {
+            "version": _pkg_version,
+            "presets": presets_payload,
+            "palettes": palettes_payload,
+            "hull_styles": [h.value for h in HullStyle],
+            "engine_styles": [e.value for e in EngineStyle],
+            "wing_styles": [w.value for w in WingStyle],
+            "cockpit_styles": [c.value for c in CockpitStyle],
+            "structure_styles": [s.value for s in StructureStyle],
+            "greeble_types": [g.value for g in GreebleType],
+            "weapon_types": weapon_types_payload,
+            "roles": [{"name": r.name, "value": int(r)} for r in Role],
+        }
+        # ``default=str`` matches ``--list-presets-json`` so any future
+        # non-trivially-JSON-serializable preset field collapses to its
+        # ``str()`` rather than raising.
+        print(json.dumps(payload, default=str), file=sys.stdout)
         return 0
 
     if args.list_styles:

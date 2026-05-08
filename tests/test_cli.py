@@ -2204,3 +2204,127 @@ def test_cli_config_dump_mutually_exclusive_with_output(capsys):
     err = capsys.readouterr().err
     assert "--config-dump" in err
     assert "mutually exclusive" in err
+
+
+# ---------------------------------------------------------------------------
+# --meta-json
+# ---------------------------------------------------------------------------
+
+
+def test_cli_meta_json_emits_combined_payload(capsys):
+    """``--meta-json`` prints a single JSON document combining every
+    ``--list-<x>-json`` payload plus the package version. Each value must
+    match the corresponding individual flag's payload byte-for-byte (both
+    sides are sourced from the same enum / function)."""
+    from spaceship_generator import __version__ as pkg_version
+    from spaceship_generator.engine_styles import EngineStyle
+    from spaceship_generator.greeble_styles import GreebleType
+    from spaceship_generator.palette import Role
+    from spaceship_generator.shape import CockpitStyle, StructureStyle
+    from spaceship_generator.structure_styles import HullStyle
+    from spaceship_generator.wing_styles import WingStyle
+
+    rc = main(["--meta-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+
+    # Every required top-level key is present.
+    expected_keys = {
+        "version",
+        "presets",
+        "palettes",
+        "hull_styles",
+        "engine_styles",
+        "wing_styles",
+        "cockpit_styles",
+        "structure_styles",
+        "greeble_types",
+        "weapon_types",
+        "roles",
+    }
+    assert expected_keys <= set(obj.keys()), (
+        f"missing keys {expected_keys - set(obj.keys())}"
+    )
+
+    # ``version`` matches the package version (and thus ``--version-json``).
+    assert obj["version"] == pkg_version
+
+    # Each enum payload matches the corresponding ``--list-<x>-json`` flag.
+    assert obj["hull_styles"] == [h.value for h in HullStyle]
+    assert obj["engine_styles"] == [e.value for e in EngineStyle]
+    assert obj["wing_styles"] == [w.value for w in WingStyle]
+    assert obj["cockpit_styles"] == [c.value for c in CockpitStyle]
+    assert obj["structure_styles"] == [s.value for s in StructureStyle]
+    assert obj["greeble_types"] == [g.value for g in GreebleType]
+    assert obj["roles"] == [
+        {"name": r.name, "value": int(r)} for r in Role
+    ]
+
+    # ``palettes`` matches the ``--list-palettes-json`` payload exactly.
+    rc2 = main(["--list-palettes-json"])
+    assert rc2 == 0
+    captured2 = capsys.readouterr()
+    palettes_obj = json.loads(captured2.out)
+    assert obj["palettes"] == palettes_obj["palettes"]
+
+    # ``presets`` matches the ``--list-presets-json`` payload exactly.
+    rc3 = main(["--list-presets-json"])
+    assert rc3 == 0
+    captured3 = capsys.readouterr()
+    presets_obj = json.loads(captured3.out)
+    assert obj["presets"] == presets_obj
+
+    # ``weapon_types`` matches the ``--list-weapon-types-json`` payload.
+    rc4 = main(["--list-weapon-types-json"])
+    assert rc4 == 0
+    captured4 = capsys.readouterr()
+    weapons_obj = json.loads(captured4.out)
+    assert obj["weapon_types"] == weapons_obj["weapon_types"]
+
+
+def test_cli_meta_json_quiet_still_emits(capsys):
+    """``--quiet --meta-json`` still produces the JSON document on stdout
+    (carve-out parallels ``--quiet --list-presets-json`` /
+    ``--quiet --list-shape-styles-json`` / ``--quiet --stats-json``)."""
+    from spaceship_generator import __version__ as pkg_version
+
+    rc = main(["--quiet", "--meta-json"])
+    assert rc == 0
+
+    captured = capsys.readouterr()
+    obj = json.loads(captured.out)
+    assert isinstance(obj, dict)
+    assert obj["version"] == pkg_version
+    assert isinstance(obj["palettes"], list)
+    assert isinstance(obj["presets"], list)
+    assert isinstance(obj["hull_styles"], list)
+
+
+def test_cli_meta_json_mutually_exclusive_with_output(capsys):
+    """Passing both ``--meta-json`` and ``--output`` exits non-zero via
+    ``parser.error`` with a clear stderr message — mirrors the
+    ``--config-dump`` vs ``--output`` mutex pattern."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--meta-json", "--output", "ship.litematic"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--meta-json" in err
+    assert "mutually exclusive" in err
+
+
+def test_cli_meta_json_mutually_exclusive_with_config_dump(capsys):
+    """Passing both ``--meta-json`` and ``--config-dump`` exits non-zero via
+    ``parser.error`` with a clear stderr message."""
+    import pytest
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--meta-json", "--config-dump"])
+    assert exc_info.value.code != 0
+    err = capsys.readouterr().err
+    assert "--meta-json" in err
+    assert "--config-dump" in err
+    assert "mutually exclusive" in err
