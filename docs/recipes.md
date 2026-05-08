@@ -251,6 +251,50 @@ annotations. Cross-link `feat-scripts-palette-lint-json` once shipped.
 python scripts/palette_lint.py --all --format json | jq '.[] | select(.errors | length > 0)'
 ```
 
+### Recipe 23 — Palette lint CI gate via `--json --all`
+
+`palette_lint.py --json --all` emits a JSON array (one object per palette
+with `ok` / `errors` / `warnings`) and exits 1 if any palette is dirty.
+Wrap it in a shell gate so CI fails fast on regressions.
+
+```bash
+python scripts/palette_lint.py --json --all > lint.json || \
+    { jq -r '.[] | select(.ok==false) | "\(.palette): \(.errors|join(", "))"' lint.json; exit 1; }
+```
+
+### Recipe 24 — Extract palette names and version from `--meta-json`
+
+`--meta-json` emits one combined JSON document — pipe to `jq` to pull
+just the fields tooling needs (e.g. palette names + version) instead of
+ten separate `--list-*-json` subprocesses.
+
+```bash
+python -m spaceship_generator --meta-json | jq '{version, palettes: .palettes[].name}'
+```
+
+### Recipe 25 — Tune Texture pipeline knobs
+
+`--window-period` / `--stripe-period` / `--engine-glow-depth` plumb into
+`TextureParams` in the [Texture pipeline](architecture.md#texture-pipeline)
+to dial window cadence, accent-stripe period, and engine glow recess
+depth without editing palette YAML.
+
+```bash
+spaceship-generator --seed 42 --palette sci_fi_industrial \
+    --window-period 4 --stripe-period 6 --engine-glow-depth 2 --out ./out
+```
+
+### Recipe 26 — Debug a cross-axis property test failure
+
+When a cross-axis test in [tests/test_properties.py](../tests/test_properties.py)
+fails, re-run just that pair with `-v` so the offending parametrize tuple
+`(axis_a, axis_b, seed)` prints in the failure header — much faster than
+the full ~700-test suite. See Recipe 16 for the naming convention.
+
+```bash
+pytest -k engine_style_x_wing -v
+```
+
 ## See also
 
 - [quickstart.md](quickstart.md) — 5-minute getting-started walk
