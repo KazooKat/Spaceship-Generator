@@ -5,6 +5,8 @@ unless ``--strict``); exit 1 = errors (or warns under ``--strict``).
     .venv/Scripts/python scripts/palette_lint.py
     .venv/Scripts/python scripts/palette_lint.py --file palettes/foo.yaml
     .venv/Scripts/python scripts/palette_lint.py --strict --format json
+    .venv/Scripts/python scripts/palette_lint.py --file palettes/foo.yaml --json
+    .venv/Scripts/python scripts/palette_lint.py --all --json
 """
 
 from __future__ import annotations
@@ -212,6 +214,20 @@ def _format_json(results: list[LintResult]) -> str:
     return json.dumps(payload, indent=2)
 
 
+def _result_to_machine_dict(result: LintResult, *, strict: bool) -> dict:
+    """Build the ``--json`` schema entry: palette + ok + errors + warnings.
+
+    Under ``strict``, warnings count toward the ``ok`` flag (warnings-as-errors).
+    """
+    is_failure = bool(result.errors) or (strict and bool(result.warnings))
+    return {
+        "palette": result.name,
+        "ok": not is_failure,
+        "errors": list(result.errors),
+        "warnings": list(result.warnings),
+    }
+
+
 def _collect_targets(file_arg: str | None) -> list[Path]:
     if file_arg:
         return [Path(file_arg)]
@@ -263,10 +279,37 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--strict", action="store_true", help="Treat warnings as errors.")
     parser.add_argument("--format", choices=("text", "json"), default="text")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help=(
+            "Emit machine-readable JSON: {palette, ok, errors, warnings} per palette "
+            "(array under --all). Exit code matches default mode (1 on error / strict-warn)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.all and args.file:
         parser.error("--all and --file are mutually exclusive")
+
+    if args.json:
+        targets = (
+            sorted((REPO_ROOT / "palettes").glob("*.yaml"))
+            if args.all
+            else _collect_targets(args.file)
+        )
+        if not targets:
+            print("no palette files found", file=sys.stderr)
+            return 1
+        results = [lint_palette(p) for p in targets]
+        payload = [_result_to_machine_dict(r, strict=args.strict) for r in results]
+        if args.all:
+            print(json.dumps(payload, indent=2))
+        else:
+            # Single-target invocation: emit one object, not a wrapping array.
+            print(json.dumps(payload[0], indent=2))
+        return 0 if all(entry["ok"] for entry in payload) else 1
 
     if args.all:
         return _run_all(strict=args.strict)

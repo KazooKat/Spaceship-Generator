@@ -334,6 +334,77 @@ def test_palette_lint_all_and_path_mutually_exclusive(tmp_path: Path):
 
 
 # ---------------------------------------------------------------------------
+# CLI --json flag (structured, machine-readable output)
+# ---------------------------------------------------------------------------
+
+
+def test_palette_lint_json_clean_palette(tmp_path: Path):
+    """``--json`` on a clean single palette emits a valid JSON object with ok=true."""
+    pal = _write_full(tmp_path / "clean_pal.yaml", name="clean_pal")
+    cp = _run_cli("--file", str(pal), "--json")
+    assert cp.returncode == 0, cp.stdout + cp.stderr
+    payload = json.loads(cp.stdout)
+    assert isinstance(payload, dict)
+    assert set(payload) == {"palette", "ok", "errors", "warnings"}
+    assert payload["palette"] == "clean_pal"
+    assert payload["ok"] is True
+    assert payload["errors"] == []
+
+
+def test_palette_lint_json_dirty_palette(tmp_path: Path):
+    """``--json`` on a broken palette exits 1 with ok=false and non-empty errors."""
+    bad = tmp_path / "broken.yaml"
+    bad.write_text(
+        "name: broken\nblocks:\n  HULL: minecraft:stone\n",
+        encoding="utf-8",
+    )
+    cp = _run_cli("--file", str(bad), "--json")
+    assert cp.returncode == 1, cp.stdout + cp.stderr
+    payload = json.loads(cp.stdout)
+    assert isinstance(payload, dict)
+    assert payload["palette"] == "broken"
+    assert payload["ok"] is False
+    assert payload["errors"], "expected at least one error in broken palette"
+
+
+def test_palette_lint_json_all():
+    """``--all --json`` emits a JSON array, one entry per shipped palette."""
+    cp = _run_cli("--all", "--json")
+    assert cp.returncode == 0, cp.stdout + cp.stderr
+    payload = json.loads(cp.stdout)
+    assert isinstance(payload, list)
+    paths = sorted((REPO_ROOT / "palettes").glob("*.yaml"))
+    assert len(payload) == len(paths)
+    for entry in payload:
+        assert set(entry) == {"palette", "ok", "errors", "warnings"}
+        # Shipped palettes have zero errors (warnings allowed).
+        assert entry["errors"] == [], (entry["palette"], entry["errors"])
+        assert entry["ok"] is True
+
+
+def test_palette_lint_json_strict_flips_warnings(tmp_path: Path):
+    """``--strict --json`` makes warnings count toward ok=false / exit 1."""
+    pal = _write_full(
+        tmp_path / "warns.yaml",
+        name="warns",
+        color_overrides={"WINDOW": "#101010"},  # too-dark window: warning, not error
+    )
+    # Without --strict: warnings don't flip ok.
+    soft = _run_cli("--file", str(pal), "--json")
+    assert soft.returncode == 0
+    soft_payload = json.loads(soft.stdout)
+    assert soft_payload["ok"] is True
+    assert soft_payload["warnings"], "expected at least one warning"
+
+    # With --strict: warnings flip ok to false and exit code to 1.
+    strict = _run_cli("--file", str(pal), "--json", "--strict")
+    assert strict.returncode == 1
+    strict_payload = json.loads(strict.stdout)
+    assert strict_payload["ok"] is False
+    assert strict_payload["warnings"]
+
+
+# ---------------------------------------------------------------------------
 # Internal helper coverage
 # ---------------------------------------------------------------------------
 
