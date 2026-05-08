@@ -1,0 +1,26 @@
+name: arcane_library
+description: Arcane-library mage-tower cruiser. Purpur-block hull, polished-blackstone HULL_DARK rune-stone accent, magenta-stained-glass arcane-glow windows, polished-blackstone-bricks engines, sea-lantern cold arcane engine glow, purple-stained-glass cockpit, purpur-pillar wing accents, chiseled-polished-blackstone rune greebles, soul-lantern eerie cold-blue running lights, blackstone interior — purple-dust mage-tower purpur-and-blackstone theme with cold arcane-glow accents.
+
+blocks:
+  HULL:          minecraft:purpur_block
+  HULL_DARK:     minecraft:polished_blackstone
+  WINDOW:        minecraft:magenta_stained_glass
+  ENGINE:        minecraft:polished_blackstone_bricks
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:purple_stained_glass
+  WING:          minecraft:purpur_pillar
+  GREEBLE:       minecraft:chiseled_polished_blackstone
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:blackstone
+
+preview_colors:
+  HULL:          "#a97eb0"
+  HULL_DARK:     "#282030"
+  WINDOW:        "#c261c2"
+  ENGINE:        "#2c242c"
+  ENGINE_GLOW:   "#d8e8c4"
+  COCKPIT_GLASS: "#7f3fb2"
+  WING:          "#9f759c"
+  GREEBLE:       "#2a2228"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#1f1a22"

@@ -1,0 +1,26 @@
+name: mistwood_grove
+description: Mistwood-grove foggy-birch scout. Birch-log hull, stripped-dark-oak-log HULL_DARK shadowed-bark accent, white-stained-glass fogged windows, birch-planks engines, lantern warm grove-path engine glow, light-gray-stained-glass cockpit, pale-moss-block wing accents, stripped-birch-wood pale greebles, soul-lantern cool misty running lights, pale-moss-carpet interior — foggy birch-and-pale-moss grove theme with warm grove-light and cool misty-light accents.
+
+blocks:
+  HULL:          minecraft:birch_log
+  HULL_DARK:     minecraft:stripped_dark_oak_log
+  WINDOW:        minecraft:white_stained_glass
+  ENGINE:        minecraft:birch_planks
+  ENGINE_GLOW:   minecraft:lantern
+  COCKPIT_GLASS: minecraft:light_gray_stained_glass
+  WING:          minecraft:pale_moss_block
+  GREEBLE:       minecraft:stripped_birch_wood
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:pale_moss_carpet
+
+preview_colors:
+  HULL:          "#d7c98c"
+  HULL_DARK:     "#3a2917"
+  WINDOW:        "#f0eee0"
+  ENGINE:        "#c8b270"
+  ENGINE_GLOW:   "#f4d890"
+  COCKPIT_GLASS: "#a8a8a8"
+  WING:          "#6a7868"
+  GREEBLE:       "#d7c98c"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#a8b0a0"
