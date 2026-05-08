@@ -103,6 +103,46 @@ So `--output-json-schema` and the OpenAPI `GenerateResult` component agree
 on the four shared fields and disagree on the transport-specific fifth.
 When adding a new field, update both.
 
+## Consumer examples
+
+Short copy-paste snippets for downstream tools that read the output formats
+above. See [`.litematic schematic`](#litematic-schematic) for the binary
+artifact and [CLI JSON output (`--output-json`)](#cli-json-output---output-json)
+for the NDJSON envelope.
+
+### Python — read a `.litematic` with litemapy
+
+`litemapy>=0.11.0b0` is already a runtime dependency (see `pyproject.toml`),
+so no extra install is needed. Load the schematic, grab its single region,
+and ask for the non-air block count:
+
+```python
+from litemapy import Schematic
+
+schem = Schematic.load("out/ship_42.litematic")
+region = next(iter(schem.regions.values()))
+print("block_count:", region.count_blocks())  # non-air cells
+```
+
+This matches the `blocks` field emitted by `--output-json` for the same
+ship. See `src/spaceship_generator/export.py` for how the file is written.
+
+### Shell — parse `--output-json` NDJSON with `jq`
+
+`--output-json` emits one JSON object per ship to stdout (NDJSON), so `jq`
+can pull individual fields out of a bulk run. Errors stay on stderr, so no
+`2>&1` is needed:
+
+```sh
+python -m spaceship_generator --output-json --seed 42 \
+  --palette sci_fi_industrial --out out/ \
+  | jq -r '"\(.seed)\t\(.palette)\t\(.blocks)"'
+# → 42	sci_fi_industrial	1742
+```
+
+For the formal field contract, pipe `--output-json-schema` (see
+[docs/cli.md](cli.md)) into a Draft-7 validator.
+
 ## Cross-links
 
 - [docs/cli.md](cli.md) — per-flag CLI reference (incl. `--output-json`,
