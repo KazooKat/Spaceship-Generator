@@ -975,6 +975,86 @@ browser) defaults to `Ship <seed>` so each entry shows up distinctly.
   clock micro-benchmark of the multi-ship fleet path (planning + N
   per-ship `generate()` calls) via the in-process Python API.
 
+## Texture pipeline
+
+The texture pipeline is a **pipeline-level refinement stage** — not a
+per-component sub-stage of the shape build, but the seam between the
+coarse shape grid and palette-driven block assignment. `texture.py`
+takes the `(W, H, L)` int8 grid of coarse roles emitted by
+[Shape pipeline](#shape-pipeline) (`HULL`, `COCKPIT_GLASS`, `ENGINE`,
+`WING`, `GREEBLE`) and rewrites it into a fully-roled grid that adds
+fine detail (`INTERIOR`, `WINDOW`, `HULL_DARK`, `ENGINE_GLOW`, `LIGHT`)
+ready for `export.py` to serialize and `palette.py` to map onto
+`BlockState`s. Because the index is pipeline-level (like Fleet), it is
+intentionally **not** added to the per-component pipeline index near
+the top of this doc.
+
+### Build order
+
+```mermaid
+flowchart LR
+  shape([generate_shape<br/>coarse grid])
+  scatter[generator.py<br/>scatter_greebles + scatter_weapons]
+  call[generator.generate<br/>assign_roles call]
+  refine[texture.py<br/>assign_roles<br/>10 deterministic passes]
+  export[export.py<br/>export_litematic]
+  palette[palette.py<br/>Role → BlockState]
+
+  shape --> scatter --> call --> refine --> export --> palette
+```
+
+`assign_roles` runs **after** the multi-cell `scatter_greebles` /
+`scatter_weapons` passes (so weapons-on-engine cells still get
+`ENGINE_GLOW`) and **before** `export_litematic` and the palette
+look-up. Every refinement pass is deterministic in cell coordinates
+(no RNG) — the bilateral symmetry the shape pipeline guarantees is
+preserved by construction.
+
+### `texture.py` entry points
+
+`assign_roles(shape_grid: np.ndarray, params: TextureParams | None =
+None) -> np.ndarray` is the sole public entry; it returns a copy of
+`shape_grid` with refined roles. Internally it composes 10 private
+`_paint_*` passes, in order: `_fill_interior` (non-surface `HULL` →
+`INTERIOR`), `_paint_accent_stripe` (mid-height `HULL_DARK` band),
+`_paint_panel_bands` (extra bands at `cy ± H//4`), `_paint_windows`
+(side-facing upper-band hull → `WINDOW`), `_paint_hull_noise`
+(coordinate-hashed `HULL_DARK` speckle), `_paint_rivets` (XZ-period
+`HULL_DARK` dots on upper hull), `_paint_engine_glow` (rear-most
+`ENGINE` layers → `ENGINE_GLOW`), `_paint_engine_glow_ring`
+(`HULL_DARK` ring around glow), `_paint_wing_lights` (wing-tip
+leading-edge `LIGHT`), `_paint_belly_lights` (downward-facing hull
+`LIGHT`), and `_paint_nose_tip_light` (forward-most centerline
+`LIGHT`). Helpers `_side_facing_mask`, `_z_phase_mask`, `_y_band_mask`,
+`_forbidden_mask`, and `_coord_hash_mod1000` are shared across passes.
+The `_PROTECTED_ROLES` and `_HULL_NOISE_FORBIDDEN` tuples gate which
+later passes can never overwrite.
+
+### `TextureParams` and how it's plumbed through `generate()`
+
+`TextureParams` is a `dataclass` in `texture.py` with nine fields:
+`window_period_cells`, `accent_stripe_period`, `engine_glow_depth`,
+`belly_light_period`, `nose_tip_light`, `hull_noise_ratio`,
+`panel_line_bands`, `rivet_period`, `engine_glow_ring`. It is plumbed
+as a keyword-only argument on
+`generator.generate(..., texture_params: TextureParams | None = None,
+...)`; `None` defaults to `TextureParams()`. The CLI builds it in
+`cli.py` from `--window-period`, `--stripe-period`,
+`--engine-glow-depth`, `--hull-noise-ratio`, `--panel-bands`,
+`--rivet-period`, `--engine-glow-ring` and forwards it via
+`base_kwargs["texture_params"]`. The web layer constructs it in
+`ship_support.py`'s 5-tuple builder
+`(seed, palette_name, shape_params, texture_params, extra_gen_kwargs)`
+and forwards it through the `ship` blueprint.
+
+### Cross-references
+
+- [Shape pipeline](#shape-pipeline) — produces the coarse-role grid
+  this stage refines.
+- CLI ([docs/cli.md](cli.md)): `--window-period`, `--stripe-period`,
+  `--engine-glow-depth`, `--hull-noise-ratio`, `--panel-bands`,
+  `--rivet-period`, `--engine-glow-ring`.
+
 ## Related documentation
 
 - [faq.md](faq.md) — common questions and troubleshooting.
