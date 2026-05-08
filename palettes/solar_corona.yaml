@@ -1,0 +1,26 @@
+name: solar_corona
+description: Solar-corona flare cruiser. Yellow-concrete hull, orange-terracotta HULL_DARK sunspot accent, yellow-stained-glass corona-glow windows, magma-block engines, glowstone engine glow, orange-stained-glass cockpit, gold-block wing accents, polished-blackstone sunspot greebles, lantern warm running lights, sandstone interior — bright sun-flare orange-yellow-glow corona theme with gold-and-glowstone accents.
+
+blocks:
+  HULL:          minecraft:yellow_concrete
+  HULL_DARK:     minecraft:orange_terracotta
+  WINDOW:        minecraft:yellow_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:glowstone
+  COCKPIT_GLASS: minecraft:orange_stained_glass
+  WING:          minecraft:gold_block
+  GREEBLE:       minecraft:polished_blackstone
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:sandstone
+
+preview_colors:
+  HULL:          "#e9af16"
+  HULL_DARK:     "#a25325"
+  WINDOW:        "#f8e440"
+  ENGINE:        "#8a3018"
+  ENGINE_GLOW:   "#f8e888"
+  COCKPIT_GLASS: "#f0862c"
+  WING:          "#e8c020"
+  GREEBLE:       "#2a2630"
+  LIGHT:         "#f0a040"
+  INTERIOR:      "#d8c878"
