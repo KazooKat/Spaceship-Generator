@@ -18,36 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-05-08b: add scarlet_oasis, frostbite_tundra biome palettes
-      scope: `palettes/scarlet_oasis.yaml`, `palettes/frostbite_tundra.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
-- [ ] feat-docs-architecture-fleet: extend `docs/architecture.md` with a Fleet pipeline section
-      scope: `docs/architecture.md` (extend, not restructure)
-      accept: new H2 "## Fleet pipeline" section describing `fleet.py` (batch ship-build driver, `build_fleet`/equivalent), how `--fleet-count` plumbs from CLI into per-ship `generate()` calls, deterministic per-ship seed offsetting, output dir conventions; cross-link to `docs/cli.md` (`--fleet-count`); ≤80 added lines; CHANGELOG bullet
-      notes: complements per-component pipeline series — fleet is a pipeline-level driver not per-component
-
-- [ ] feat-docs-recipes-extension-2: extend `docs/recipes.md` with 4 new task-oriented recipes
-      scope: `docs/recipes.md` (extend, not restructure)
-      accept: 4 new recipes cover (palette_search by block id), (cockpit×engine cross-axis test running), (Structure pipeline doc navigation), (validating an authored palette via --strict + --all); ≤50 added lines; CHANGELOG bullet
-      notes: pure-docs unit
-
-- [ ] feat-docs-troubleshooting-extension-2: extend `docs/troubleshooting.md` with 4-6 new entries
-      scope: `docs/troubleshooting.md` (extend, not restructure)
-      accept: 4-6 new rows cover palette_search no-hits / hits-many, FAQ / glossary navigation gaps, palette_authoring.md common pitfalls cross-link, structure pipeline missing override, fleet output dir collision; ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit
-
-- [ ] feat-docs-glossary-extension-2: extend `docs/glossary.md` with 4-5 new entries
-      scope: `docs/glossary.md` (extend, not restructure)
-      accept: new entries for `palette_search`, Structure pipeline (anchor link), Common pitfalls (palette_authoring), cross-axis property test, alphabetized correctly; ≤30 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do not duplicate existing entries
-
-- [ ] feat-tests-property-cockpit-x-engine-style-grid: add (cockpit_style × engine_style × seed) cross-axis property test
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over (3 cockpit × 3 engine × 3 seed = 27 nodes); CHANGELOG bullet
-      notes: complements existing cross-axis pack
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -78,6 +48,36 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-glossary-extension-2: extend `docs/glossary.md` with 4-5 new entries
+      scope: `docs/glossary.md` (extend, not restructure)
+      accept: new entries for `palette_search`, Structure pipeline (anchor link), Common pitfalls (palette_authoring), cross-axis property test, alphabetized correctly; ≤30 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing entries
+
+- [x] feat-docs-troubleshooting-extension-2: extend `docs/troubleshooting.md` with 4-6 new entries
+      scope: `docs/troubleshooting.md` (extend, not restructure)
+      accept: 4-6 new rows cover palette_search no-hits / hits-many, FAQ / glossary navigation gaps, palette_authoring.md common pitfalls cross-link, structure pipeline missing override, fleet output dir collision; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [x] feat-tests-property-cockpit-x-engine-style-grid: add (cockpit_style × engine_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 cockpit × 3 engine × 3 seed = 27 nodes); CHANGELOG bullet
+      notes: complements existing cross-axis pack
+
+- [x] feat-palettes-biome-pack-2026-05-08b: add scarlet_oasis, frostbite_tundra biome palettes
+      scope: `palettes/scarlet_oasis.yaml`, `palettes/frostbite_tundra.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [x] feat-docs-recipes-extension-2: extend `docs/recipes.md` with 4 new task-oriented recipes
+      scope: `docs/recipes.md` (extend, not restructure)
+      accept: 4 new recipes cover (palette_search by block id), (cockpit×engine cross-axis test running), (Structure pipeline doc navigation), (validating an authored palette via --strict + --all); ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [x] feat-docs-architecture-fleet: extend `docs/architecture.md` with a Fleet pipeline section
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new H2 "## Fleet pipeline" section describing `fleet.py` (batch ship-build driver, `build_fleet`/equivalent), how `--fleet-count` plumbs from CLI into per-ship `generate()` calls, deterministic per-ship seed offsetting, output dir conventions; cross-link to `docs/cli.md` (`--fleet-count`); ≤80 added lines; CHANGELOG bullet
+      notes: complements per-component pipeline series — fleet is a pipeline-level driver not per-component
 
 - [x] feat-docs-palette-authoring-pitfalls: extend `docs/palette_authoring.md` with a "Common pitfalls" section
       scope: `docs/palette_authoring.md` (extend, not restructure)
