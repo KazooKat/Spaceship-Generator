@@ -34,6 +34,35 @@ densities, ships). `bench_mem.py` substitutes `mean_mb` / `p95_mb` /
 `max_mb` for the same shape, and `bench_generator.py` prints a
 cProfile-attributed `phase | total_s | mean_s | pct` table instead.
 
+## Reading the output
+
+A typical `bench_summary.py` run prints a fixed-width table that looks
+like this (numbers are representative, not real):
+
+```
+bench               | metric         | iterations
+--------------------+----------------+-----------
+bench_shape         | 12.345 ms      | 50
+bench_full_pipeline | 18.902 ms      | 50
+bench_palette       | 14.770 ms      | 12
+bench_mem           |  6.412 mb      | 5
+bench_fleet         | 71.043 ms      | 3
+```
+
+Across the wall-clock benches (`bench_shape`, `bench_full_pipeline`,
+`bench_palette`, `bench_greeble_density`, `bench_fleet`), each per-row
+`mean_ms` is the arithmetic mean of that row's per-iteration timings,
+`p95_ms` is the 95th-percentile of those same per-iter samples, and
+the final `TOTAL` row aggregates **across every per-row sample pool**
+(stages, palettes, densities, ships) — not a sum of the per-row means.
+`bench_mem.py` substitutes MB units (`mean_mb` / `p95_mb` / `max_mb`)
+for the same shape; `bench_generator.py` emits a cProfile-attributed
+`phase | total_s | mean_s | pct` table where `pct` is the phase share
+of total wall and `WALL TOTAL.mean_s` is wall-per-ship.
+
+For CI ingest patterns (artifact upload, regression detection, GitLab
+mirror), see [`bench-ci.md`](bench-ci.md).
+
 ## Aggregate snapshot
 
 For a one-shot perf snapshot before/after a refactor, run
