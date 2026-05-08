@@ -898,6 +898,83 @@ per-ship `structure_style` the caller hands back to `generator.generate`.
 - CLI ([docs/cli.md](cli.md)): `--structure-style`, `--list-structure-styles`, `--list-structure-styles-json`.
 - Web API ([docs/web_ui.md](web_ui.md)): `GET /api/structure-styles`, `GET /api/shape-styles`.
 
+## Fleet pipeline
+
+The fleet pipeline is a **pipeline-level driver** — not a per-component
+sub-stage of the ship build, but a batch wrapper that plans N visually-
+related ships, then feeds each one back through the regular
+`generator.generate` pipeline. `fleet.py` itself never builds a voxel grid;
+it produces only `list[GeneratedShip]` parameter records, leaving the
+actual `.litematic` writing to the per-ship pipeline already documented
+above (Shape → Hull → Cockpit → Engine → Wing → Greeble → Weapon →
+Structure → texture → export).
+
+### Build order
+
+```mermaid
+flowchart LR
+  cli[cli.py<br/>--fleet-count > 1]
+  fp[FleetParams<br/>count + palette + tier<br/>+ coherence + seed]
+  plan[fleet.py<br/>generate_fleet<br/>list of GeneratedShip]
+  loop[cli.py<br/>_run_fleet_ship<br/>per-ship loop]
+  gen[generator.generate<br/>per-ship build]
+  out[ship_seed_i.litematic]
+
+  cli --> fp --> plan --> loop --> gen --> out
+```
+
+When `--fleet-count > 1`, `cli.py`'s main dispatcher short-circuits the
+normal seeds loop: it builds one `FleetParams` from the CLI flags
+(`fleet_count`, `palette`, `fleet_size_tier`, `fleet_style_coherence`,
+fleet seed), calls `_fleet.generate_fleet(fleet_params)` to plan all N
+ships in one shot, then iterates `_run_fleet_ship(planned, idx=i,
+args=args)` over the returned `GeneratedShip` list. Each iteration
+forwards the planned per-ship dims, palette, and hull/engine/wing styles
+into a shallow-copied `argparse.Namespace` and invokes the same
+`_run_one(seed, args=ship_args, filename=...)` path solo runs use.
+
+### `fleet.py` entry points
+
+`generate_fleet(params: FleetParams) -> list[GeneratedShip]` is the sole
+public driver. `FleetParams` carries `count`, `palette`, `size_tier`
+(one of `small` / `mid` / `large` / `capital` / `mixed`),
+`style_coherence` (∈ `[0.0, 1.0]`), `cockpit_coherence`,
+`weapon_count_per_ship`, and `seed`. `GeneratedShip` is a frozen
+dataclass with `seed`, `dims=(W,H,L)`, `hull_style`, `engine_style`,
+`wing_style`, `greeble_density`, `palette`, `cockpit_style`,
+`weapon_count`. `SIZE_TIERS` is the public center-dims table per tier;
+`dims_in_tier(dims, tier)` is exposed so tests can assert tier bounds
+without duplicating the tolerance window.
+
+### Per-ship seed derivation
+
+Per-ship seeds are **not** simple arithmetic offsets (`base + i`). Inside
+`generate_fleet`, a single `random.Random(params.seed)` drives every
+draw, and each ship's seed is `rng.randrange(0, 2**31 - 1)` — pulled from
+the same stream that picks dims, hull/engine/wing styles, and greeble
+density. This decouples the ship seed from the index: shuffling the
+fleet's iteration order would still produce recognisably similar ships
+for the same index, but the seeds themselves are RNG-stream draws, not
+`seed + i`. Determinism is end-to-end — same `FleetParams` → same
+`list[GeneratedShip]` → same ships byte-for-byte.
+
+### Output naming
+
+Every fleet ship is written to `args.out` (default `./out`) as
+`ship_<seed>_<idx>.litematic`, with `<seed>` the per-ship seed and
+`<idx>` the position in the fleet. The filename is forced inside
+`_run_fleet_ship` so user `--filename` overrides cannot create collisions
+across fleet ships. The schematic name (visible in Litematica's in-game
+browser) defaults to `Ship <seed>` so each entry shows up distinctly.
+
+### Cross-references
+
+- CLI ([docs/cli.md](cli.md#repeat--fleet-modes)): `--fleet-count`,
+  `--fleet-size-tier`, `--fleet-style-coherence`.
+- Bench: [`scripts/bench_fleet.py`](../scripts/bench_fleet.py) — wall-
+  clock micro-benchmark of the multi-ship fleet path (planning + N
+  per-ship `generate()` calls) via the in-process Python API.
+
 ## Related documentation
 
 - [faq.md](faq.md) — common questions and troubleshooting.
