@@ -1062,3 +1062,20 @@ and forwards it through the `ship` blueprint.
 - [performance.md](performance.md) — benchmark guide + vectorization notes.
 - [release.md](release.md) — release checklist.
 - [gallery.md](gallery.md) — curated seed + palette examples.
+
+## Cross-link index
+
+Mapping each pipeline section above to its driver CLI flag(s) and (where applicable) web API endpoint(s). For full flag reference see [cli.md](cli.md); for API see [web_ui.md](web_ui.md).
+
+| Pipeline | CLI flag(s) | Web API endpoint(s) |
+| --- | --- | --- |
+| [Shape pipeline](#shape-pipeline) | `--seed --hull-style --engine-style --wing-style ...` | `POST /api/generate` |
+| [Hull pipeline](#hull-pipeline) | `--hull-style --list-hull-styles[-json]` | `GET /api/hull-styles` |
+| [Wing pipeline](#wing-pipeline) | `--wing-style --list-wing-styles[-json]` | `GET /api/wing-styles` |
+| [Greeble pipeline](#greeble-pipeline) | `--greeble-density --no-greebles --list-greeble-types[-json]` | `GET /api/greeble-types` |
+| [Weapon pipeline](#weapon-pipeline) | `--weapon-count --weapon-type --list-weapon-types[-json]` | `GET /api/weapon-types` |
+| [Cockpit pipeline](#cockpit-pipeline) | `--cockpit-style --list-cockpit-styles[-json]` | `GET /api/cockpit-styles` |
+| [Engine pipeline](#engine-pipeline) | `--engine-style --list-engine-styles[-json]` | `GET /api/engine-styles` |
+| [Structure pipeline](#structure-pipeline) | `--structure-style --list-structure-styles[-json]` | `GET /api/structure-styles` |
+| [Fleet pipeline](#fleet-pipeline) | `--fleet-count --out` | (n/a — CLI only) |
+| [Texture pipeline](#texture-pipeline) | `--window-period --stripe-period --engine-glow-depth ...` | (n/a — CLI tunables) |
