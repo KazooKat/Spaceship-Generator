@@ -41,6 +41,18 @@ forward-upper canopy archetype: `bubble`, `pointed`, `integrated`,
 [architecture.md — Cockpit pipeline](architecture.md#cockpit-pipeline)
 and CLI flag [`--cockpit-style`](cli.md#shape-parameters).
 
+## Common pitfalls
+
+Five mistakes new palette authors hit most often (missing `minecraft:`
+namespace, role-name typo, non-existent block id, YAML quoting slips,
+non-cube in solid-cube role). See [palette_authoring.md](palette_authoring.md#common-pitfalls).
+
+## cross-axis property test
+
+Pytest parametrize-grid test in `tests/test_properties.py` pinning two
+ship-axis dials together (e.g. `cockpit_style × hull_style × seed`) for
+27 nodes, catching interaction-only regressions. See [faq.md](faq.md#why-do-cross-axis-property-tests-exist-alongside-single-axis-ones).
+
 ## `EngineStyle`
 
 `StrEnum` in `src/spaceship_generator/engine_styles.py` — picks the
@@ -49,6 +61,12 @@ rear-engine archetype (`single_core`, `twin_nacelle`, `quad_cluster`,
 `retro_rocket_cluster`). Keyword-only on `generator.generate(...)`; the
 CLI exposes it via [`--engine-style`](cli.md#shape-parameters) and the
 web API via [`GET /api/engine-styles`](web_ui.md#json-api-api).
+
+## Fleet pipeline
+
+Batch ship-build driver in `src/spaceship_generator/fleet.py` —
+`generate_fleet(FleetParams)` plans per-ship seed/dims/styles
+deterministically (CLI: `--fleet-count > 1`). See [architecture.md — Fleet pipeline](architecture.md#fleet-pipeline).
 
 ## `gen_id`
 
@@ -102,6 +120,12 @@ YAML files into a third via `--out` per `--strategy` (`prefer-a` /
 `prefer-b` / `prefer-defined`) for role-conflict resolution. See
 [recipes.md](recipes.md).
 
+## `palette_search.py`
+
+Authoring helper in `scripts/palette_search.py` walking every
+`palettes/*.yaml` and printing one `(palette, role)` pair per match for
+a target block id (also `--csv`). See [recipes.md — Recipe 15](recipes.md#recipe-15--find-every-palette-referencing-a-minecraft-block-id).
+
 ## `palette_stats.py`
 
 Authoring helper in `scripts/palette_stats.py` printing cross-corpus
@@ -138,6 +162,12 @@ The user-tunable shape dataclass in
 `hull_noise`. Validates eagerly in `__post_init__`. See
 [configuration.md — Shape](configuration.md#shape) and
 [architecture.md — Key data contracts](architecture.md#key-data-contracts).
+
+## Structure pipeline
+
+Assembly pipeline rooted at `StructureStyle` — the *coarsest* dial
+scaling every later stage (hull profile, engine count, wing probability,
+cockpit default). See [architecture.md — Structure pipeline](architecture.md#structure-pipeline).
 
 ## `StructureStyle`
 
