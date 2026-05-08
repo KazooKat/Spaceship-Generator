@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-palettes-biome-pack-2026-05-08e: add arcane_library, mistwood_grove biome palettes
+      scope: `palettes/arcane_library.yaml`, `palettes/mistwood_grove.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [ ] feat-tests-property-palette-x-greeble-density-grid: add (palette × greeble_density × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 palette × 3 density × 3 seed = 27 nodes); CHANGELOG bullet
+      notes: extends cross-axis property test pack with palette × numeric-axis pair
+
+- [ ] feat-docs-faq-extension-3: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
+      scope: `docs/faq.md` (extend, not restructure)
+      accept: 4 new Q&As cover (when to use --meta-json vs individual --list-*-json), (palette_lint --json for CI), (Texture pipeline at-a-glance), (hull × wing cross-axis test); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing entries
+
+- [ ] feat-docs-troubleshooting-extension-3: extend `docs/troubleshooting.md` with 4-6 new entries
+      scope: `docs/troubleshooting.md` (extend, not restructure)
+      accept: 4-6 new rows covering --meta-json mutex errors, palette_lint --json schema mismatch, Texture pipeline param drift, --output-json + jq parse errors, fleet seed reproducibility; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [ ] feat-docs-recipes-extension-4: extend `docs/recipes.md` with 4 new task-oriented recipes
+      scope: `docs/recipes.md` (extend, not restructure)
+      accept: 4 new recipes cover (palette_lint.py --json --all for CI gate scripting), (--meta-json piped to jq for tooling discovery), (Texture-pipeline tunables via --window-period / --stripe-period), (cross-axis property test debugging via -k); ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [ ] feat-docs-architecture-cross-link-footer: add cross-link footer table at end of `docs/architecture.md`
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new "## Cross-link footer" or similar appended after `## Related documentation` (or extending it) with a 2-column table mapping each per-component / pipeline-level section to its CLI flag(s) + web API endpoint(s); ≤40 added lines; CHANGELOG bullet
+      notes: pure-docs unit; tightens the "where is X documented" navigation
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
