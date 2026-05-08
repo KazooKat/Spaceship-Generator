@@ -1,0 +1,26 @@
+name: ember_forge
+description: Ember-forge dark-iron skimmer. Polished-blackstone-bricks hull, tuff HULL_DARK iron-shadow accent, orange-stained-glass forge-ember windows, magma-block engines, shroomlight forge-ember engine glow, yellow-stained-glass molten cockpit, basalt wing accents, copper-block forge-tool greebles, jack-o-lantern warm forge running lights, smooth-basalt interior — warm forge dark-iron-and-ember theme with molten-spark accents.
+
+blocks:
+  HULL:          minecraft:polished_blackstone_bricks
+  HULL_DARK:     minecraft:tuff
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:basalt
+  GREEBLE:       minecraft:copper_block
+  LIGHT:         minecraft:jack_o_lantern
+  INTERIOR:      minecraft:smooth_basalt
+
+preview_colors:
+  HULL:          "#3c3a3c"
+  HULL_DARK:     "#202020"
+  WINDOW:        "#e08020"
+  ENGINE:        "#8a3010"
+  ENGINE_GLOW:   "#ffa040"
+  COCKPIT_GLASS: "#e8c040"
+  WING:          "#332f30"
+  GREEBLE:       "#c06030"
+  LIGHT:         "#f08030"
+  INTERIOR:      "#3a3a40"

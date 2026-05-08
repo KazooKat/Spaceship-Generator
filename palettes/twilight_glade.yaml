@@ -1,0 +1,26 @@
+name: twilight_glade
+description: Twilight-glade purple-dusk forest cruiser. Purpur-block hull, dark-oak-planks HULL_DARK shadow-bough accent, magenta-stained-glass dusk-bloom windows, amethyst-block crystal engines, pearlescent-froglight twilight-glow engine glow, purple-stained-glass cockpit, spruce-log wing accents, mossy-cobblestone forest-floor greebles, soul-lantern eerie cool-blue running lights, polished-deepslate interior — purple-dusk forest mossy-amethyst theme with twilight-bloom accents.
+
+blocks:
+  HULL:          minecraft:purpur_block
+  HULL_DARK:     minecraft:dark_oak_planks
+  WINDOW:        minecraft:magenta_stained_glass
+  ENGINE:        minecraft:amethyst_block
+  ENGINE_GLOW:   minecraft:pearlescent_froglight
+  COCKPIT_GLASS: minecraft:purple_stained_glass
+  WING:          minecraft:spruce_log
+  GREEBLE:       minecraft:mossy_cobblestone
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:polished_deepslate
+
+preview_colors:
+  HULL:          "#9a609a"
+  HULL_DARK:     "#2c1d10"
+  WINDOW:        "#c060c0"
+  ENGINE:        "#8b6dcb"
+  ENGINE_GLOW:   "#f4d8f0"
+  COCKPIT_GLASS: "#7b2fbe"
+  WING:          "#5a3a20"
+  GREEBLE:       "#5a6650"
+  LIGHT:         "#5cb6c8"
+  INTERIOR:      "#3a3a40"
