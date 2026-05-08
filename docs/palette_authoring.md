@@ -186,3 +186,27 @@ New palettes in `palettes/` automatically get covered by:
 - `test_generate_palette_x_structure_style_cross` — generates with every `StructureStyle`.
 
 If you want a new palette covered by the textured-generation check (`test_new_palette_textures_all_fine_roles`), add its name to the `NEW_PALETTES` tuple at the top of `tests/test_palette.py`.
+
+## Common pitfalls
+
+These are the mistakes that show up most often when authoring a new palette. The canonical "catches this" tool for everything below is `scripts/palette_lint.py --strict` (or `--all --strict` to scan the whole `palettes/` directory) — run it after every edit and it will flag the issues described here as warnings or errors before they reach the test suite.
+
+### Missing `minecraft:` namespace prefix on a block id
+
+Every block-state string must start with `minecraft:` — `light_gray_concrete` alone is rejected by the parser. The block-state format is strictly `minecraft:<id>` with optional `[prop=val,...]`. Even though Minecraft itself often accepts the bare id at the command level, the palette loader treats the namespace as mandatory so the schema stays unambiguous when third-party namespaces enter the picture later.
+
+### Role name typo / using a role not in the schema
+
+The 10 roles (`HULL`, `HULL_DARK`, `WINDOW`, `ENGINE`, `ENGINE_GLOW`, `COCKPIT_GLASS`, `WING`, `GREEBLE`, `LIGHT`, `INTERIOR`) are spelled exactly as they appear in the `Role` enum — `HULL_LIGHT`, `COCKPIT`, or `WINDOWS` are silently treated as unknown keys and the real role gets reported as missing. Copy the role list from this guide or from one of the shipped palettes rather than retyping it from memory.
+
+### Non-existent / removed-in-MC-version block id
+
+The palette loader validates the *syntax* of the string but cannot confirm the id actually exists in your target Minecraft version. Common traps: typos (`minecraft:sea_lanten`), pre-flattening names (`minecraft:wool` without a color suffix), and ids removed or renamed across versions. Spot-check unfamiliar ids against the running game or a vanilla wiki before shipping; the failure mode otherwise is a silent missing-block at Litematica load time.
+
+### YAML indent / quoting errors
+
+Hex colors must be quoted (`"#c0c0c0"`) — without the quotes YAML will sometimes parse `#c0c0c0` as a comment and drop the value entirely. Block-state strings containing `[` and `]` should also stay on a single line and unquoted (or wrapped in `"..."` if you prefer). Trailing colons on a key with no value, mixed tabs and spaces, and inconsistent two-vs-four-space indents under `blocks:` / `preview_colors:` are the other repeat offenders.
+
+### Block id pointing at a non-cube block where solid is expected
+
+`HULL`, `HULL_DARK`, `WING`, `ENGINE`, `GREEBLE`, and `INTERIOR` are placed as full cubes by the generator and assume a solid 1x1x1 block. Pointing them at slabs, stairs, fences, glass panes, or other partial-shape blocks produces visible gaps in the silhouette and makes the wing/hull pass look broken even though the file is technically valid. Save partial-cube blocks for `WINDOW` / `COCKPIT_GLASS` (where transparency is the point) or skip them entirely.
