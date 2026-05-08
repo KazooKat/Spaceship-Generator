@@ -156,6 +156,55 @@ python scripts/bench_palette.py --csv > bench-palette.csv
 python scripts/bench_shape.py --csv > bench-shape.csv
 ```
 
+### Recipe 15 — Find every palette referencing a Minecraft block id
+
+Cross-corpus search of `palettes/*.yaml` for a given block id, printed
+as a `(palette, role)` table. Blockstate suffixes (`[facing=north,...]`)
+are stripped before comparison so variants of the same block all match.
+Add `--csv` for spreadsheet / CI ingest (banner routed to stderr). See
+[palette_authoring.md](palette_authoring.md).
+
+```bash
+python scripts/palette_search.py --block minecraft:deepslate
+python scripts/palette_search.py --block minecraft:deepslate --csv
+```
+
+### Recipe 16 — Run a single cross-axis property test
+
+Cross-axis property tests live in `tests/test_properties.py` named
+`test_property_<axis_a>_x_<axis_b>_seed_grid_*`. Use `pytest -k` to
+run just one pairing (27 nodes per pair) instead of the full suite —
+useful when a regression localizes to a specific interaction.
+
+```bash
+pytest -q -k engine_style_x_wing
+pytest -q -k cockpit_x_hull
+pytest -q -k palette_x_cockpit_style
+```
+
+### Recipe 17 — Jump to one component's pipeline in the architecture doc
+
+`docs/architecture.md` opens with a [Per-component pipelines](architecture.md#per-component-pipelines)
+anchor index linking each `## <Component> pipeline` section
+(Shape / Hull / Wing / Greeble / Weapon / Cockpit / Engine / Structure).
+Open the index and click through to the component you want instead of
+scrolling — each section is self-contained with its own Mermaid diagram.
+
+```bash
+python -c "import webbrowser; webbrowser.open('docs/architecture.md#per-component-pipelines')"
+```
+
+### Recipe 18 — Validate every authored palette before commit
+
+Whole-corpus form of the palette linter — runs `palette_lint.py` over
+every `palettes/*.yaml` in one invocation and exits 1 if any palette
+errors. Add `--strict` to treat warnings as errors so the pre-commit
+gate catches mandatory-role gaps and unknown-block ids too.
+
+```bash
+python scripts/palette_lint.py --all --strict
+```
+
 ## See also
 
 - [quickstart.md](quickstart.md) — 5-minute getting-started walk
