@@ -195,6 +195,7 @@ The ship-build pipeline is decomposed into per-component sub-pipelines documente
 - [Weapon pipeline](#weapon-pipeline)
 - [Cockpit pipeline](#cockpit-pipeline)
 - [Engine pipeline](#engine-pipeline)
+- [Structure pipeline](#structure-pipeline)
 
 ## Shape pipeline
 
@@ -815,6 +816,87 @@ bridges any nacelle the tapered hull left disconnected; the second
 
 - CLI ([docs/cli.md](cli.md)): `--engine-style`, `--list-shape-styles`, `--list-shape-styles-json`.
 - Web API ([docs/web_ui.md](web_ui.md)): `GET /api/engine-styles`, `GET /api/shape-styles`.
+
+## Structure pipeline
+
+`StructureStyle` is the top-level silhouette archetype that scales every
+later stage in the shape build — hull profile + rx/ry, engine count and
+radius, wing probability and span/thickness/length, cockpit default. It
+is the *coarsest* dial: pick a structure style first, then refine with
+`HullStyle`, `WingStyle`, `CockpitStyle`, `EngineStyle` on top.
+
+### Build order
+
+```mermaid
+flowchart LR
+  seed([seed + ShapeParams.structure_style])
+  hull[hull.py<br/>_place_hull<br/>profile_fn + hull_rx_ry_scale]
+  cockpit[cockpit.py<br/>_place_cockpit<br/>default_cockpit_for]
+  engines[engines.py<br/>_place_engines<br/>engine_count_override<br/>+ engine_radius_scale]
+  gate[generate_shape<br/>rng.random&lt;wing_prob_override]
+  wings[wings.py<br/>_place_wings<br/>wing_size_scale]
+  rest[greebles → mirror+connect+mirror]
+
+  seed --> hull --> cockpit --> engines --> gate --> wings --> rest
+```
+
+`structure_style` slots in at the *base* of every per-component
+pipeline: `hull.py` reads `profile_fn` and `hull_rx_ry_scale` from it,
+`engines.py` reads `engine_count_override` and `engine_radius_scale`,
+`wings.py` reads `wing_size_scale`, and `generate_shape` itself reads
+`wing_prob_override` to gate whether the wing pass runs at all.
+
+### `StructureStyle` (in `structure_styles.py`)
+
+`StructureStyle` is a `StrEnum` with 6 members today (`FRIGATE`,
+`FIGHTER`, `DREADNOUGHT`, `SHUTTLE`, `HAMMERHEAD`, `CARRIER`). `FRIGATE`
+is the byte-compat legacy default — its profile (`_profile_frigate`),
+rx/ry scale `(1.0, 1.0)`, and pass-through engine/wing overrides
+reproduce the pre-StructureStyle generator byte-for-byte. Every
+historical seed depends on it.
+
+### `structure_styles.py`
+
+Hosts `StructureStyle` plus six dispatch functions that return per-style
+overrides for the rest of the pipeline: `profile_fn(style)` (Z-axis
+taper used by `_place_hull` — six concrete profiles, one per member),
+`hull_rx_ry_scale(style)` (stacks on top of the profile so `rx =
+(W*0.5 - 0.5) * profile * thickness * rx_scale`; `CARRIER` is the
+widest+flattest at `(1.15, 0.55)`, `FIGHTER` the narrowest at `(0.75,
+0.85)`), `engine_count_override(style, n)` (`SHUTTLE` collapses to one
+central engine; `DREADNOUGHT` / `CARRIER` floor at 4; `FIGHTER` caps at
+2), `engine_radius_scale(style)` (`DREADNOUGHT=1.6`, `CARRIER=1.2`,
+`FIGHTER=0.8`, `SHUTTLE=0.6`), `wing_prob_override(style, base)`
+(`SHUTTLE` zeroes wings; `FIGHTER` floors at 0.95; `CARRIER` caps at
+0.1; `DREADNOUGHT` caps at 0.35), and `wing_size_scale(style)` (returns
+`(span, thickness, length)` — `FIGHTER` at `(1.5, 1.0, 1.2)`,
+`DREADNOUGHT` at `(0.8, 1.4, 0.9)`). The module also re-exports the
+`HullStyle` enum + `apply_hull_style(grid, hull_style)` (single-style
+RNG-free hull stamper used by `generate_shape` when `hull_style` is
+set) and the `apply_hull_blend` / `blended_hull_radii` helpers (see
+[Hull pipeline](#hull-pipeline)).
+
+### `default_cockpit_for(structure_style, cockpit_style)`
+
+Hook called from `_place_cockpit` *before* dispatching to a placer.
+Currently a pass-through — the user's `cockpit_style` always wins — but
+the seam is preserved so a future structure style can steer the cockpit
+default (e.g., a hypothetical `BATTLESHIP` always picking
+`OFFSET_TURRET`) without touching call sites in `shape/cockpit.py`.
+
+### `structure_style` and `ShapeParams.structure_style`
+
+`structure_style` is a `StructureStyle` field on `ShapeParams` (default
+`StructureStyle.FRIGATE`, validated in `__post_init__`). The CLI plumbs
+it through `--structure-style`; the web layer reads it from the
+`structure_style` form/JSON field via `_parse_optional_enum`.
+`presets.py` pins a `StructureStyle` per preset; `fleet.py` plans a
+per-ship `structure_style` the caller hands back to `generator.generate`.
+
+### Cross-references
+
+- CLI ([docs/cli.md](cli.md)): `--structure-style`, `--list-structure-styles`, `--list-structure-styles-json`.
+- Web API ([docs/web_ui.md](web_ui.md)): `GET /api/structure-styles`, `GET /api/shape-styles`.
 
 ## Related documentation
 
