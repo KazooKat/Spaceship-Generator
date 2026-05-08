@@ -1604,6 +1604,106 @@ def test_property_palette_x_cockpit_style_seed_grid_generates_non_empty_litemati
     )
 
 
+# --------- palette × greeble_density × seed-grid stability (cross-axis) ---------
+#
+# Numeric-axis sibling of the palette × cockpit_style cross-product test above:
+# pins (palette × ``greeble_density`` × seed) deterministically to catch
+# regressions that only surface in the interaction between palette role coverage
+# (palette YAML in ``palettes/`` → block-id mapping in ``palette.py``) and the
+# greeble scatter density (``greeble_density=`` top-level kwarg → multi-cell
+# scatter pass in ``greeble_styles.scatter_greebles``). The single-axis
+# ``test_property_palette_seed_grid_generates_non_empty_litematic`` pins every
+# shipped palette × seed and the single-axis
+# ``test_property_greeble_density_seed_grid_generates_non_empty_litematic`` pins
+# the density axis on its own, but neither exercises the CROSS-axis interaction
+# between palette role coverage and greeble density. A regression that only
+# surfaces when, e.g., a palette stubbing the ``greeble`` role combined with
+# ``greeble_density=1.0`` (max scatter claiming every surface anchor with a
+# block id the palette cannot map → silent no-op) or a maxed-out density
+# combined with a palette whose greeble role only covers a narrow subset of
+# greeble variants would slip past both single-axis tests. We slice the palette
+# list dynamically (first / middle / last alphabetically of ``_PALETTE_NAMES``,
+# which is already ``sorted(p.stem for p in palettes_dir().glob("*.yaml"))``)
+# and pin three densities (``0.0`` no-greebles bare-hull / ``0.5`` mid / ``1.0``
+# max scatter — same extremes as the
+# ``test_property_greeble_density_x_weapon_count_seed_grid`` sibling and the
+# ``test_property_greeble_density_monotonic_in_block_count`` companion) for
+# 3 × 3 × 3 = 27 representative nodes. Failure node IDs read
+# ``[seed-greeble_density-palette_name]`` so a regression in any single
+# (palette, density) interaction is self-naming. ``greeble_density`` is plumbed
+# via the top-level ``generate(greeble_density=...)`` kwarg (not via
+# ``ShapeParams``) since the top-level kwarg accepts the full ``[0.0, 1.0]``
+# range and matches the numeric-axis sibling's plumbing.
+
+
+_PALETTE_GREEBLE_GRID_PALETTES = _slice_first_middle_last(_PALETTE_NAMES)
+
+
+@pytest.mark.parametrize(
+    "palette_name", _PALETTE_GREEBLE_GRID_PALETTES, ids=lambda p: p,
+)
+@pytest.mark.parametrize("greeble_density", [0.0, 0.5, 1.0])
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_palette_x_greeble_density_seed_grid_generates_non_empty_litematic(
+    tmp_path, palette_name, greeble_density, seed
+):
+    """``palette`` × ``greeble_density`` × small seed grid → non-empty ``.litematic``.
+
+    Numeric-axis cross-product companion to the single-axis
+    ``palette_seed_grid`` and ``greeble_density_seed_grid`` parametrize tests
+    above, and a sibling of the palette × cockpit_style enum cross-axis test
+    immediately above. Palette is plumbed via ``generate(palette=...)`` (palette
+    YAML → block-id mapping in ``palette.py``) while ``greeble_density`` is
+    passed directly to ``generate()`` via the top-level ``greeble_density=``
+    kwarg (multi-cell scatter pass in ``greeble_styles.scatter_greebles``); the
+    top-level kwarg accepts the full ``[0.0, 1.0]`` range so we plumb it that
+    way rather than through ``ShapeParams``, mirroring the numeric-axis sibling
+    ``test_property_greeble_density_x_weapon_count_seed_grid`` exactly. A
+    regression that only surfaces in the interaction between a specific palette
+    and a specific density (e.g., a palette stubbing the ``greeble`` role
+    combined with ``greeble_density=1.0`` claiming every surface anchor with a
+    block id the palette cannot map) would slip past both single-axis tests.
+    We slice the palette list dynamically — first / middle / last
+    alphabetically of ``_PALETTE_NAMES`` (already
+    ``sorted(p.stem for p in palettes_dir().glob("*.yaml"))``) — and pin three
+    densities (``0.0`` / ``0.5`` / ``1.0``) × the small fixed seed grid
+    ``[0, 1, 7]`` for 3 × 3 × 3 = 27 representative nodes that hit the
+    extremes of both axes without inflating the suite to the full
+    palette-corpus × density cross-product. At ``greeble_density=0.0`` the
+    greeble scatter no-ops but the ship still generates a non-empty
+    hull/cockpit/engines/wings silhouette so ``block_count > 0`` is the right
+    floor invariant for every node. Failure messages name the offending
+    ``(palette, greeble_density, seed)`` tuple via the parametrize IDs plus an
+    explicit ``pytest.fail`` message so a regression localizes immediately.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        palette=palette_name,
+        shape_params=params,
+        greeble_density=greeble_density,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"palette={palette_name} "
+            f"greeble_density={greeble_density} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"palette={palette_name} "
+            f"greeble_density={greeble_density} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"palette={palette_name} "
+        f"greeble_density={greeble_density} seed={seed} produced 0 blocks"
+    )
+
+
 # --------- engine_style × wing_style × seed-grid stability (cross-axis) ---------
 #
 # Cross-axis sibling of the cockpit×hull / cockpit×wing / hull×engine /
