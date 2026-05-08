@@ -18,36 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-05-08d: add abyssal_trench, sunset_horizon biome palettes
-      scope: `palettes/abyssal_trench.yaml`, `palettes/sunset_horizon.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
-- [ ] feat-docs-cli-meta-json: document `--meta-json` flag in `docs/cli.md`
-      scope: `docs/cli.md` (extend, not restructure)
-      accept: new row in the existing machine-readable list-flag block describing `--meta-json`'s combined payload (cross-link to `/api/meta`); ≤30 added lines; CHANGELOG bullet
-      notes: pure-docs follow-up to feat-cli-meta-json
-
-- [ ] feat-docs-glossary-extension-3: extend `docs/glossary.md` with 3-4 new entries
-      scope: `docs/glossary.md` (extend, not restructure)
-      accept: new entries for `--meta-json`, hull×wing cross-axis test, Reading the output (bench), output-formats Consumer examples; alphabetized; ≤25 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do not duplicate existing entries
-
-- [ ] feat-scripts-palette-lint-json: add `--json` flag to `scripts/palette_lint.py` emitting structured lint result
-      scope: `scripts/palette_lint.py`, `tests/test_palette_lint.py` (extend)
-      accept: `palette_lint.py --json palettes/X.yaml` emits `{"palette":"X","ok":true|false,"errors":[...],"warnings":[...]}` to stdout; `--all --json` emits a JSON array of these objects; exit codes preserved (0 clean / 1 dirty); smoke tests for both single and `--all` modes; CHANGELOG bullet
-      notes: tooling-friendly companion to existing fixed-width output
-
-- [ ] feat-docs-recipes-extension-3: extend `docs/recipes.md` with 4 new task-oriented recipes
-      scope: `docs/recipes.md` (extend, not restructure)
-      accept: 4 new recipes cover (using `--meta-json` in tooling), (running --fleet-count for batch ships), (consuming --output-json with jq), (palette_lint --json --all for CI gates); ≤50 added lines; CHANGELOG bullet
-      notes: pure-docs unit
-
-- [ ] feat-docs-architecture-texture: extend `docs/architecture.md` with a Texture pipeline section
-      scope: `docs/architecture.md` (extend, not restructure)
-      accept: new H2 "## Texture pipeline" between `## Fleet pipeline` and `## Related documentation` describing `texture.py` (role refinement: WINDOW → COCKPIT_GLASS / WINDOW dispatch, GLOW emissive selection, light placement); cross-link to `docs/cli.md` and `docs/architecture.md#shape-pipeline`; ≤80 added lines; CHANGELOG bullet
-      notes: covers texture.py — last major module without per-component section; consider whether texture is per-component (it operates on roles not styles) or pipeline-level
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -78,6 +48,36 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-architecture-texture: extend `docs/architecture.md` with a Texture pipeline section
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new H2 "## Texture pipeline" between `## Fleet pipeline` and `## Related documentation` describing `texture.py` (role refinement: WINDOW → COCKPIT_GLASS / WINDOW dispatch, GLOW emissive selection, light placement); cross-link to `docs/cli.md` and `docs/architecture.md#shape-pipeline`; ≤80 added lines; CHANGELOG bullet
+      notes: covers texture.py — last major module without per-component section; consider whether texture is per-component (it operates on roles not styles) or pipeline-level
+
+- [x] feat-docs-glossary-extension-3: extend `docs/glossary.md` with 3-4 new entries
+      scope: `docs/glossary.md` (extend, not restructure)
+      accept: new entries for `--meta-json`, hull×wing cross-axis test, Reading the output (bench), output-formats Consumer examples; alphabetized; ≤25 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing entries
+
+- [x] feat-scripts-palette-lint-json: add `--json` flag to `scripts/palette_lint.py` emitting structured lint result
+      scope: `scripts/palette_lint.py`, `tests/test_palette_lint.py` (extend)
+      accept: `palette_lint.py --json palettes/X.yaml` emits `{"palette":"X","ok":true|false,"errors":[...],"warnings":[...]}` to stdout; `--all --json` emits a JSON array of these objects; exit codes preserved (0 clean / 1 dirty); smoke tests for both single and `--all` modes; CHANGELOG bullet
+      notes: tooling-friendly companion to existing fixed-width output
+
+- [x] feat-docs-recipes-extension-3: extend `docs/recipes.md` with 4 new task-oriented recipes
+      scope: `docs/recipes.md` (extend, not restructure)
+      accept: 4 new recipes cover (using `--meta-json` in tooling), (running --fleet-count for batch ships), (consuming --output-json with jq), (palette_lint --json --all for CI gates); ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [x] feat-palettes-biome-pack-2026-05-08d: add abyssal_trench, sunset_horizon biome palettes
+      scope: `palettes/abyssal_trench.yaml`, `palettes/sunset_horizon.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [x] feat-docs-cli-meta-json: document `--meta-json` flag in `docs/cli.md`
+      scope: `docs/cli.md` (extend, not restructure)
+      accept: new row in the existing machine-readable list-flag block describing `--meta-json`'s combined payload (cross-link to `/api/meta`); ≤30 added lines; CHANGELOG bullet
+      notes: pure-docs follow-up to feat-cli-meta-json
 
 - [x] feat-palettes-biome-pack-2026-05-08c: add ember_forge, twilight_glade biome palettes
       scope: `palettes/ember_forge.yaml`, `palettes/twilight_glade.yaml`
