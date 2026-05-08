@@ -1,0 +1,26 @@
+name: frostbite_tundra
+description: Frostbite-tundra glacier cutter. Blue-ice hull, prismarine-brick HULL_DARK deep-frost accent, light-blue-stained-glass frost-shimmer windows, prismarine engines, sea-lantern cold-cyan engine glow, cyan-stained-glass cockpit, snow-block wing accents, dripstone-block icicle greebles, soul-lantern cold-blue running lights, smooth-quartz interior — icy-cyan tundra glacier theme with frostbite blue-ice accents.
+
+blocks:
+  HULL:          minecraft:blue_ice
+  HULL_DARK:     minecraft:prismarine_bricks
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:prismarine
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:cyan_stained_glass
+  WING:          minecraft:snow_block
+  GREEBLE:       minecraft:dripstone_block
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:smooth_quartz
+
+preview_colors:
+  HULL:          "#a8d8f0"
+  HULL_DARK:     "#3a5650"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#5a7a78"
+  ENGINE_GLOW:   "#eaf4ff"
+  COCKPIT_GLASS: "#3aafce"
+  WING:          "#f4fbff"
+  GREEBLE:       "#9c8878"
+  LIGHT:         "#a8d8f8"
+  INTERIOR:      "#eae6d8"

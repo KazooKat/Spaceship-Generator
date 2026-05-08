@@ -1,0 +1,26 @@
+name: scarlet_oasis
+description: Scarlet-oasis dune skimmer. Red-sandstone hull, smooth-red-sandstone HULL_DARK accent, red-stained-glass scarlet-pool windows, magma-block engines, ochre-froglight engine glow, orange-stained-glass cockpit, red-terracotta wings, acacia-log palm-tree greebles, lantern warm running lights, granite interior — warm red-sand desert oasis sandstone-and-vegetation theme with scarlet pool accents.
+
+blocks:
+  HULL:          minecraft:red_sandstone
+  HULL_DARK:     minecraft:smooth_red_sandstone
+  WINDOW:        minecraft:red_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:orange_stained_glass
+  WING:          minecraft:red_terracotta
+  GREEBLE:       minecraft:acacia_log
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:granite
+
+preview_colors:
+  HULL:          "#a8552a"
+  HULL_DARK:     "#5e2e16"
+  WINDOW:        "#d04848"
+  ENGINE:        "#8a3018"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#f0862c"
+  WING:          "#8a3a24"
+  GREEBLE:       "#6e4a30"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#9a6852"
