@@ -163,6 +163,7 @@ Style enums emit in **enum-declaration order** (deterministic across runs);
 | `--list-structure-styles-json` | `{"structure_styles":[...]}` | `GET /api/structure-styles` |
 | `--list-greeble-types-json` | `{"greeble_types":[...]}` | `GET /api/greeble-types` |
 | `--list-weapon-types-json` | `{"weapon_types":[...]}` | `GET /api/weapon-types` |
+| `--meta-json` | Combined bundle: `{version, palettes, presets, hull_styles, engine_styles, wing_styles, cockpit_styles, structure_styles, greeble_types, weapon_types, roles}` — every per-enum / palette / preset / version payload of the individual `--list-<x>-json` flags merged into one document. CLI mirror of `GET /api/meta`. Mutually exclusive with `--output`, `--output-json`, `--output-json-schema`, and `--config-dump` (`parser.error` → exit 2). NOT silenced by `--quiet` — same carve-out as the rest of this family. | `GET /api/meta` |
 | `--output-json-schema` | Draft-7 JSON Schema for the `--output-json` payload | — |
 
 The narrower per-component `--list-{engine,hull,wing}-styles[-json]` flags
