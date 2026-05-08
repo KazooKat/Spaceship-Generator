@@ -18,36 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-05-08c: add ember_forge, twilight_glade biome palettes
-      scope: `palettes/ember_forge.yaml`, `palettes/twilight_glade.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
-- [ ] feat-tests-property-hull-x-wing-style-grid: add (hull_style × wing_style × seed) cross-axis property test
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over (3 hull × 3 wing × 3 seed = 27 nodes); CHANGELOG bullet
-      notes: complements existing cross-axis pack — fresh hull×wing pair
-
-- [ ] feat-cli-meta-json: add `--meta-json` CLI flag emitting combined enum/palette/preset/version JSON document
-      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
-      accept: `--meta-json` emits a single JSON document combining `presets`, `palettes`, `hull_styles`, `engine_styles`, `wing_styles`, `cockpit_styles`, `structure_styles`, `greeble_types`, `weapon_types`, `roles`, `version` keys (matching prior `--list-*-json` siblings); not silenced by `--quiet`; mutually exclusive with `--output` / `--output-json` / `--output-json-schema` / `--config-dump`; tests; CHANGELOG bullet
-      notes: CLI mirror of `/api/meta` — single-call discovery for tooling that doesn't want N round-trips through individual `--list-*-json` flags
-
-- [ ] feat-docs-output-formats-extension: extend `docs/output-formats.md` with consumer examples
-      scope: `docs/output-formats.md` (extend, not restructure)
-      accept: new section showing 1-2 consumer snippets — Python reading `.litematic` block_count, jq parsing `--output-json` payload — cross-link to `docs/cli.md`; ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; concrete copy-paste examples
-
-- [ ] feat-docs-quickstart-extension: extend `docs/quickstart.md` with a "Running a fleet" section
-      scope: `docs/quickstart.md` (extend, not restructure)
-      accept: new section showing `--fleet-count N` invocation, output dir convention, cross-link to `docs/architecture.md#fleet-pipeline` and `docs/cli.md`; ≤40 added lines; CHANGELOG bullet
-      notes: pure-docs unit
-
-- [ ] feat-docs-bench-extension: extend `docs/bench.md` with a "Reading the output" examples section
-      scope: `docs/bench.md` (extend, not restructure)
-      accept: new section with concrete bench_summary fixed-width-table example output, mean_ms / p95_ms / TOTAL semantics; cross-link `docs/bench-ci.md`; ≤50 added lines; CHANGELOG bullet
-      notes: pure-docs unit
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -78,6 +48,36 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palettes-biome-pack-2026-05-08c: add ember_forge, twilight_glade biome palettes
+      scope: `palettes/ember_forge.yaml`, `palettes/twilight_glade.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [x] feat-tests-property-hull-x-wing-style-grid: add (hull_style × wing_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 hull × 3 wing × 3 seed = 27 nodes); CHANGELOG bullet
+      notes: complements existing cross-axis pack — fresh hull×wing pair
+
+- [x] feat-cli-meta-json: add `--meta-json` CLI flag emitting combined enum/palette/preset/version JSON document
+      scope: `src/spaceship_generator/cli.py`, `tests/test_cli.py`
+      accept: `--meta-json` emits a single JSON document combining `presets`, `palettes`, `hull_styles`, `engine_styles`, `wing_styles`, `cockpit_styles`, `structure_styles`, `greeble_types`, `weapon_types`, `roles`, `version` keys (matching prior `--list-*-json` siblings); not silenced by `--quiet`; mutually exclusive with `--output` / `--output-json` / `--output-json-schema` / `--config-dump`; tests; CHANGELOG bullet
+      notes: CLI mirror of `/api/meta` — single-call discovery for tooling that doesn't want N round-trips through individual `--list-*-json` flags
+
+- [x] feat-docs-output-formats-extension: extend `docs/output-formats.md` with consumer examples
+      scope: `docs/output-formats.md` (extend, not restructure)
+      accept: new section showing 1-2 consumer snippets — Python reading `.litematic` block_count, jq parsing `--output-json` payload — cross-link to `docs/cli.md`; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; concrete copy-paste examples
+
+- [x] feat-docs-quickstart-extension: extend `docs/quickstart.md` with a "Running a fleet" section
+      scope: `docs/quickstart.md` (extend, not restructure)
+      accept: new section showing `--fleet-count N` invocation, output dir convention, cross-link to `docs/architecture.md#fleet-pipeline` and `docs/cli.md`; ≤40 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [x] feat-docs-bench-extension: extend `docs/bench.md` with a "Reading the output" examples section
+      scope: `docs/bench.md` (extend, not restructure)
+      accept: new section with concrete bench_summary fixed-width-table example output, mean_ms / p95_ms / TOTAL semantics; cross-link `docs/bench-ci.md`; ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
 
 - [x] feat-docs-glossary-extension-2: extend `docs/glossary.md` with 4-5 new entries
       scope: `docs/glossary.md` (extend, not restructure)
