@@ -9,6 +9,12 @@ preset-resolved args that WOULD be passed into `generate()` as
 `{"effective_config":{...}}`, then exits 0 without producing a ship.
 See [cli.md — Effective config dump](cli.md#effective-config-dump).
 
+## `--meta-json`
+
+CLI flag in `src/spaceship_generator/__main__.py` emitting a single
+combined JSON document with every per-enum / palette / preset / version
+payload — CLI mirror of the `/api/meta` web endpoint. See [cli.md — Machine-readable list / output flags](cli.md#machine-readable-list--output-flags).
+
 ## `--version-json`
 
 CLI flag in `src/spaceship_generator/__main__.py` — machine-readable
@@ -46,6 +52,12 @@ and CLI flag [`--cockpit-style`](cli.md#shape-parameters).
 Five mistakes new palette authors hit most often (missing `minecraft:`
 namespace, role-name typo, non-existent block id, YAML quoting slips,
 non-cube in solid-cube role). See [palette_authoring.md](palette_authoring.md#common-pitfalls).
+
+## Consumer examples
+
+Two copy-paste snippets showing how a downstream tool reads a generated
+ship — a Python `litemapy` block counting `.litematic` blocks, and a
+shell `--output-json | jq` one-liner. See [output-formats.md — Consumer examples](output-formats.md#consumer-examples).
 
 ## cross-axis property test
 
@@ -86,6 +98,12 @@ multi-cell surface-detail archetypes (`turret`, `dish`, `vent`,
 allow-list passed to `scatter_greebles`. See
 [architecture.md — Greeble pipeline](architecture.md#greeble-pipeline)
 and CLI flag [`--greeble-style`](cli.md#shape-parameters).
+
+## hull × wing cross-axis property test
+
+Pytest parametrize-grid test in `tests/test_properties.py` pinning
+(`HullStyle` × `WingStyle` × seed) for 27 nodes — catches hull-silhouette
+× wing-planform interaction regressions that single-axis siblings miss. See [faq.md](faq.md#why-do-cross-axis-property-tests-exist-alongside-single-axis-ones).
 
 ## `HullStyle`
 
@@ -142,6 +160,13 @@ greeble density, and weapon settings. Individual style flags override
 preset values when explicitly set. See CLI flag
 [`--preset`](cli.md#presets) and the web endpoint
 [`GET /api/presets`](web_ui.md#json-api-api).
+
+## Reading the output
+
+Bench-output semantics for the wall-clock `bench_*.py` family — per-row
+`mean_ms` is the arithmetic mean of per-iteration timings, `p95_ms` the
+95th percentile, and the final `TOTAL` row aggregates across every
+per-row sample pool (NOT a sum of per-row means). See [bench.md — Reading the output](bench.md#reading-the-output).
 
 ## `Role`
 
