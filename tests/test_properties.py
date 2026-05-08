@@ -1776,6 +1776,92 @@ def test_property_cockpit_style_x_engine_style_seed_grid_generates_non_empty_lit
     )
 
 
+# --------- hull_style × wing_style × seed-grid stability (cross-axis) ---------
+#
+# Cross-axis sibling of the cockpit×hull / cockpit×wing / hull×engine /
+# engine×wing / cockpit×engine / palette×cockpit cross-product tests above:
+# pins (HullStyle × WingStyle × seed) deterministically to catch regressions
+# that only surface in the interaction between hull silhouette
+# (``hull_style=`` → hull profile in ``structure_styles.py``) and wing
+# placement (``ShapeParams.wing_style`` → wing placer dispatch in
+# ``shape/wings.py``). The single-axis ``hull_style_seed_grid`` and
+# ``wing_style_seed_grid`` parametrize tests above pin each axis on its own,
+# but a regression that only surfaces when, e.g., a narrow dagger hull is
+# combined with a wide swept-back gull wing (the wing's stern anchor column
+# falling outside the dagger's thin Z-band) would slip past both single-axis
+# tests. We slice each enum to the first three members in declaration order
+# via ``list(HullStyle)[:3]`` / ``list(WingStyle)[:3]`` (sourced dynamically
+# off the enums so the slice tracks future reorderings) for 3 × 3 × 3 = 27
+# representative nodes. Failure node IDs read
+# ``[seed-wing_style-hull_style]`` so a regression in any single
+# (hull, wing) interaction is self-naming.
+
+
+_HULL_WING_GRID_HULLS = list(HullStyle)[:3]
+_HULL_WING_GRID_WINGS = list(WingStyle)[:3]
+
+
+@pytest.mark.parametrize(
+    "hull_style", _HULL_WING_GRID_HULLS, ids=lambda h: h.value,
+)
+@pytest.mark.parametrize(
+    "wing_style", _HULL_WING_GRID_WINGS, ids=lambda w: w.value,
+)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_hull_style_x_wing_style_seed_grid_generates_non_empty_litematic(
+    tmp_path, hull_style, wing_style, seed
+):
+    """``HullStyle`` × ``WingStyle`` × small seed grid → non-empty ``.litematic``.
+
+    Cross-axis companion to the single-axis ``hull_style_seed_grid`` and
+    ``wing_style_seed_grid`` parametrize tests above, and a sibling of the
+    other enum cross-product tests (cockpit×hull / cockpit×wing /
+    hull×engine / engine×wing / cockpit×engine / palette×cockpit).
+    ``HullStyle`` is passed directly to ``generate()`` via the top-level
+    ``hull_style=`` kwarg (hull silhouette profile in
+    ``structure_styles.py``) while ``WingStyle`` is plumbed via
+    ``ShapeParams.wing_style`` (wing placer dispatch in ``shape/wings.py``);
+    a regression that only surfaces in the interaction between a specific
+    hull silhouette and a specific wing layout (e.g., a narrow dagger hull
+    combined with a swept-back gull wing where the wing's stern anchor
+    column falls outside the dagger's thin Z-band) would slip past both
+    single-axis tests. We slice each enum to the first three members in
+    declaration order via ``list(HullStyle)[:3]`` / ``list(WingStyle)[:3]``
+    (sourced dynamically off the enums so the slice tracks future
+    reorderings) for 3 × 3 × 3 = 27 representative nodes. Failure messages
+    name the offending ``(hull_style, wing_style, seed)`` tuple via the
+    parametrize IDs plus an explicit ``pytest.fail`` message so a regression
+    localizes immediately.
+    """
+    params = ShapeParams(
+        length=16, width_max=8, height_max=6, wing_style=wing_style,
+    )
+    res = generate(
+        seed,
+        shape_params=params,
+        hull_style=hull_style,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"hull_style={hull_style.value} "
+            f"wing_style={wing_style.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"hull_style={hull_style.value} "
+            f"wing_style={wing_style.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"hull_style={hull_style.value} "
+        f"wing_style={wing_style.value} seed={seed} produced 0 blocks"
+    )
+
+
 @pytest.mark.parametrize(
     "palette_name",
     ["sci_fi_industrial", "sleek_modern", "cyberpunk_neon", "neon_arcade"],
