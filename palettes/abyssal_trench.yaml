@@ -1,0 +1,26 @@
+name: abyssal_trench
+description: Abyssal-trench deep-ocean cruiser. Dark-prismarine hull, deepslate-tiles HULL_DARK trench-shadow accent, cyan-stained-glass bioluminescent windows, prismarine-bricks engines, sea-lantern abyssal-glow engine glow, light-blue-stained-glass cockpit, prismarine wing accents, chiseled-deepslate trench-rock greebles, soul-lantern eerie cold-blue running lights, blackstone interior — dark deep-ocean trench prismarine-and-deepslate theme with bioluminescent-glow accents.
+
+blocks:
+  HULL:          minecraft:dark_prismarine
+  HULL_DARK:     minecraft:deepslate_tiles
+  WINDOW:        minecraft:cyan_stained_glass
+  ENGINE:        minecraft:prismarine_bricks
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:light_blue_stained_glass
+  WING:          minecraft:prismarine
+  GREEBLE:       minecraft:chiseled_deepslate
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:blackstone
+
+preview_colors:
+  HULL:          "#2e5c44"
+  HULL_DARK:     "#2a2c32"
+  WINDOW:        "#40c8d8"
+  ENGINE:        "#5ba88a"
+  ENGINE_GLOW:   "#d8f0f8"
+  COCKPIT_GLASS: "#90d8f0"
+  WING:          "#60b8a0"
+  GREEBLE:       "#303238"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#1a1a1e"

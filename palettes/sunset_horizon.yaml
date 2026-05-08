@@ -1,0 +1,26 @@
+name: sunset_horizon
+description: Sunset-horizon dusk cruiser. Orange-terracotta hull, red-terracotta HULL_DARK horizon-shadow accent, orange-stained-glass dusk-glow windows, magma-block engines, glowstone sunset-glow engine glow, pink-stained-glass cockpit, pink-terracotta wing accents, smooth-red-sandstone warm-stone greebles, lantern warm running lights, red-sandstone interior — warm sunset orange-pink dusk theme with horizon-glow accents.
+
+blocks:
+  HULL:          minecraft:orange_terracotta
+  HULL_DARK:     minecraft:red_terracotta
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:glowstone
+  COCKPIT_GLASS: minecraft:pink_stained_glass
+  WING:          minecraft:pink_terracotta
+  GREEBLE:       minecraft:smooth_red_sandstone
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:red_sandstone
+
+preview_colors:
+  HULL:          "#a25325"
+  HULL_DARK:     "#6a2c1e"
+  WINDOW:        "#f0862c"
+  ENGINE:        "#8a3018"
+  ENGINE_GLOW:   "#f8e888"
+  COCKPIT_GLASS: "#f0a0b8"
+  WING:          "#a06868"
+  GREEBLE:       "#c86848"
+  LIGHT:         "#f0a040"
+  INTERIOR:      "#a04830"
