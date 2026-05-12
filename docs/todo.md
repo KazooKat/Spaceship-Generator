@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-05-12e: add 2 new biome palettes (sapphire_lagoon, ashen_steppes)
-      scope: `palettes/sapphire_lagoon.yaml`, `palettes/ashen_steppes.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
 - [ ] feat-docs-cli-list-palettes-json: document `--list-palettes-json` flag in `docs/cli.md` (if exists; verify first)
       scope: `docs/cli.md` (extend, not restructure)
       accept: if flag exists per `cli.py` → new row in machine-readable list-flag block describing it (cross-link `/api/palettes`); if NOT exists → switch to documenting any other unlisted machine-readable flag found via grep; ≤30 added lines; CHANGELOG bullet
@@ -58,6 +53,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palettes-biome-pack-2026-05-12e: add 2 new biome palettes (sapphire_lagoon, ashen_steppes)
+      scope: `palettes/sapphire_lagoon.yaml`, `palettes/ashen_steppes.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
 
 - [x] feat-docs-architecture-pipeline-graph: add ASCII / mermaid pipeline graph to `docs/architecture.md`
       scope: `docs/architecture.md` (extend, not restructure)

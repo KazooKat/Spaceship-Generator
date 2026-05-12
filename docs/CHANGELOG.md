@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(palettes): add sapphire_lagoon, ashen_steppes biome palettes (feat-palettes-biome-pack-2026-05-12e)
 - docs(architecture): add Pipeline overview section with Mermaid flowchart of Shape → Texture → Palette → Output flow (feat-docs-architecture-pipeline-graph)
 - docs(recipes): extend with 4 recipes on palette x engine isolation, --from-manifest bug-report replay, 2-palette biome pack design from scratch, web UI presets-drawer to CLI --preset translation (feat-docs-recipes-extension-7)
 - docs(bench-ci): add Sample GitHub Actions workflow section with self-contained yaml snippet for bench script invocation + CSV artifact upload (feat-docs-bench-ci-extension)

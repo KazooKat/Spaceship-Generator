@@ -1,0 +1,26 @@
+name: sapphire_lagoon
+description: Sapphire-lagoon deep-tropical-water cruiser. Warped-planks teal-water hull, deepslate-tiles HULL_DARK lagoon-floor accent, light-blue-stained-glass sapphire windows, dark-prismarine engines, sea-lantern bright lagoon-bioluminescence engine glow, blue-stained-glass deep-sapphire cockpit, warped-hyphae turquoise-bark wing accents, lapis-block sapphire-trim greebles, ochre-froglight warm coral-spark running lights, prismarine-bricks interior — deep tropical lagoon warped-planks-and-dark-prismarine theme with sapphire-blue accents and lapis trim.
+
+blocks:
+  HULL:          minecraft:warped_planks
+  HULL_DARK:     minecraft:deepslate_tiles
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:dark_prismarine
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:blue_stained_glass
+  WING:          minecraft:warped_hyphae
+  GREEBLE:       minecraft:lapis_block
+  LIGHT:         minecraft:ochre_froglight
+  INTERIOR:      minecraft:prismarine_bricks
+
+preview_colors:
+  HULL:          "#296458"
+  HULL_DARK:     "#2a2c32"
+  WINDOW:        "#a0d8f0"
+  ENGINE:        "#1e4840"
+  ENGINE_GLOW:   "#d8f0f8"
+  COCKPIT_GLASS: "#5667bd"
+  WING:          "#3a8276"
+  GREEBLE:       "#1f3fa8"
+  LIGHT:         "#f0d860"
+  INTERIOR:      "#63ab9e"

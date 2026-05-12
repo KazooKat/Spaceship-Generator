@@ -1,0 +1,26 @@
+name: ashen_steppes
+description: Ashen-steppes gray-volcanic-ash-plains surveyor. Gray-terracotta ash-plain hull, blackstone HULL_DARK burnt-rock accent, light-gray-stained-glass smoke-gray windows, polished-andesite engines, soul-lantern dim soul-fire engine glow, gray-stained-glass dim ash-cockpit, andesite gray-stone wing accents, polished-diorite ash-speckle greebles, soul-torch dim soul-spark running lights, cobbled-deepslate interior — gray volcanic-ash steppes terracotta-and-andesite theme with smoke-gray accents and dim soul-fire engine highlights.
+
+blocks:
+  HULL:          minecraft:gray_terracotta
+  HULL_DARK:     minecraft:blackstone
+  WINDOW:        minecraft:light_gray_stained_glass
+  ENGINE:        minecraft:polished_andesite
+  ENGINE_GLOW:   minecraft:soul_lantern
+  COCKPIT_GLASS: minecraft:gray_stained_glass
+  WING:          minecraft:andesite
+  GREEBLE:       minecraft:polished_diorite
+  LIGHT:         minecraft:soul_torch
+  INTERIOR:      minecraft:cobbled_deepslate
+
+preview_colors:
+  HULL:          "#3a3536"
+  HULL_DARK:     "#1f1a22"
+  WINDOW:        "#9d9d97"
+  ENGINE:        "#888888"
+  ENGINE_GLOW:   "#3ad0e0"
+  COCKPIT_GLASS: "#707880"
+  WING:          "#888888"
+  GREEBLE:       "#bdbab4"
+  LIGHT:         "#3ad0e0"
+  INTERIOR:      "#4e4e4e"
