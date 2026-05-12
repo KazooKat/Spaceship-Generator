@@ -18,10 +18,10 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-docs-glossary-extension-5: extend `docs/glossary.md` with 3-4 new entries
-      scope: `docs/glossary.md` (extend, not restructure)
-      accept: new entries for `--from-manifest`, biome-pack catalog, palette × hull cross-axis test, web UI presets drawer; alphabetized; ≤25 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do not duplicate prior 4 extensions
+- [ ] feat-palettes-biome-pack-2026-05-12d: add 2 new biome palettes (ironwood_grove, basalt_caldera)
+      scope: `palettes/ironwood_grove.yaml`, `palettes/basalt_caldera.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
 
 - [ ] feat-docs-troubleshooting-extension-5: extend `docs/troubleshooting.md` with 4-6 new entries
       scope: `docs/troubleshooting.md` (extend, not restructure)
@@ -64,10 +64,10 @@ for one release cycle, then pruned during release prep.
 
 ## Closed (last cycle)
 
-- [x] feat-palettes-biome-pack-2026-05-12d: add 2 new biome palettes (ironwood_grove, basalt_caldera)
-      scope: `palettes/ironwood_grove.yaml`, `palettes/basalt_caldera.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
+- [x] feat-docs-glossary-extension-5: extend `docs/glossary.md` with 3-4 new entries
+      scope: `docs/glossary.md` (extend, not restructure)
+      accept: new entries for `--from-manifest`, biome-pack catalog, palette × hull cross-axis test, web UI presets drawer; alphabetized; ≤25 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate prior 4 extensions
 
 - [x] feat-docs-faq-extension-5: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
       scope: `docs/faq.md` (extend, not restructure)

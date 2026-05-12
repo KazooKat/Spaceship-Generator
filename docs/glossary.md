@@ -9,6 +9,13 @@ preset-resolved args that WOULD be passed into `generate()` as
 `{"effective_config":{...}}`, then exits 0 without producing a ship.
 See [cli.md — Effective config dump](cli.md#effective-config-dump).
 
+## `--from-manifest`
+
+CLI flag in `src/spaceship_generator/__main__.py` reproducing a prior
+run byte-identically from a `<name>.json` sidecar written by
+`--export-manifest` (mutex with seed/repeat/fleet flags); sibling of
+`--config-dump`. See [configuration.md — Determinism / seeding](configuration.md#determinism--seeding).
+
 ## `--meta-json`
 
 CLI flag in `src/spaceship_generator/__main__.py` emitting a single
@@ -36,6 +43,12 @@ Read-only Flask endpoint in `src/spaceship_generator/web/blueprints/ship.py`
 returning `{"version":"<X.Y.Z>"}` — narrower JSON sibling of
 `/api/health` / `/api/meta` for about-box dialogs and deploy probes.
 See [web_ui.md — Discovery & metadata](web_ui.md#discovery--metadata).
+
+## biome pack catalog
+
+The `## Biome packs` section in `docs/palettes.md` cataloging the
+2-palette biome-themed pack series — reader-facing companion to the
+`biome palette pack` process pattern. See [palettes.md — Biome packs](palettes.md#biome-packs).
 
 ## biome palette pack
 
@@ -143,6 +156,12 @@ optional preview hex color. Loaded into a `Palette` dataclass by
 [configuration.md — Palette](configuration.md#palette) and the web
 endpoint [`GET /api/palettes`](web_ui.md#json-api-api).
 
+## palette × hull cross-axis test
+
+Pytest parametrize-grid test in `tests/test_properties.py` pinning
+(palette × `HullStyle` × seed) for 27 nodes — catches palette × hull
+interaction regressions. Sibling of `hull × wing cross-axis property test`. See [faq.md](faq.md#why-do-cross-axis-property-tests-exist-alongside-single-axis-ones).
+
 ## palette_lint JSON schema
 
 Per-palette object emitted by `scripts/palette_lint.py --json` —
@@ -236,6 +255,12 @@ top-facing weapon archetypes (`turret_large`, `missile_pod`,
 allow-list passed to `scatter_weapons`. See
 [architecture.md — Weapon pipeline](architecture.md#weapon-pipeline)
 and CLI flag [`--weapon-types`](cli.md#weapons).
+
+## web UI presets drawer
+
+Client-side modal in `src/spaceship_generator/web/static/presets.js`
+(topbar `#btn-presets`, shortcut `P`) saving form snapshots to
+`localStorage["shipforge.presets.v1"]` — independent of the server-side `<select name="preset">` picker. See [web_ui.md — Picking a palette and preset](web_ui.md#picking-a-palette-and-preset).
 
 ## `WingStyle`
 
