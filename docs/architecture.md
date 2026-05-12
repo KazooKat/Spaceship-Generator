@@ -184,6 +184,60 @@ flowchart LR
   and the web form's cockpit dropdown pick it up through
   `build_params_from_source`.
 
+## Pipeline overview
+
+End-to-end data flow from a seed to a `.litematic` on disk, with the
+optional `--fleet-count > 1` wrapper that plans N ships and feeds each
+back through the same per-ship pipeline. Each box links to its detailed
+section below.
+
+```mermaid
+flowchart LR
+  seed([seed + ShapeParams + style enums + palette])
+  hull[Hull]
+  cockpit[Cockpit]
+  engines[Engine]
+  wings[Wing]
+  greebles[Greeble]
+  weapons[Weapon]
+  coarse([coarse role grid<br/>HULL / COCKPIT_GLASS / ENGINE / WING / GREEBLE])
+  texture[Texture<br/>assign_roles]
+  fine([fine role grid<br/>+ INTERIOR / WINDOW / HULL_DARK / ENGINE_GLOW / LIGHT])
+  palette[Palette<br/>Role → BlockState]
+  blocks([block grid])
+  export[export.py<br/>.litematic writer]
+  preview[preview.py<br/>PNG renderer]
+  json[generator.py<br/>--output-json]
+
+  subgraph shape[Shape pipeline — gated by Structure pipeline]
+    hull --> cockpit --> engines --> wings --> greebles --> weapons
+  end
+
+  fleet[Fleet pipeline<br/>plans N ships] -. wraps .-> seed
+  seed --> shape --> coarse --> texture --> fine --> palette --> blocks
+  blocks --> export
+  blocks --> preview
+  blocks --> json
+
+  click hull "#hull-pipeline"
+  click cockpit "#cockpit-pipeline"
+  click engines "#engine-pipeline"
+  click wings "#wing-pipeline"
+  click greebles "#greeble-pipeline"
+  click weapons "#weapon-pipeline"
+  click shape "#shape-pipeline"
+  click texture "#texture-pipeline"
+  click fleet "#fleet-pipeline"
+```
+
+The [Structure pipeline](#structure-pipeline) is the coarsest dial — it
+scales every per-component stage inside [Shape pipeline](#shape-pipeline)
+(hull profile + rx/ry, engine count and radius, wing probability and
+span, cockpit default) but does not place voxels of its own. The
+[Fleet pipeline](#fleet-pipeline) is a batch wrapper: it plans N
+`GeneratedShip` records, then feeds each back through the regular
+per-ship pipeline above.
+
 ## Per-component pipelines
 
 The ship-build pipeline is decomposed into per-component sub-pipelines documented below. Jump to a specific one:

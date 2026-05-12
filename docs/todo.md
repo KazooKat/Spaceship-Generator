@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs
 
-- [ ] feat-docs-architecture-pipeline-graph: add ASCII / mermaid pipeline graph to `docs/architecture.md`
-      scope: `docs/architecture.md` (extend, not restructure)
-      accept: new "## Pipeline overview" or top-of-doc Mermaid diagram showing Shape → Texture → Palette → Output flow with per-component branches; ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit
-
 - [ ] feat-docs-cli-list-palettes-json: document `--list-palettes-json` flag in `docs/cli.md` (if exists; verify first)
       scope: `docs/cli.md` (extend, not restructure)
       accept: if flag exists per `cli.py` → new row in machine-readable list-flag block describing it (cross-link `/api/palettes`); if NOT exists → switch to documenting any other unlisted machine-readable flag found via grep; ≤30 added lines; CHANGELOG bullet
@@ -63,6 +58,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-architecture-pipeline-graph: add ASCII / mermaid pipeline graph to `docs/architecture.md`
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new "## Pipeline overview" or top-of-doc Mermaid diagram showing Shape → Texture → Palette → Output flow with per-component branches; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit
 
 - [x] feat-docs-recipes-extension-7: extend `docs/recipes.md` with 4 new task-oriented recipes
       scope: `docs/recipes.md` (extend, not restructure)
