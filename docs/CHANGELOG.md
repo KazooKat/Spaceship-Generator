@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(bench-ci): add Sample GitHub Actions workflow section with self-contained yaml snippet for bench script invocation + CSV artifact upload (feat-docs-bench-ci-extension)
 - test(properties): add palette x wing_style x seed-grid stability property test (feat-tests-property-palette-x-wing-style-grid)
 - docs(palette_authoring): add Designing a biome pack section covering cohesion, avoiding overlap, naming, cross-axis test coverage (feat-docs-palette-authoring-extension-2)
 - docs(troubleshooting): extend with --config-dump schema drift, --from-manifest replay drift, palette x engine cross-axis failures, web UI preset drawer corruption, biome pack name collision (feat-docs-troubleshooting-extension-5)

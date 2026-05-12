@@ -118,3 +118,56 @@ jobs:
           python scripts/bench_compare.py bench/baseline.json current.json --csv > diff.csv
           awk -F, 'NR>1 && $4+0 > 10.0 { print "REGRESSION:", $0; bad=1 } END { exit bad }' diff.csv
 ```
+
+## Sample GitHub Actions workflow
+
+Drop-in `.github/workflows/bench.yml` companion to the per-stanza
+snippets above — a complete, self-contained workflow that runs the
+end-to-end `bench_full_pipeline.py` driver, uploads the CSV as an
+artifact, and (optionally) gates on a checked-in baseline using the
+Python one-liner mirrored from [`bench.md`](bench.md#3-diff-csv-vs-baseline-awk-one-liner).
+
+Triggers on every push and every pull request so both branch CI and PR
+checks share the same artifact name. Baseline diff step is gated on
+`bench/baseline.csv` existing, so the workflow stays green on repos
+that haven't committed one yet.
+
+```yaml
+name: bench
+on: [push, pull_request]
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Run end-to-end pipeline bench
+        run: python scripts/bench_full_pipeline.py --iterations 20 --csv > bench_out.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-full-pipeline
+          path: bench_out.csv
+      - name: Diff against checked-in baseline (optional)
+        if: hashFiles('bench/baseline.csv') != ''
+        run: |
+          python - <<'PY'
+          import csv, sys
+          base = {r[0]: float(r[1]) for r in csv.reader(open("bench/baseline.csv")) if r and r[0] != "stage"}
+          bad = 0
+          for r in csv.reader(open("bench_out.csv")):
+              if not r or r[0] == "stage" or r[0] not in base: continue
+              cur = float(r[1])
+              if cur > base[r[0]] * 1.20:
+                  print(f"REGRESSION {r[0]}: {cur:.3f} vs {base[r[0]]:.3f}"); bad = 1
+          sys.exit(bad)
+          PY
+```
+
+Swap `bench_full_pipeline.py` for any sibling bench (`bench_shape.py`,
+`bench_palette.py`, `bench_mem.py`, ...) when a narrower signal is
+wanted — the rest of the workflow (setup, artifact upload, baseline
+gate) stays identical because every `bench_*.py --csv` writes to
+stdout under the same stream-split convention.

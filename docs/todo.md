@@ -38,11 +38,6 @@ for one release cycle, then pruned during release prep.
       accept: if flag exists per `cli.py` → new row in machine-readable list-flag block describing it (cross-link `/api/palettes`); if NOT exists → switch to documenting any other unlisted machine-readable flag found via grep; ≤30 added lines; CHANGELOG bullet
       notes: pure-docs unit; verify against real code first
 
-- [ ] feat-docs-bench-ci-extension: extend `docs/bench-ci.md` with sample GitHub Actions workflow snippet
-      scope: `docs/bench-ci.md` (extend, not restructure)
-      accept: new "## Sample GitHub Actions workflow" section with a self-contained yaml snippet running bench scripts and uploading CSV artifacts; ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; complements bench.md CI integration section already shipped
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -73,6 +68,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-bench-ci-extension: extend `docs/bench-ci.md` with sample GitHub Actions workflow snippet
+      scope: `docs/bench-ci.md` (extend, not restructure)
+      accept: new "## Sample GitHub Actions workflow" section with a self-contained yaml snippet running bench scripts and uploading CSV artifacts; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; complements bench.md CI integration section already shipped
 
 - [x] feat-tests-property-palette-x-wing-style-grid: add (palette × wing_style × seed) cross-axis property test
       scope: `tests/test_properties.py` (extend)
