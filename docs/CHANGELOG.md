@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(palettes): add shadow_citadel, golden_savannah biome palettes (feat-palettes-biome-pack-2026-05-12b)
+- docs(quickstart): add Next steps section linking to palettes, presets, recipes, cli, architecture (feat-docs-quickstart-extension-2)
+- docs(presets): extend with annotated preset YAML schema, CLI selection, composing flags on top of preset, custom preset for fleets (feat-docs-presets-extension)
 - test(properties): add greeble_style x greeble_density x seed-grid stability property test (feat-tests-property-greeble-style-x-density-grid)
 - docs(troubleshooting): extend with entries on palette pack name collision, cross-axis test id collisions, jq quoting on PowerShell, cross-link footer drift, extreme greeble_density values (feat-docs-troubleshooting-extension-4)
 - feat(palettes): add obsidian_forge, prismatic_reef biome palettes (feat-palettes-biome-pack-2026-05-12a)

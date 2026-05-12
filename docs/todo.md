@@ -18,20 +18,10 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-05-12b: add 2 new biome palettes (shadow_citadel, golden_savannah)
-      scope: `palettes/shadow_citadel.yaml`, `palettes/golden_savannah.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
 - [ ] feat-tests-property-cockpit-x-hull-style-grid: add (cockpit_style × hull_style × seed) cross-axis property test
       scope: `tests/test_properties.py` (extend)
       accept: parametrize over (3 cockpit × 3 hull × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
       notes: extends cross-axis property test pack with cockpit_style × hull_style enum-pair
-
-- [ ] feat-docs-presets-extension: extend `docs/presets.md` with worked examples / usage patterns
-      scope: `docs/presets.md` (extend, not restructure)
-      accept: 3-4 added subsections covering (preset YAML schema with annotated example), (using --preset-name), (composing CLI flags on top of a preset), (writing a custom preset for a fleet); ≤80 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do not duplicate existing entries
 
 - [ ] feat-docs-output-formats-extension-2: extend `docs/output-formats.md` with additional consumer examples
       scope: `docs/output-formats.md` (extend, not restructure)
@@ -78,6 +68,16 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-presets-extension: extend `docs/presets.md` with worked examples / usage patterns
+      scope: `docs/presets.md` (extend, not restructure)
+      accept: 3-4 added subsections covering (preset YAML schema with annotated example), (using --preset-name), (composing CLI flags on top of a preset), (writing a custom preset for a fleet); ≤80 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing entries
+
+- [x] feat-palettes-biome-pack-2026-05-12b: add 2 new biome palettes (shadow_citadel, golden_savannah)
+      scope: `palettes/shadow_citadel.yaml`, `palettes/golden_savannah.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
 
 - [x] feat-docs-recipes-extension-5: extend `docs/recipes.md` with 4 new task-oriented recipes
       scope: `docs/recipes.md` (extend, not restructure)
