@@ -149,3 +149,63 @@ is `"<mean> <unit>"` on success (e.g. `12.345 ms`); failures emit
 | `bench_summary.py` | `bench,metric,iterations` | per-child-bench | no |
 
 See [`bench-ci.md`](bench-ci.md) for ingest-into-CI patterns.
+
+## CI integration
+
+Short "I want a regression gate" recipe for wiring any bench script
+into CI: capture CSV, diff against a checked-in baseline, fail on
+regression. The full PR-based comment workflow used by this repo
+(`bench.yml`) is documented in [`bench-ci.md`](bench-ci.md).
+
+### 1. Run with `--csv` and capture as artifact
+
+Pick the signal — `bench_summary.py` (broad), `bench_full_pipeline.py`
+(end-to-end), or `bench_generator.py` (phase-attributed). Redirect stdout only; `2>&1` would interleave the stderr banner into the header:
+
+```bash
+.venv/Scripts/python scripts/bench_summary.py --iterations 3 --csv > out/bench.csv
+```
+
+Upload `out/bench.csv` (`upload-artifact@v4` on GitHub, `artifacts:` on GitLab).
+
+### 2. Check in a baseline CSV
+
+Run the same command on a known-good commit and commit the result to
+`bench/baseline.csv`. Refresh deliberately when an intentional perf
+change lands.
+
+### 3. Diff CSV vs. baseline (awk one-liner)
+
+For `bench_summary.py` (`bench,metric,iterations`), fail on any row
+> 20% slower than baseline:
+
+```bash
+awk -F, 'NR==FNR { base[$1]=$2+0; next }
+         FNR>1 && base[$1] > 0 && ($2+0) > base[$1] * 1.20 {
+             printf "REGRESSION %s: %.3f vs %.3f\n", $1, $2, base[$1]; bad=1
+         } END { exit bad }' bench/baseline.csv out/bench.csv
+```
+
+Python equivalent (handier on Windows runners):
+
+```python
+import csv, sys
+base = {r[0]: float(r[1].split()[0]) for r in csv.reader(open("bench/baseline.csv")) if r and r[0] != "bench"}
+bad = 0
+for r in csv.reader(open("out/bench.csv")):
+    if not r or r[0] == "bench" or r[0] not in base: continue
+    cur = float(r[1].split()[0])
+    if cur > base[r[0]] * 1.20:
+        print(f"REGRESSION {r[0]}: {cur:.3f} vs {base[r[0]]:.3f}"); bad = 1
+sys.exit(bad)
+```
+
+### 4. Phase-level gate via `bench_compare.py`
+
+For `bench_generator.py` baselines, the built-in tool exits non-zero
+on breach against a `--save` JSON baseline:
+
+```bash
+.venv/Scripts/python scripts/bench_generator.py --n 12 --save out/current.json
+.venv/Scripts/python scripts/bench_compare.py bench/baseline.json out/current.json --threshold 0.20
+```

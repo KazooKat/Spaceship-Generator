@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(bench): add CI integration section covering bench script invocation, CSV capture, awk/python regression diff (feat-docs-bench-extension-2)
 - feat(palettes): add shadow_citadel, golden_savannah biome palettes (feat-palettes-biome-pack-2026-05-12b)
 - docs(quickstart): add Next steps section linking to palettes, presets, recipes, cli, architecture (feat-docs-quickstart-extension-2)
 - docs(presets): extend with annotated preset YAML schema, CLI selection, composing flags on top of preset, custom preset for fleets (feat-docs-presets-extension)

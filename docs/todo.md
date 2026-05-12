@@ -28,11 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: 2-3 new consumer-example snippets covering (loading .litematic into amulet-core), (parsing --stats-json with pandas), (binary diff of two ships via --output-json + jq + diff); ≤60 added lines; CHANGELOG bullet
       notes: pure-docs unit; complements existing extension-1
 
-- [ ] feat-docs-bench-extension-2: extend `docs/bench.md` with a CI integration recipe
-      scope: `docs/bench.md` (extend, not restructure)
-      accept: new "## CI integration" section showing how to run bench scripts in CI, capture --csv output, diff vs. a baseline file with awk/python, fail on regressions; ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; complements bench-ci.md without duplicating it
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -63,6 +58,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-bench-extension-2: extend `docs/bench.md` with a CI integration recipe
+      scope: `docs/bench.md` (extend, not restructure)
+      accept: new "## CI integration" section showing how to run bench scripts in CI, capture --csv output, diff vs. a baseline file with awk/python, fail on regressions; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; complements bench-ci.md without duplicating it
 
 - [x] feat-docs-quickstart-extension-2: extend `docs/quickstart.md` with a "next steps" section
       scope: `docs/quickstart.md` (extend, not restructure)
