@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-palettes-biome-pack-2026-05-12a: add 2 new biome palettes (obsidian_forge, prismatic_reef)
+      scope: `palettes/obsidian_forge.yaml`, `palettes/prismatic_reef.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [ ] feat-tests-property-greeble-style-x-density-grid: add (greeble_style × greeble_density × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 greeble_style × 3 density × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
+      notes: extends cross-axis property test pack with greeble_style × density pair
+
+- [ ] feat-docs-faq-extension-4: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
+      scope: `docs/faq.md` (extend, not restructure)
+      accept: 4 new Q&As cover (palette × greeble_density cross-axis test rationale), (arcane_library/mistwood_grove biome use-cases), (palette_lint --json schema fields), (cross-link footer in architecture.md); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing entries
+
+- [ ] feat-docs-glossary-extension-4: extend `docs/glossary.md` with 3-4 new entries
+      scope: `docs/glossary.md` (extend, not restructure)
+      accept: new entries for biome-palette-pack, cross-axis-test (extension), palette_lint-json-schema, cross-link-footer; alphabetized; ≤25 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing entries
+
+- [ ] feat-docs-recipes-extension-5: extend `docs/recipes.md` with 4 new task-oriented recipes
+      scope: `docs/recipes.md` (extend, not restructure)
+      accept: 4 new recipes cover (composing palette_lint --json with --all in CI for diff-only fail), (cross-axis property test scaffolding template), (combining --meta-json + --output-json in pipelines), (mining the architecture cross-link table for tooling); ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [ ] feat-docs-troubleshooting-extension-4: extend `docs/troubleshooting.md` with 4-6 new entries
+      scope: `docs/troubleshooting.md` (extend, not restructure)
+      accept: 4-6 new rows covering (palette pack name collision), (cross-axis test parametrize id collisions), (palette_lint --json + jq quoting on Windows PowerShell), (architecture cross-link table drift), (greeble_density extreme values); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
