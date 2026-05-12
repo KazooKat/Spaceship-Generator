@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-palettes-biome-pack-2026-05-12b: add 2 new biome palettes (shadow_citadel, golden_savannah)
+      scope: `palettes/shadow_citadel.yaml`, `palettes/golden_savannah.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [ ] feat-tests-property-cockpit-x-hull-style-grid: add (cockpit_style × hull_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 cockpit × 3 hull × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
+      notes: extends cross-axis property test pack with cockpit_style × hull_style enum-pair
+
+- [ ] feat-docs-presets-extension: extend `docs/presets.md` with worked examples / usage patterns
+      scope: `docs/presets.md` (extend, not restructure)
+      accept: 3-4 added subsections covering (preset YAML schema with annotated example), (using --preset-name), (composing CLI flags on top of a preset), (writing a custom preset for a fleet); ≤80 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing entries
+
+- [ ] feat-docs-output-formats-extension-2: extend `docs/output-formats.md` with additional consumer examples
+      scope: `docs/output-formats.md` (extend, not restructure)
+      accept: 2-3 new consumer-example snippets covering (loading .litematic into amulet-core), (parsing --stats-json with pandas), (binary diff of two ships via --output-json + jq + diff); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; complements existing extension-1
+
+- [ ] feat-docs-quickstart-extension-2: extend `docs/quickstart.md` with a "next steps" section
+      scope: `docs/quickstart.md` (extend, not restructure)
+      accept: new "## Next steps" section after the existing happy-path with 4-5 cross-link bullets to (palettes.md catalog), (presets.md), (recipes.md task index), (cli.md flag reference), (architecture.md pipeline overview); ≤30 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [ ] feat-docs-bench-extension-2: extend `docs/bench.md` with a CI integration recipe
+      scope: `docs/bench.md` (extend, not restructure)
+      accept: new "## CI integration" section showing how to run bench scripts in CI, capture --csv output, diff vs. a baseline file with awk/python, fail on regressions; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; complements bench-ci.md without duplicating it
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
