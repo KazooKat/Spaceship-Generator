@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(troubleshooting): extend with --config-dump schema drift, --from-manifest replay drift, palette x engine cross-axis failures, web UI preset drawer corruption, biome pack name collision (feat-docs-troubleshooting-extension-5)
 - docs(glossary): extend with --from-manifest, biome-pack-catalog, palette-x-hull-cross-axis-test, web-UI-presets-drawer entries (feat-docs-glossary-extension-5)
 - docs(faq): extend with 4 Q&As on palette x hull cross-axis test, --config-dump vs --from-manifest, palettes Biome packs section, web UI palette/preset picker (feat-docs-faq-extension-5)
 - test(properties): add palette x engine_style x seed-grid stability property test (feat-tests-property-palette-x-engine-style-grid)
