@@ -1962,6 +1962,114 @@ def test_property_hull_style_x_wing_style_seed_grid_generates_non_empty_litemati
     )
 
 
+# --------- greeble_style × greeble_density × seed-grid stability (cross-axis) ---------
+#
+# Numeric-axis sibling of the palette × greeble_density and
+# greeble_density × weapon_count cross-product tests above: pins
+# (``GreebleType`` × ``greeble_density`` × seed) deterministically to catch
+# regressions that only surface in the interaction between a single greeble
+# builder (``greeble_types=[GreebleType(...)]`` → per-builder dispatch in
+# ``greeble_styles.py``) and the multi-cell scatter density
+# (``greeble_density=`` top-level kwarg → multi-cell scatter pass in
+# ``greeble_styles.scatter_greebles``). The single-axis
+# ``test_property_greeble_type_seed_grid_generates_non_empty_litematic`` pins
+# every ``GreebleType`` member at a fixed mid density, and the single-axis
+# ``test_property_greeble_density_seed_grid_generates_non_empty_litematic``
+# pins the density axis on its own with the default unrestricted greeble-type
+# list, but neither exercises the CROSS-axis interaction between a specific
+# restricted-builder list and a specific scatter density. A regression that
+# only surfaces when, e.g., the ``ANTENNA`` builder combined with
+# ``greeble_density=1.0`` (max scatter claiming every surface anchor with the
+# narrow column antenna footprint exhausting the surface anchor set) or the
+# ``BATTLE_DAMAGE`` builder combined with ``greeble_density=0.0`` (no-op
+# scatter so the restricted-type list never fires) would slip past both
+# single-axis tests. We slice ``GreebleType`` to the first three members in
+# declaration order via ``list(GreebleType)[:3]`` (sourced dynamically off the
+# enum so the slice tracks future reorderings) and pin three densities
+# (``0.0`` no-greebles bare-hull / ``0.5`` mid / ``1.0`` max scatter — same
+# extremes as the ``test_property_greeble_density_x_weapon_count_seed_grid``
+# and ``test_property_palette_x_greeble_density_seed_grid`` siblings) for
+# 3 × 3 × 3 = 27 representative nodes. Failure node IDs read
+# ``[seed-greeble_density-greeble_type]`` so a regression in any single
+# (greeble_type, density) interaction is self-naming. ``greeble_density`` is
+# plumbed via the top-level ``generate(greeble_density=...)`` kwarg (not via
+# ``ShapeParams``) since the top-level kwarg accepts the full ``[0.0, 1.0]``
+# range and matches the numeric-axis siblings' plumbing; ``greeble_types`` is
+# passed as a single-member list mirroring how the ``--greeble-style TYPE``
+# CLI flag plumbs (``cli.py:687`` → ``[GreebleType(args.greeble_style)]``).
+
+
+_GREEBLE_DENSITY_GRID_TYPES = list(GreebleType)[:3]
+
+
+@pytest.mark.parametrize(
+    "greeble_type", _GREEBLE_DENSITY_GRID_TYPES, ids=lambda t: t.value,
+)
+@pytest.mark.parametrize("greeble_density", [0.0, 0.5, 1.0])
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_greeble_style_x_greeble_density_seed_grid_generates_non_empty_litematic(
+    tmp_path, greeble_type, greeble_density, seed
+):
+    """``GreebleType`` × ``greeble_density`` × small seed grid → non-empty ``.litematic``.
+
+    Numeric-axis cross-product companion to the single-axis
+    ``greeble_type_seed_grid`` and ``greeble_density_seed_grid`` parametrize
+    tests above, and a sibling of the numeric-axis
+    ``greeble_density × weapon_count`` and ``palette × greeble_density``
+    cross-axis tests. ``GreebleType`` is plumbed via ``generate(greeble_types=[...])``
+    (per-builder dispatch in ``greeble_styles.py``, exactly how the
+    ``--greeble-style TYPE`` CLI flag in ``cli.py`` plumbs) while
+    ``greeble_density`` is passed directly to ``generate()`` via the top-level
+    ``greeble_density=`` kwarg (multi-cell scatter pass in
+    ``greeble_styles.scatter_greebles``); the top-level kwarg accepts the
+    full ``[0.0, 1.0]`` range so we plumb it that way rather than through
+    ``ShapeParams``, mirroring the numeric-axis siblings exactly. A
+    regression that only surfaces in the interaction between a specific
+    restricted-builder list and a specific density (e.g., the ``ANTENNA``
+    builder combined with ``greeble_density=1.0`` exhausting the surface
+    anchor set with a narrow column footprint) would slip past both
+    single-axis tests. We slice ``GreebleType`` to the first three members
+    in declaration order via ``list(GreebleType)[:3]`` (sourced dynamically
+    off the enum so the slice tracks future reorderings) and pin three
+    densities (``0.0`` / ``0.5`` / ``1.0``) × the small fixed seed grid
+    ``[0, 1, 7]`` for 3 × 3 × 3 = 27 representative nodes that hit the
+    extremes of both axes without inflating the suite to the full
+    ``GreebleType`` × density cross-product. At ``greeble_density=0.0`` the
+    greeble scatter no-ops but the ship still generates a non-empty
+    hull/cockpit/engines/wings silhouette so ``block_count > 0`` is the right
+    floor invariant for every node. Failure messages name the offending
+    ``(greeble_type, greeble_density, seed)`` tuple via the parametrize IDs
+    plus an explicit ``pytest.fail`` message so a regression localizes
+    immediately.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        shape_params=params,
+        greeble_types=[greeble_type],
+        greeble_density=greeble_density,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"greeble_type={greeble_type.value} "
+            f"greeble_density={greeble_density} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"greeble_type={greeble_type.value} "
+            f"greeble_density={greeble_density} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"greeble_type={greeble_type.value} "
+        f"greeble_density={greeble_density} seed={seed} produced 0 blocks"
+    )
+
+
 @pytest.mark.parametrize(
     "palette_name",
     ["sci_fi_industrial", "sleek_modern", "cyberpunk_neon", "neon_arcade"],

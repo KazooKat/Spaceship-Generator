@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-tests-property-greeble-style-x-density-grid: add (greeble_style × greeble_density × seed) cross-axis property test
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over (3 greeble_style × 3 density × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
-      notes: extends cross-axis property test pack with greeble_style × density pair
-
 - [ ] feat-docs-recipes-extension-5: extend `docs/recipes.md` with 4 new task-oriented recipes
       scope: `docs/recipes.md` (extend, not restructure)
       accept: 4 new recipes cover (composing palette_lint --json with --all in CI for diff-only fail), (cross-axis property test scaffolding template), (combining --meta-json + --output-json in pipelines), (mining the architecture cross-link table for tooling); ≤50 added lines; CHANGELOG bullet
@@ -58,6 +53,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-property-greeble-style-x-density-grid: add (greeble_style × greeble_density × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 greeble_style × 3 density × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
+      notes: extends cross-axis property test pack with greeble_style × density pair
 
 - [x] feat-docs-troubleshooting-extension-4: extend `docs/troubleshooting.md` with 4-6 new entries
       scope: `docs/troubleshooting.md` (extend, not restructure)
