@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-docs-output-formats-extension-2: extend `docs/output-formats.md` with additional consumer examples
-      scope: `docs/output-formats.md` (extend, not restructure)
-      accept: 2-3 new consumer-example snippets covering (loading .litematic into amulet-core), (parsing --stats-json with pandas), (binary diff of two ships via --output-json + jq + diff); ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; complements existing extension-1
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -53,6 +48,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-output-formats-extension-2: extend `docs/output-formats.md` with additional consumer examples
+      scope: `docs/output-formats.md` (extend, not restructure)
+      accept: 2-3 new consumer-example snippets covering (loading .litematic into amulet-core), (parsing --stats-json with pandas), (binary diff of two ships via --output-json + jq + diff); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; complements existing extension-1
 
 - [x] feat-tests-property-cockpit-x-hull-style-grid: add (cockpit_style × hull_style × seed) cross-axis property test
       scope: `tests/test_properties.py` (extend)

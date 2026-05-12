@@ -143,6 +143,64 @@ python -m spaceship_generator --output-json --seed 42 \
 For the formal field contract, pipe `--output-json-schema` (see
 [docs/cli.md](cli.md)) into a Draft-7 validator.
 
+### Python — load a `.litematic` with amulet-core
+
+[`amulet-core`](https://github.com/Amulet-Team/Amulet-Core) is an alternate
+reader (Mojang-block-id-aware, used by the Amulet level editor) for consumers
+that want world-edit semantics rather than a pure NBT view. Install with
+`pip install amulet-core`; the non-air count matches `blocks` from
+`--output-json` for the same ship:
+
+```python
+import amulet
+from amulet.api.selection import SelectionBox
+
+level = amulet.load_format("out/ship_42.litematic")
+level.open()
+box = SelectionBox((0, 0, 0), level.bounds("minecraft:overworld").max)
+non_air = sum(1 for _ in level.get_coord_box("minecraft:overworld", box))
+print("non_air:", non_air)
+level.close()
+```
+
+### Python — parse `--stats-json` into a pandas DataFrame
+
+`--stats-json` (see `cli.py::_print_stats_json`) emits one JSON document per
+ship with a `roles` array of `{"role", "count", "pct"}` entries. Pipe a bulk
+run (`--seeds A,B,C` or `--fleet-count N`) into a file and load the NDJSON to
+compare role distributions across seeds:
+
+```python
+import json
+import pandas as pd
+
+with open("stats.ndjson") as fh:
+    rows = [
+        {"seed": doc["seed"], "palette": doc["palette"], **r}
+        for doc in (json.loads(line) for line in fh)
+        for r in doc["roles"]
+    ]
+df = pd.DataFrame(rows).pivot_table(
+    index="seed", columns="role", values="count", fill_value=0
+)
+print(df)
+```
+
+### Shell — binary-diff two ships via `--output-json | jq`
+
+The raw `.litematic` bytes diverge on any block reorder, so `diff` on the
+schematics is too noisy. Compare structured fields from `--stats-json`
+instead — `jq -S` sorts keys for a stable line-diff:
+
+```sh
+for s in 42 43; do
+  python -m spaceship_generator --stats-json --seed "$s" \
+    --palette sci_fi_industrial --out out/ \
+    | jq -S '{seed, blocks: .total_blocks, shape, roles}' > "ship_$s.json"
+done
+diff -u ship_42.json ship_43.json
+```
+
 ## Cross-links
 
 - [docs/cli.md](cli.md) — per-flag CLI reference (incl. `--output-json`,
