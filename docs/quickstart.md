@@ -72,6 +72,9 @@ For the full fleet flag pack (`--fleet-size-tier`, `--fleet-style-coherence`, ..
 
 ## Next steps
 
-- Browse the full CLI flag list in [cli.md](cli.md) — fleet mode, manifest export, preview rendering, weapon scatter, and more.
-- Read [architecture.md](architecture.md) for the shape pipeline internals.
+- Browse the full biome palette catalog in [palettes.md](palettes.md) — every shipped palette grouped by theme (industrial, biome, holiday, ...) with preview swatches and intended use cases.
+- Use a [preset](presets.md) for one-shot config — preset names like `corvette`, `gunship`, `capital_carrier` bundle hull / engine / wing / cockpit / weapon parameters into a single archetype so you don't have to tune every flag yourself.
+- Skim [recipes.md](recipes.md) for a task-oriented index of common workflows — fleet runs, palette validation, `--meta-json` discovery, `--output-json | jq` extraction, cross-axis test debugging, and more.
+- Browse the full CLI flag list in [cli.md](cli.md) — fleet mode, manifest export, preview rendering, weapon scatter, texture knobs, machine-readable list flags, and the rest of the surface.
+- Read [architecture.md](architecture.md) for the pipeline overview — how the Shape / Hull / Wing / Greeble / Weapon / Cockpit / Engine / Structure / Fleet / Texture pipelines fit together end-to-end.
 - Drop a YAML file in `palettes/` to ship your own palette — see [palette_authoring.md](palette_authoring.md) for the schema.
