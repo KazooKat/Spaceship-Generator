@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs
 
-- [ ] feat-docs-faq-extension-5: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
-      scope: `docs/faq.md` (extend, not restructure)
-      accept: 4 new Q&As cover (palette × hull cross-axis test rationale), (--config-dump vs --from-manifest), (Biome packs section in palettes.md), (web UI palette/preset picker walkthrough); ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do not duplicate prior 4 extensions
-
 - [ ] feat-docs-glossary-extension-5: extend `docs/glossary.md` with 3-4 new entries
       scope: `docs/glossary.md` (extend, not restructure)
       accept: new entries for `--from-manifest`, biome-pack catalog, palette × hull cross-axis test, web UI presets drawer; alphabetized; ≤25 added lines; CHANGELOG bullet
@@ -73,6 +68,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-faq-extension-5: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
+      scope: `docs/faq.md` (extend, not restructure)
+      accept: 4 new Q&As cover (palette × hull cross-axis test rationale), (--config-dump vs --from-manifest), (Biome packs section in palettes.md), (web UI palette/preset picker walkthrough); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate prior 4 extensions
 
 - [x] feat-tests-property-palette-x-engine-style-grid: add (palette × engine_style × seed) cross-axis property test
       scope: `tests/test_properties.py` (extend)
