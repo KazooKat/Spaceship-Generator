@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs
 
-- [ ] feat-docs-configuration-extension: extend `docs/configuration.md` with worked --config-dump / --config-load round-trip examples
-      scope: `docs/configuration.md` (extend, not restructure)
-      accept: 2-3 added subsections covering (capturing effective config of any CLI invocation via --config-dump), (replaying a captured config via --config-load), (overriding config-file values with explicit flags); ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; verify flag names against `src/spaceship_generator/cli.py` before writing
-
 - [ ] feat-docs-palettes-extension: extend `docs/palettes.md` with biome-pack catalog overview
       scope: `docs/palettes.md` (extend, not restructure)
       accept: new "## Biome packs" section listing the recently-shipped 2-palette packs and the design rationale behind biome-themed grouping; ≤40 added lines; CHANGELOG bullet
@@ -73,6 +68,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-configuration-extension: extend `docs/configuration.md` with worked --config-dump / --config-load round-trip examples
+      scope: `docs/configuration.md` (extend, not restructure)
+      accept: 2-3 added subsections covering (capturing effective config of any CLI invocation via --config-dump), (replaying a captured config via --config-load), (overriding config-file values with explicit flags); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; verify flag names against `src/spaceship_generator/cli.py` before writing
 
 - [x] feat-tests-property-palette-x-hull-style-grid: add (palette × hull_style × seed) cross-axis property test
       scope: `tests/test_properties.py` (extend)

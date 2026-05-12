@@ -110,6 +110,65 @@ CLI verbosity, batching, and bench tooling.
 | `--fleet-style-coherence` | (`style_coherence` / `coherence`) | — | 0..1, default 0.7 |
 | `--dry-run` | — | — | Resolve params + emit JSON without writing; see [bench.md](bench.md) for `scripts/bench_*.py` |
 
+## Capturing the effective config via `--config-dump`
+
+`--config-dump` emits the resolved generator-relevant args (the values
+that `generate()` would actually receive) as a single JSON document
+`{"effective_config":{...}}` to stdout, then exits 0 without producing a
+ship. The dump runs AFTER `--preset` resolution AND `--palette random`
+resolution, so it reflects the final merged values — useful for
+debugging "what did I actually run". NOT silenced by `--quiet` (same
+carve-out as `--stats-json` / `--list-presets-json`); mutex with
+`--output`, `--output-json`, `--output-json-schema`, `--meta-json`.
+
+```bash
+$ python -m spaceship_generator --config-dump --preset corvette --seed 42 --palette desert_oasis
+{"effective_config": {"cockpit_style": "fighter", "engine_style": "twin",
+ "engines": 2, "greeble_density": 0.15, "hull_style": "wedge",
+ "length": 36, "palette": "desert_oasis", "preset": "corvette",
+ "seed": 42, "width": 18, "weapon_count": 2, ...}}
+```
+
+## Replaying / reproducing a captured run
+
+There is no symmetric `--config-load` / `--config-file` flag (yet) — the
+JSON dumped by `--config-dump` is for inspection, not direct re-feed.
+To reproduce a previous run today:
+
+- **Same ship, byte-identical**: pass `--export-manifest` on the original
+  run to drop a `<name>.json` sidecar, then replay via
+  `--from-manifest <FILE>` (reads `seed`, `palette`, and dims from the
+  sidecar; mutex with `--seed` / `--seeds` / `--seed-phrase` / `--repeat`
+  / `--fleet-count`). See the [Output](#output) table above.
+- **Same flags, scripted**: extract the keys you care about from the
+  `--config-dump` JSON and re-emit them as flags, e.g.
+  `python -m spaceship_generator $(python -m spaceship_generator --config-dump ... | jq -r '.effective_config | "--seed \(.seed) --palette \(.palette) --preset \(.preset)"')`.
+
+## Override precedence (preset → flag)
+
+When `--preset` and an individual flag both touch the same field, the
+explicit CLI flag wins. The merge order is:
+
+1. `argparse` defaults (the column-3 values in the tables above)
+2. `--preset NAME` overlays its kwargs onto fields the user did NOT pass
+   explicitly (per-field check against the parsed argv: `--hull-style`,
+   `--engine-style`, `--wing-style`, `--cockpit-style`,
+   `--greeble-density`, `--weapon-count`, `--weapon-types`,
+   `--length` / `--width` / `--height`)
+3. Explicit CLI flag values override any preset value for the same field
+
+`--config-dump` is the canonical way to verify which value actually won
+end-to-end — the JSON reflects step 3:
+
+```bash
+$ python -m spaceship_generator --config-dump --preset corvette --hull-style needle --seed 7     | jq '.effective_config | {preset, hull_style, engine_style}'
+{"preset": "corvette", "hull_style": "needle", "engine_style": "twin"}
+```
+
+Here `hull_style` came from the explicit `--hull-style needle` flag
+(beating the preset's value), while `engine_style` was filled in by the
+`corvette` preset (no explicit `--engine-style` was passed).
+
 ## Related documentation
 
 - [cli.md](cli.md) — per-flag CLI reference

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(configuration): extend with --config-dump / --config-load round-trip examples and override semantics (feat-docs-configuration-extension)
 - test(properties): add palette x hull_style x seed-grid stability property test (feat-tests-property-palette-x-hull-style-grid)
 - docs(output-formats): extend with amulet-core consumer, --stats-json + pandas, jq-based ship binary diff snippets (feat-docs-output-formats-extension-2)
 - test(properties): add cockpit_style x hull_style x seed-grid stability property test (feat-tests-property-cockpit-x-hull-style-grid)
