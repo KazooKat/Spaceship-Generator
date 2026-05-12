@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-tests-property-cockpit-x-hull-style-grid: add (cockpit_style × hull_style × seed) cross-axis property test
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over (3 cockpit × 3 hull × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
-      notes: extends cross-axis property test pack with cockpit_style × hull_style enum-pair
-
 - [ ] feat-docs-output-formats-extension-2: extend `docs/output-formats.md` with additional consumer examples
       scope: `docs/output-formats.md` (extend, not restructure)
       accept: 2-3 new consumer-example snippets covering (loading .litematic into amulet-core), (parsing --stats-json with pandas), (binary diff of two ships via --output-json + jq + diff); ≤60 added lines; CHANGELOG bullet
@@ -58,6 +53,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-property-cockpit-x-hull-style-grid: add (cockpit_style × hull_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 cockpit × 3 hull × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
+      notes: extends cross-axis property test pack with cockpit_style × hull_style enum-pair
 
 - [x] feat-docs-bench-extension-2: extend `docs/bench.md` with a CI integration recipe
       scope: `docs/bench.md` (extend, not restructure)
