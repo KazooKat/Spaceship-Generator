@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-docs-recipes-extension-5: extend `docs/recipes.md` with 4 new task-oriented recipes
-      scope: `docs/recipes.md` (extend, not restructure)
-      accept: 4 new recipes cover (composing palette_lint --json with --all in CI for diff-only fail), (cross-axis property test scaffolding template), (combining --meta-json + --output-json in pipelines), (mining the architecture cross-link table for tooling); ≤50 added lines; CHANGELOG bullet
-      notes: pure-docs unit
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -53,6 +48,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-recipes-extension-5: extend `docs/recipes.md` with 4 new task-oriented recipes
+      scope: `docs/recipes.md` (extend, not restructure)
+      accept: 4 new recipes cover (composing palette_lint --json with --all in CI for diff-only fail), (cross-axis property test scaffolding template), (combining --meta-json + --output-json in pipelines), (mining the architecture cross-link table for tooling); ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
 
 - [x] feat-tests-property-greeble-style-x-density-grid: add (greeble_style × greeble_density × seed) cross-axis property test
       scope: `tests/test_properties.py` (extend)

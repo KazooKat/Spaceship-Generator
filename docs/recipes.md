@@ -295,6 +295,55 @@ the full ~700-test suite. See Recipe 16 for the naming convention.
 pytest -k engine_style_x_wing -v
 ```
 
+### Recipe 27 — Diff-only palette lint CI gate
+
+Fail CI only on lint errors *introduced* by the current branch — capture
+`palette_lint.py --all --json` at merge-base and HEAD, then `jq` for palettes newly flipped to `ok==false` so a dirty corpus does not block unrelated PRs.
+
+```bash
+git stash && git checkout "$(git merge-base HEAD origin/main)" && \
+    python scripts/palette_lint.py --all --json > /tmp/base.json && git checkout - && git stash pop && \
+    python scripts/palette_lint.py --all --json > /tmp/head.json && \
+    jq -s '.[1] - .[0] | map(select(.ok==false))' /tmp/base.json /tmp/head.json
+```
+
+### Recipe 28 — Scaffold a new cross-axis property test
+
+Drop-in template for adding one more `(axisA × axisB × seed)` pairing to
+`tests/test_properties.py` — reuses `_slice_first_middle_last` and `_SHAPE_STYLE_STABILITY_SEEDS` so the new test costs exactly 27 nodes.
+
+```python
+_AX_A = _slice_first_middle_last(list(AxisA))
+_AX_B = _slice_first_middle_last(list(AxisB))
+@pytest.mark.parametrize("a", _AX_A, ids=lambda v: v.name)
+@pytest.mark.parametrize("b", _AX_B, ids=lambda v: v.name)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_axisa_x_axisb_seed_grid(tmp_path, a, b, seed):
+    out = tmp_path / f"{a.name}_{b.name}_{seed}.litematic"
+    generate(seed=seed, out_path=out, axis_a=a, shape_params=ShapeParams(axis_b=b))
+    assert out.exists() and out.stat().st_size > 0
+```
+
+### Recipe 29 — Combined `--meta-json` + `--output-json` pipeline
+
+Capture the discovery bundle and per-ship summary in one pipeline, then tool
+both in a single `jq` pass — pins palette/version context alongside the ship for reproducible run reports.
+
+```bash
+python -m spaceship_generator --meta-json > meta.json && \
+    python -m spaceship_generator --output-json --seed 42 --palette sci_fi_industrial --out out/ > ship.json && \
+    jq -n --slurpfile m meta.json --slurpfile s ship.json '{version: $m[0].version, ship: $s[0]}'
+```
+
+### Recipe 30 — Auto-generate a tooling map from the cross-link table
+
+Mine the `## Cross-link index` table in `docs/architecture.md` into a JSON
+`{section: [cli, api]}` map for IDE tooling — `grep` the `| [Section]` rows then `awk` over the pipe-delimited columns.
+
+```bash
+grep -E '^\| \[' docs/architecture.md | awk -F '\\|' '{gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$4); printf "\"%s\": [\"%s\", \"%s\"],\n", $2, $3, $4}' | sed '1s/^/{/; $s/,$/}/'
+```
+
 ## See also
 
 - [quickstart.md](quickstart.md) — 5-minute getting-started walk
