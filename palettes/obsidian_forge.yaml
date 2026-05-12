@@ -1,0 +1,26 @@
+name: obsidian_forge
+description: Obsidian-forge volcanic-glass dreadnought. Obsidian hull, crying-obsidian HULL_DARK fractured-glass accent, red-stained-glass crimson forge-window, magma-block engines, shroomlight molten engine glow, orange-stained-glass molten cockpit, polished-blackstone-bricks wing accents, gold-block forge-tool greebles, jack-o-lantern warm forge-lamp running lights, smooth-basalt interior — dark volcanic-glass forge theme with crimson and gold accents.
+
+blocks:
+  HULL:          minecraft:obsidian
+  HULL_DARK:     minecraft:crying_obsidian
+  WINDOW:        minecraft:red_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:orange_stained_glass
+  WING:          minecraft:polished_blackstone_bricks
+  GREEBLE:       minecraft:gold_block
+  LIGHT:         minecraft:jack_o_lantern
+  INTERIOR:      minecraft:smooth_basalt
+
+preview_colors:
+  HULL:          "#1a1020"
+  HULL_DARK:     "#4a2870"
+  WINDOW:        "#c83030"
+  ENGINE:        "#8a3010"
+  ENGINE_GLOW:   "#ffa040"
+  COCKPIT_GLASS: "#e08020"
+  WING:          "#2a242a"
+  GREEBLE:       "#f0c830"
+  LIGHT:         "#f08030"
+  INTERIOR:      "#3a3840"

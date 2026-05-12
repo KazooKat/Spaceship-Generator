@@ -69,6 +69,11 @@ for one release cycle, then pruned during release prep.
 
 ## Closed (last cycle)
 
+- [x] feat-palettes-biome-pack-2026-05-12a: add 2 new biome palettes (obsidian_forge, prismatic_reef)
+      scope: `palettes/obsidian_forge.yaml`, `palettes/prismatic_reef.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
 - [x] feat-docs-glossary-extension-4: extend `docs/glossary.md` with 3-4 new entries
       scope: `docs/glossary.md` (extend, not restructure)
       accept: new entries for biome-palette-pack, cross-axis-test (extension), palette_lint-json-schema, cross-link-footer; alphabetized; ≤25 added lines; CHANGELOG bullet

@@ -1,0 +1,26 @@
+name: prismatic_reef
+description: Prismatic-reef bright-coral cruiser. Prismarine-bricks hull, dark-prismarine HULL_DARK reef-shadow accent, light-blue-stained-glass bright lagoon windows, prismarine engines, sea-lantern bright reef-glow engine glow, cyan-stained-glass cockpit, brain-coral-block pink wing accents, fire-coral-block tropical greebles, ochre-froglight warm coral-bioluminescence running lights, prismarine interior — bright underwater coral-reef prismarine-and-sea-lantern theme with tropical pink and red coral accents.
+
+blocks:
+  HULL:          minecraft:prismarine_bricks
+  HULL_DARK:     minecraft:dark_prismarine
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:prismarine
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:cyan_stained_glass
+  WING:          minecraft:brain_coral_block
+  GREEBLE:       minecraft:fire_coral_block
+  LIGHT:         minecraft:ochre_froglight
+  INTERIOR:      minecraft:tube_coral_block
+
+preview_colors:
+  HULL:          "#5ba88a"
+  HULL_DARK:     "#2e5c44"
+  WINDOW:        "#a0d8f0"
+  ENGINE:        "#60b8a0"
+  ENGINE_GLOW:   "#d8f0f8"
+  COCKPIT_GLASS: "#30c0c8"
+  WING:          "#d26a9c"
+  GREEBLE:       "#c8403a"
+  LIGHT:         "#f0d860"
+  INTERIOR:      "#2e60b8"

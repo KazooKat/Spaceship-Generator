@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(palettes): add obsidian_forge, prismatic_reef biome palettes (feat-palettes-biome-pack-2026-05-12a)
+- docs(recipes): extend with 4 recipes on diff-only palette_lint CI gate, cross-axis property test scaffold template, --meta-json + --output-json combined pipeline, architecture cross-link table tooling map (feat-docs-recipes-extension-5)
 - docs(glossary): extend with biome-palette-pack, cross-axis-test (extension), palette_lint-json-schema, cross-link-footer entries (feat-docs-glossary-extension-4)
 - docs(faq): extend with 4 Q&As on cross-axis property tests, biome palette use-cases, palette_lint --json schema, architecture cross-link footer (feat-docs-faq-extension-4)
 - feat(palettes): add arcane_library, mistwood_grove biome palettes (feat-palettes-biome-pack-2026-05-08e)
