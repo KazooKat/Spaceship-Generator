@@ -210,3 +210,27 @@ Hex colors must be quoted (`"#c0c0c0"`) — without the quotes YAML will sometim
 ### Block id pointing at a non-cube block where solid is expected
 
 `HULL`, `HULL_DARK`, `WING`, `ENGINE`, `GREEBLE`, and `INTERIOR` are placed as full cubes by the generator and assume a solid 1x1x1 block. Pointing them at slabs, stairs, fences, glass panes, or other partial-shape blocks produces visible gaps in the silhouette and makes the wing/hull pass look broken even though the file is technically valid. Save partial-cube blocks for `WINDOW` / `COCKPIT_GLASS` (where transparency is the point) or skip them entirely.
+
+## Designing a biome pack
+
+Most palettes ship as **biome packs** — two palettes themed after a Minecraft-style biome (or a paired biome contrast) landed together under a single `feat-palettes-biome-pack-<date>[suffix]` unit. See the [`## Biome packs` catalog in `docs/palettes.md`](palettes.md#biome-packs) for every pack shipped to date. Biome packs share the same review / lint surface as a single palette, but pair design takes a few extra considerations.
+
+### Cohesion within a 2-palette pack
+
+The two palettes in a pack should read as siblings, not strangers. A few rules that work in practice:
+
+1. **Share an accent color family.** If pack A leans warm-amber on `ENGINE_GLOW` / `LIGHT`, pack B should lean a related warm hue (deeper amber, brick-red) rather than jumping to cool cyan. The two ships rendered side-by-side then read as "same world, different region" rather than two unrelated kits.
+2. **Share a `HULL_DARK` family.** The accent stripes are what tie the silhouette together; if both palettes draw `HULL_DARK` from the same dark-stone or dark-wood family (e.g. both `deepslate_*` or both `dark_oak_*`), the texture pass produces visually coherent banding across the pack.
+3. **Contrast `WINDOW` colors between the two palettes.** Pack cohesion should not mean uniformity — pick contrasting `WINDOW` tints (e.g. amber vs teal stained glass) so the two ships are still trivially distinguishable in `--list-palettes` thumbnails and the web UI dropdown.
+
+### Avoiding overlap with existing biome packs
+
+Before locking in a theme, scan the [`## Biome packs` catalog in `docs/palettes.md`](palettes.md#biome-packs) for prior packs that already cover the same biome family. Volcanic, ice / tundra, swamp, desert, and end-themed packs are well-represented; novel biome angles (savannah, mangrove, cherry-grove, lush-cave variants) are still open. When in doubt, pick a biome adjective that does not already appear as a substring of any shipped palette name.
+
+### Naming convention
+
+Pack palette filenames follow `snake_case <biome theme>_<variant>` — e.g. `obsidian_forge` / `prismatic_reef`, `shadow_citadel` / `golden_savannah`. The biome theme leads (so the two siblings sort apart in `palettes/`), and the variant disambiguates within the theme. Avoid generic suffixes (`v2`, `alt`); prefer a concrete material or atmospheric noun (`forge`, `reef`, `citadel`, `savannah`) that already hints at the palette's `HULL` / `ENGINE_GLOW` choices.
+
+### Cross-axis coverage in the property test suite
+
+Pack palettes are auto-included in `tests/test_palette.py::test_validate_builtin_palettes_clean` and `test_generate_palette_x_structure_style_cross` the moment they land in `palettes/`. The cross-axis property tests in `tests/test_properties.py` (palette × cockpit_style, palette × greeble_density) sample palettes via `_slice_first_middle_last(_PALETTE_NAMES)` — first / middle / last alphabetically of the sorted palette stems — so a new pack only enters the cross-axis sample if its names happen to land at the first / middle / last slot. To force coverage of a specific new palette through the cross-axis grid, run `pytest -k <palette_name>` to confirm the single-axis seed-grid passes; the cross-axis interaction is then exercised by the next pack that shifts the alphabetical middle.

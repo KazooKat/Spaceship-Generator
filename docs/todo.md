@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs
 
-- [ ] feat-docs-palette-authoring-extension-2: extend `docs/palette_authoring.md` with biome-pack design tips
-      scope: `docs/palette_authoring.md` (extend, not restructure)
-      accept: new "## Designing a biome pack" section covering (cohesion within a 2-palette pack — shared accent colors / shared dark palette), (avoiding overlap with existing biome packs), (testing your pack via cross-axis property tests); ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; sibling to existing Common-pitfalls extension
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -58,6 +53,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-palette-authoring-extension-2: extend `docs/palette_authoring.md` with biome-pack design tips
+      scope: `docs/palette_authoring.md` (extend, not restructure)
+      accept: new "## Designing a biome pack" section covering (cohesion within a 2-palette pack — shared accent colors / shared dark palette), (avoiding overlap with existing biome packs), (testing your pack via cross-axis property tests); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; sibling to existing Common-pitfalls extension
 
 - [x] feat-docs-troubleshooting-extension-5: extend `docs/troubleshooting.md` with 4-6 new entries
       scope: `docs/troubleshooting.md` (extend, not restructure)
