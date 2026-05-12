@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-palettes-biome-pack-2026-05-12c: add 2 new biome palettes (tundra_aurora, crimson_canopy)
+      scope: `palettes/tundra_aurora.yaml`, `palettes/crimson_canopy.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [ ] feat-tests-property-palette-x-hull-style-grid: add (palette × hull_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 palette × 3 hull_style × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
+      notes: extends cross-axis test pack with palette × hull enum pair (not yet covered per grep)
+
+- [ ] feat-docs-configuration-extension: extend `docs/configuration.md` with worked --config-dump / --config-load round-trip examples
+      scope: `docs/configuration.md` (extend, not restructure)
+      accept: 2-3 added subsections covering (capturing effective config of any CLI invocation via --config-dump), (replaying a captured config via --config-load), (overriding config-file values with explicit flags); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; verify flag names against `src/spaceship_generator/cli.py` before writing
+
+- [ ] feat-docs-palettes-extension: extend `docs/palettes.md` with biome-pack catalog overview
+      scope: `docs/palettes.md` (extend, not restructure)
+      accept: new "## Biome packs" section listing the recently-shipped 2-palette packs and the design rationale behind biome-themed grouping; ≤40 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [ ] feat-docs-web-ui-extension: extend `docs/web_ui.md` with palette / preset picker walkthrough
+      scope: `docs/web_ui.md` (extend, not restructure)
+      accept: new "## Picking a palette and preset" section walking through the UI controls — match actual UI; reference `src/spaceship_generator/web/` or the served template for accuracy; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; verify against real UI before writing
+
+- [ ] feat-docs-recipes-extension-6: extend `docs/recipes.md` with 4 new task-oriented recipes
+      scope: `docs/recipes.md` (extend, not restructure)
+      accept: 4 new recipes cover (--config-dump to capture an exact CLI invocation for sharing), (replaying a config via --config-load + extra overrides), (mass-generating one ship per biome-pack palette in a loop), (running a single palette × hull cross-axis test node by parametrize id); ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
