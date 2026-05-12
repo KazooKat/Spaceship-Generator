@@ -73,3 +73,31 @@ All 67 palettes shipped with the Spaceship Generator. Use `--palette NAME` to se
 | `wooden_frigate` | Rustic wooden frigate. Oak + dark-oak hull, iron hardpoints, lantern lights. |
 
 Run `spaceship-generator --list-palettes` to see this list from the CLI, or `spaceship-generator --palette-info NAME` for role → block ID and hex preview color details for any single palette.
+
+## Biome packs
+
+A subset of the catalog above ships as dated **biome packs** — each pack is two palettes themed after a Minecraft-style biome (or paired biome contrast), landed together under a single `feat-palettes-biome-pack-<date>[suffix]` unit. Packs are intentionally small (2 palettes / 1 commit / 1 CHANGELOG bullet) so each one reviews in isolation, lints in isolation (`scripts/palette_lint.py --strict`), and shows up as one row in `--list-palettes-json`.
+
+| Pack ID | Date | Palettes |
+|---|---|---|
+| `feat-palettes-biome-pack-2026-04-28b` | 2026-04-28 | `windswept_hills`, `ice_spikes` |
+| `feat-palettes-biome-pack-2026-04-29b` | 2026-04-29 | `swamp`, `dark_forest` |
+| `feat-palettes-biome-pack-2026-04-30`  | 2026-04-30 | `deep_dark`, `jagged_peaks` |
+| `feat-palettes-biome-pack-2026-05-05`  | 2026-05-05 | `bamboo_jungle`, `flower_forest` |
+| `feat-palettes-biome-pack-2026-05-05b` | 2026-05-05 | `sunflower_plains`, `stony_peaks` |
+| `feat-palettes-biome-pack-2026-05-05c` | 2026-05-05 | `dawn_meadow`, `glacial_blue` |
+| `feat-palettes-biome-pack-2026-05-05d` | 2026-05-05 | `eroded_badlands`, `magma_chamber` |
+| `feat-palettes-biome-pack-2026-05-07`  | 2026-05-07 | `volcanic_island`, `crystal_caves` |
+| `feat-palettes-biome-pack-2026-05-07b` | 2026-05-07 | `desert_oasis`, `foggy_marsh` |
+| `feat-palettes-biome-pack-2026-05-07c` | 2026-05-07 | `enchanted_grove`, `asteroid_belt` |
+| `feat-palettes-biome-pack-2026-05-07d` | 2026-05-07 | `autumn_canopy`, `glow_lagoon` |
+| `feat-palettes-biome-pack-2026-05-07e` | 2026-05-07 | `obsidian_shore`, `starlight_temple` |
+| `feat-palettes-biome-pack-2026-05-08`  | 2026-05-08 | `meteor_shower`, `solar_corona` |
+| `feat-palettes-biome-pack-2026-05-08b` | 2026-05-08 | `scarlet_oasis`, `frostbite_tundra` |
+| `feat-palettes-biome-pack-2026-05-08c` | 2026-05-08 | `ember_forge`, `twilight_glade` |
+| `feat-palettes-biome-pack-2026-05-08d` | 2026-05-08 | `abyssal_trench`, `sunset_horizon` |
+| `feat-palettes-biome-pack-2026-05-08e` | 2026-05-08 | `arcane_library`, `mistwood_grove` |
+| `feat-palettes-biome-pack-2026-05-12a` | 2026-05-12 | `obsidian_forge`, `prismatic_reef` |
+| `feat-palettes-biome-pack-2026-05-12b` | 2026-05-12 | `shadow_citadel`, `golden_savannah` |
+
+The biome-themed grouping serves three goals: **exploratory variety** (each pack pushes a fresh role-coverage / hue family without disturbing existing palettes), **themed test cohorts** (cross-axis property tests like `test_property_palette_x_greeble_density_seed_grid_*` slice the palette list dynamically, so adding a pack automatically widens the grid), and **easy CI smoke** (`scripts/palette_lint.py --all --json` covers the whole catalog including new packs without a one-by-one allowlist). Pick a pack ID from the table to find the originating commit (`git log --oneline | grep <pack-id>`) for the design notes that landed with it.

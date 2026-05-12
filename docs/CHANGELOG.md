@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(palettes): add Biome packs section cataloging the 2-palette biome-themed pack series (feat-docs-palettes-extension)
 - docs(configuration): extend with --config-dump / --config-load round-trip examples and override semantics (feat-docs-configuration-extension)
 - test(properties): add palette x hull_style x seed-grid stability property test (feat-tests-property-palette-x-hull-style-grid)
 - docs(output-formats): extend with amulet-core consumer, --stats-json + pandas, jq-based ship binary diff snippets (feat-docs-output-formats-extension-2)
