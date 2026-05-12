@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-05-12c: add 2 new biome palettes (tundra_aurora, crimson_canopy)
-      scope: `palettes/tundra_aurora.yaml`, `palettes/crimson_canopy.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
 - [ ] feat-docs-recipes-extension-6: extend `docs/recipes.md` with 4 new task-oriented recipes
       scope: `docs/recipes.md` (extend, not restructure)
       accept: 4 new recipes cover (--config-dump to capture an exact CLI invocation for sharing), (replaying a config via --config-load + extra overrides), (mass-generating one ship per biome-pack palette in a loop), (running a single palette × hull cross-axis test node by parametrize id); ≤50 added lines; CHANGELOG bullet
@@ -58,6 +53,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palettes-biome-pack-2026-05-12c: add 2 new biome palettes (tundra_aurora, crimson_canopy)
+      scope: `palettes/tundra_aurora.yaml`, `palettes/crimson_canopy.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
 
 - [x] feat-docs-web-ui-extension: extend `docs/web_ui.md` with palette / preset picker walkthrough
       scope: `docs/web_ui.md` (extend, not restructure)

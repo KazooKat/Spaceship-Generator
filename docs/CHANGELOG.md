@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(palettes): add tundra_aurora, crimson_canopy biome palettes (feat-palettes-biome-pack-2026-05-12c)
 - docs(web_ui): add Picking a palette and preset walkthrough section (feat-docs-web-ui-extension)
 - docs(palettes): add Biome packs section cataloging the 2-palette biome-themed pack series (feat-docs-palettes-extension)
 - docs(configuration): extend with --config-dump / --config-load round-trip examples and override semantics (feat-docs-configuration-extension)

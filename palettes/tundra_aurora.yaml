@@ -1,0 +1,26 @@
+name: tundra_aurora
+description: Tundra-aurora frozen-night cutter. Packed-ice hull, prismarine-bricks HULL_DARK deep-frost accent, light-blue-stained-glass aurora-shimmer windows, blue-ice engines, sea-lantern cold cyan engine glow, magenta-stained-glass aurora-veil cockpit, snow-block wing accents, dripstone-block icicle greebles, lantern warm aurora-camp running lights, smooth-quartz interior — frozen-tundra packed-ice-and-snow theme with light-blue / cyan / magenta aurora-band accents and warm lantern highlights.
+
+blocks:
+  HULL:          minecraft:packed_ice
+  HULL_DARK:     minecraft:prismarine_bricks
+  WINDOW:        minecraft:light_blue_stained_glass
+  ENGINE:        minecraft:blue_ice
+  ENGINE_GLOW:   minecraft:sea_lantern
+  COCKPIT_GLASS: minecraft:magenta_stained_glass
+  WING:          minecraft:snow_block
+  GREEBLE:       minecraft:dripstone_block
+  LIGHT:         minecraft:lantern
+  INTERIOR:      minecraft:smooth_quartz
+
+preview_colors:
+  HULL:          "#aac8e0"
+  HULL_DARK:     "#3a5650"
+  WINDOW:        "#a8d4f0"
+  ENGINE:        "#a8d8f0"
+  ENGINE_GLOW:   "#eaf4ff"
+  COCKPIT_GLASS: "#c261c2"
+  WING:          "#f4f8fc"
+  GREEBLE:       "#9c8878"
+  LIGHT:         "#f4c060"
+  INTERIOR:      "#eae6d8"

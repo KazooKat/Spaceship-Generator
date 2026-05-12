@@ -1,0 +1,26 @@
+name: crimson_canopy
+description: Crimson-canopy nether-forest skiff. Crimson-planks hull, crimson-stem HULL_DARK gnarled-bark accent, red-stained-glass blood-light windows, nether-wart-block engines, shroomlight warm crimson-canopy engine glow, magenta-stained-glass fungal-bloom cockpit, crimson-hyphae wing accents, netherrack weeping-vine greebles, jack-o-lantern warm canopy-glow running lights, warped-planks contrasting interior — crimson-forest tree-canopy planks-and-stem theme with dark-red and weeping-vine highlights.
+
+blocks:
+  HULL:          minecraft:crimson_planks
+  HULL_DARK:     minecraft:crimson_stem
+  WINDOW:        minecraft:red_stained_glass
+  ENGINE:        minecraft:nether_wart_block
+  ENGINE_GLOW:   minecraft:shroomlight
+  COCKPIT_GLASS: minecraft:magenta_stained_glass
+  WING:          minecraft:crimson_hyphae
+  GREEBLE:       minecraft:netherrack
+  LIGHT:         minecraft:jack_o_lantern
+  INTERIOR:      minecraft:warped_planks
+
+preview_colors:
+  HULL:          "#6a2633"
+  HULL_DARK:     "#1f0a10"
+  WINDOW:        "#b74b4b"
+  ENGINE:        "#7a1a1a"
+  ENGINE_GLOW:   "#ff9a3c"
+  COCKPIT_GLASS: "#c261c2"
+  WING:          "#37191e"
+  GREEBLE:       "#5a2220"
+  LIGHT:         "#f0a040"
+  INTERIOR:      "#2a7068"
