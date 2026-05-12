@@ -28,11 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: 4 new recipes cover (composing palette_lint --json with --all in CI for diff-only fail), (cross-axis property test scaffolding template), (combining --meta-json + --output-json in pipelines), (mining the architecture cross-link table for tooling); ≤50 added lines; CHANGELOG bullet
       notes: pure-docs unit
 
-- [ ] feat-docs-troubleshooting-extension-4: extend `docs/troubleshooting.md` with 4-6 new entries
-      scope: `docs/troubleshooting.md` (extend, not restructure)
-      accept: 4-6 new rows covering (palette pack name collision), (cross-axis test parametrize id collisions), (palette_lint --json + jq quoting on Windows PowerShell), (architecture cross-link table drift), (greeble_density extreme values); ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -63,6 +58,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-troubleshooting-extension-4: extend `docs/troubleshooting.md` with 4-6 new entries
+      scope: `docs/troubleshooting.md` (extend, not restructure)
+      accept: 4-6 new rows covering (palette pack name collision), (cross-axis test parametrize id collisions), (palette_lint --json + jq quoting on Windows PowerShell), (architecture cross-link table drift), (greeble_density extreme values); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit
 
 - [x] feat-palettes-biome-pack-2026-05-12a: add 2 new biome palettes (obsidian_forge, prismatic_reef)
       scope: `palettes/obsidian_forge.yaml`, `palettes/prismatic_reef.yaml`
