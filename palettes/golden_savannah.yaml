@@ -1,0 +1,26 @@
+name: golden_savannah
+description: Golden-savannah dry-grassland skiff. Yellow-terracotta hull, brown-terracotta HULL_DARK sun-baked accent, orange-stained-glass amber windows, cut-sandstone engines, ochre-froglight warm savannah-glow engine glow, yellow-stained-glass cockpit, lime-terracotta wing accents, honey-block honey-comb greebles, glowstone warm running lights, smooth-sandstone interior — warm dry-grassland terracotta-and-sandstone theme with orange, yellow, and lime accents.
+
+blocks:
+  HULL:          minecraft:yellow_terracotta
+  HULL_DARK:     minecraft:brown_terracotta
+  WINDOW:        minecraft:orange_stained_glass
+  ENGINE:        minecraft:cut_sandstone
+  ENGINE_GLOW:   minecraft:ochre_froglight
+  COCKPIT_GLASS: minecraft:yellow_stained_glass
+  WING:          minecraft:lime_terracotta
+  GREEBLE:       minecraft:honey_block
+  LIGHT:         minecraft:glowstone
+  INTERIOR:      minecraft:smooth_sandstone
+
+preview_colors:
+  HULL:          "#b88a2c"
+  HULL_DARK:     "#4a3220"
+  WINDOW:        "#d87f33"
+  ENGINE:        "#d1c59a"
+  ENGINE_GLOW:   "#e2b34e"
+  COCKPIT_GLASS: "#ffd84a"
+  WING:          "#9aa83a"
+  GREEBLE:       "#f6c540"
+  LIGHT:         "#fff3a0"
+  INTERIOR:      "#d8cba0"

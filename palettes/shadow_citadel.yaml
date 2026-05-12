@@ -1,0 +1,26 @@
+name: shadow_citadel
+description: Shadow-citadel gothic-keep dreadnought. Deepslate hull, blackstone HULL_DARK fortress-shadow accent, red-stained-glass blood-window, polished-blackstone-bricks engines, soul-lantern eerie cold-blue engine glow, magenta-stained-glass dark-arcane cockpit, polished-deepslate-bricks wing accents, gold-block trim greebles, soul-torch haunted running lights, polished-blackstone interior — dark gothic-keep deepslate-and-blackstone fortress theme with crimson and gold trim accents.
+
+blocks:
+  HULL:          minecraft:deepslate
+  HULL_DARK:     minecraft:blackstone
+  WINDOW:        minecraft:red_stained_glass
+  ENGINE:        minecraft:polished_blackstone_bricks
+  ENGINE_GLOW:   minecraft:soul_lantern
+  COCKPIT_GLASS: minecraft:magenta_stained_glass
+  WING:          minecraft:polished_deepslate_bricks
+  GREEBLE:       minecraft:gold_block
+  LIGHT:         minecraft:soul_torch
+  INTERIOR:      minecraft:polished_blackstone
+
+preview_colors:
+  HULL:          "#4a4a4a"
+  HULL_DARK:     "#1f1a1a"
+  WINDOW:        "#c83030"
+  ENGINE:        "#2a2228"
+  ENGINE_GLOW:   "#60a8d0"
+  COCKPIT_GLASS: "#9030a0"
+  WING:          "#3a3a3e"
+  GREEBLE:       "#f0c830"
+  LIGHT:         "#60a8d0"
+  INTERIOR:      "#282030"
