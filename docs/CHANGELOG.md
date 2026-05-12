@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- test(properties): add palette x engine_style x seed-grid stability property test (feat-tests-property-palette-x-engine-style-grid)
 - docs(recipes): extend with 4 recipes on --config-dump capture, --config-load replay, biome-pack mass-generation loop, single cross-axis test node targeting (feat-docs-recipes-extension-6)
 - feat(palettes): add tundra_aurora, crimson_canopy biome palettes (feat-palettes-biome-pack-2026-05-12c)
 - docs(web_ui): add Picking a palette and preset walkthrough section (feat-docs-web-ui-extension)

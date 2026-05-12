@@ -1796,6 +1796,98 @@ def test_property_palette_x_hull_style_seed_grid_generates_non_empty_litematic(
     )
 
 
+# --------- palette × engine_style × seed-grid stability (cross-axis) ---------
+#
+# Enum-axis sibling of the palette × cockpit_style / palette × greeble_density /
+# palette × hull_style cross-product tests above: pins (palette × ``EngineStyle``
+# × seed) deterministically to catch regressions that only surface in the
+# interaction between palette role coverage (palette YAML in ``palettes/`` →
+# block-id mapping in ``palette.py``) and engine layout (``engine_style=``
+# top-level kwarg → engine builder dispatch in ``engine_styles.py``). The
+# single-axis ``test_property_palette_seed_grid_generates_non_empty_litematic``
+# pins every shipped palette × seed and the single-axis
+# ``test_property_engine_style_seed_grid_generates_non_empty_litematic`` pins the
+# engine axis on its own, but neither exercises the CROSS-axis interaction between
+# palette role coverage and engine layout. A regression that only surfaces when,
+# e.g., a palette stubbing the ``engine`` / ``engine_glow`` role combined with a
+# wide quad-cluster engine layout (whose anchor row claims many engine-bell cells
+# the palette must successfully map to a block id) would slip past both
+# single-axis tests. We slice the palette list dynamically (first / middle / last
+# alphabetically of ``_PALETTE_NAMES``, which is already
+# ``sorted(p.stem for p in palettes_dir().glob("*.yaml"))``) and ``EngineStyle``
+# to first / middle / last via the existing ``_slice_first_middle_last`` helper
+# for 3 × 3 × 3 = 27 representative nodes. Failure node IDs read
+# ``[seed-engine_style-palette_name]`` so a regression in any single (palette,
+# engine_style) interaction is self-naming.
+
+
+_PALETTE_ENGINE_GRID_PALETTES = _slice_first_middle_last(_PALETTE_NAMES)
+_PALETTE_ENGINE_GRID_ENGINES = _slice_first_middle_last(list(EngineStyle))
+
+
+@pytest.mark.parametrize(
+    "palette_name", _PALETTE_ENGINE_GRID_PALETTES, ids=lambda p: p,
+)
+@pytest.mark.parametrize(
+    "engine_style", _PALETTE_ENGINE_GRID_ENGINES, ids=lambda e: e.value,
+)
+@pytest.mark.parametrize("seed", _SHAPE_STYLE_STABILITY_SEEDS)
+def test_property_palette_x_engine_style_seed_grid_generates_non_empty_litematic(
+    tmp_path, palette_name, engine_style, seed
+):
+    """``palette`` × ``EngineStyle`` × small seed grid → non-empty ``.litematic``.
+
+    Cross-axis companion to the single-axis ``palette_seed_grid`` and
+    ``engine_style_seed_grid`` parametrize tests above, and a sibling of the
+    palette × cockpit_style / palette × greeble_density / palette × hull_style
+    cross-axis tests immediately above. Palette is plumbed via
+    ``generate(palette=...)`` (palette YAML → block-id mapping in
+    ``palette.py``) while ``EngineStyle`` is passed directly to ``generate()``
+    via the top-level ``engine_style=`` kwarg (engine builder dispatch in
+    ``engine_styles.py``); a regression that only surfaces in the interaction
+    between a specific palette and a specific engine layout (e.g., a palette
+    stubbing the ``engine`` / ``engine_glow`` role combined with a wide
+    quad-cluster engine anchor row claiming many engine-bell cells the palette
+    must successfully map to a block id) would slip past both single-axis
+    tests. We slice the palette list dynamically — first / middle / last
+    alphabetically of ``_PALETTE_NAMES`` (already ``sorted(p.stem for p in
+    palettes_dir().glob("*.yaml"))``) — and slice ``EngineStyle`` to first /
+    middle / last in declaration order via the existing
+    ``_slice_first_middle_last`` helper for 3 × 3 × 3 = 27 representative
+    nodes that hit the extremes of both axes without inflating the suite to
+    the full palette-corpus × engine cross-product. Failure messages name the
+    offending ``(palette, engine_style, seed)`` tuple via the parametrize IDs
+    plus an explicit ``pytest.fail`` message so a regression localizes
+    immediately.
+    """
+    params = ShapeParams(length=16, width_max=8, height_max=6)
+    res = generate(
+        seed,
+        palette=palette_name,
+        shape_params=params,
+        engine_style=engine_style,
+        out_dir=tmp_path,
+        filename="ship.litematic",
+    )
+    if not res.litematic_path.exists():
+        pytest.fail(
+            f"generate() did not write a .litematic for "
+            f"palette={palette_name} "
+            f"engine_style={engine_style.value} seed={seed}"
+        )
+    size = os.path.getsize(res.litematic_path)
+    if size <= 0:
+        pytest.fail(
+            f"generate() wrote a zero-byte .litematic for "
+            f"palette={palette_name} "
+            f"engine_style={engine_style.value} seed={seed}"
+        )
+    assert res.block_count > 0, (
+        f"palette={palette_name} "
+        f"engine_style={engine_style.value} seed={seed} produced 0 blocks"
+    )
+
+
 # --------- engine_style × wing_style × seed-grid stability (cross-axis) ---------
 #
 # Cross-axis sibling of the cockpit×hull / cockpit×wing / hull×engine /
