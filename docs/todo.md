@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-docs-cli-list-palettes-json: document `--list-palettes-json` flag in `docs/cli.md` (if exists; verify first)
-      scope: `docs/cli.md` (extend, not restructure)
-      accept: if flag exists per `cli.py` → new row in machine-readable list-flag block describing it (cross-link `/api/palettes`); if NOT exists → switch to documenting any other unlisted machine-readable flag found via grep; ≤30 added lines; CHANGELOG bullet
-      notes: pure-docs unit; verify against real code first
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -53,6 +48,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-cli-list-palettes-json: document `--list-palettes-json` flag in `docs/cli.md` (if exists; verify first)
+      scope: `docs/cli.md` (extend, not restructure)
+      accept: if flag exists per `cli.py` → new row in machine-readable list-flag block describing it (cross-link `/api/palettes`); if NOT exists → switch to documenting any other unlisted machine-readable flag found via grep; ≤30 added lines; CHANGELOG bullet
+      notes: pure-docs unit; verify against real code first
 
 - [x] feat-palettes-biome-pack-2026-05-12e: add 2 new biome palettes (sapphire_lagoon, ashen_steppes)
       scope: `palettes/sapphire_lagoon.yaml`, `palettes/ashen_steppes.yaml`

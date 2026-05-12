@@ -154,6 +154,7 @@ Style enums emit in **enum-declaration order** (deterministic across runs);
 
 | Flag | JSON shape | API mirror |
 |---|---|---|
+| `--list-palettes-json` | `{"palettes":[...]}` (palette names in alphabetical order, sourced from the same `list_palettes()` helper as the non-json sibling `--list-palettes`) | `GET /api/palettes` |
 | `--list-presets-json` | JSON array of `{name, ...preset_fields}` objects | — |
 | `--list-shape-styles-json` | `{"hull_styles":[...], "engine_styles":[...], "wing_styles":[...]}` | `GET /api/shape-styles` |
 | `--list-engine-styles-json` | `{"engine_styles":[...]}` (narrower sibling of `--list-shape-styles-json` — `EngineStyle` members only) | `GET /api/engine-styles` |
