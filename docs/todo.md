@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs
 
-- [ ] feat-docs-web-ui-extension: extend `docs/web_ui.md` with palette / preset picker walkthrough
-      scope: `docs/web_ui.md` (extend, not restructure)
-      accept: new "## Picking a palette and preset" section walking through the UI controls — match actual UI; reference `src/spaceship_generator/web/` or the served template for accuracy; ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; verify against real UI before writing
-
 - [ ] feat-docs-recipes-extension-6: extend `docs/recipes.md` with 4 new task-oriented recipes
       scope: `docs/recipes.md` (extend, not restructure)
       accept: 4 new recipes cover (--config-dump to capture an exact CLI invocation for sharing), (replaying a config via --config-load + extra overrides), (mass-generating one ship per biome-pack palette in a loop), (running a single palette × hull cross-axis test node by parametrize id); ≤50 added lines; CHANGELOG bullet
@@ -63,6 +58,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-web-ui-extension: extend `docs/web_ui.md` with palette / preset picker walkthrough
+      scope: `docs/web_ui.md` (extend, not restructure)
+      accept: new "## Picking a palette and preset" section walking through the UI controls — match actual UI; reference `src/spaceship_generator/web/` or the served template for accuracy; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; verify against real UI before writing
 
 - [x] feat-docs-palettes-extension: extend `docs/palettes.md` with biome-pack catalog overview
       scope: `docs/palettes.md` (extend, not restructure)

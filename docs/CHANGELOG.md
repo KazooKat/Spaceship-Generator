@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- docs(web_ui): add Picking a palette and preset walkthrough section (feat-docs-web-ui-extension)
 - docs(palettes): add Biome packs section cataloging the 2-palette biome-themed pack series (feat-docs-palettes-extension)
 - docs(configuration): extend with --config-dump / --config-load round-trip examples and override semantics (feat-docs-configuration-extension)
 - test(properties): add palette x hull_style x seed-grid stability property test (feat-tests-property-palette-x-hull-style-grid)

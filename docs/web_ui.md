@@ -101,3 +101,63 @@ never hits the cap. Tunables (env vars, read once at app creation):
 | `SHIPFORGE_RATE_LIMIT` | `30` | Max requests per window per IP. Set to `0` to disable the limiter. |
 | `SHIPFORGE_RATE_WINDOW` | `60` | Window length in seconds. |
 | `SHIPFORGE_CSP` | `1` | Content-Security-Policy enable flag. Set to `0`/`false`/`off`/`no` to disable the CSP header (useful for local dev with inline scripts). |
+
+## Picking a palette and preset
+
+The main form on `GET /` exposes two distinct picker surfaces — a
+server-side **Preset** dropdown (named archetypes like `corvette`) and
+a separate localStorage-backed **Presets** drawer (your own saved form
+snapshots). They do not share state. The palette picker is its own
+server-driven dropdown.
+
+### Where the palette dropdown lives
+
+Inside the **SEED & PALETTE** collapsible group (second from the top
+of the parameters sidebar). The `<select name="palette" id="palette">`
+control lists every palette exposed by `GET /api/palettes`, plus a
+`random (seeded)` sentinel at the top — picking that defers the choice
+to a seeded RNG at generate time. A neighbouring `Random` button
+(`#random-palette-btn`) cycles the dropdown to a fresh palette in
+place. Below the row, `#palette-swatches` paints small preview chips
+so you can eyeball the role colors before clicking Generate. See
+[palettes.md](palettes.md) for the full palette catalog.
+
+### Where the preset selector lives
+
+Two separate surfaces, both real:
+
+* **PRESET group** at the top of the sidebar — a plain `<select
+  name="preset" id="preset">` whose options come from
+  `presets.list_presets()` (server-side named archetypes). `(none)` is
+  the default; selecting an option submits the preset's name with the
+  form so the server can apply it.
+* **Presets drawer** opened from the topbar star button (`#btn-presets`,
+  shortcut `P`) — a client-side modal driven by `static/presets.js`
+  that saves/loads form snapshots to `localStorage["shipforge.presets.v1"]`.
+  The companion `#btn-save-preset` button (shortcut `S`) captures the
+  current form state under a user-supplied name. These are *your* saved
+  configs, not the server archetypes.
+
+### How a preset interacts with form fields on submit
+
+Selecting an option from the **PRESET** dropdown does not auto-fill the
+other form controls in the browser — every Shape / Style / Texture
+field keeps its current value. The merge happens server-side: when the
+form posts to `/generate`, `_merge_preset_into_source` (in
+`web/blueprints/ship_support.py`) layers the preset's defaults *under*
+the submitted form values. The same precedence rule the CLI uses
+applies — explicit form fields win, the preset only fills gaps. Style
+pickers set to `auto` and shape sliders sitting on the HTML defaults
+(40 / 20 / 12 for length / width / height) are treated as "not set" so
+the preset can supply a richer value. To actually override the preset
+on a given field, click away from the default value (e.g. drag the
+length slider off 40).
+
+The localStorage **Presets drawer** is different — clicking *APPLY*
+calls `applyParamsToForm(params)` which writes every saved value back
+into the form's named controls (and dispatches `input`/`change` so
+slider readouts re-sync). The two pickers are independent: applying a
+localStorage preset does not touch the server `<select name="preset">`
+value, and selecting a server preset does not write into your
+localStorage saves. See [presets.md](presets.md) for the named
+server-preset catalog.
