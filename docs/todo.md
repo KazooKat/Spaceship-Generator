@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-docs-recipes-extension-6: extend `docs/recipes.md` with 4 new task-oriented recipes
-      scope: `docs/recipes.md` (extend, not restructure)
-      accept: 4 new recipes cover (--config-dump to capture an exact CLI invocation for sharing), (replaying a config via --config-load + extra overrides), (mass-generating one ship per biome-pack palette in a loop), (running a single palette × hull cross-axis test node by parametrize id); ≤50 added lines; CHANGELOG bullet
-      notes: pure-docs unit
-
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
@@ -53,6 +48,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-recipes-extension-6: extend `docs/recipes.md` with 4 new task-oriented recipes
+      scope: `docs/recipes.md` (extend, not restructure)
+      accept: 4 new recipes cover (--config-dump to capture an exact CLI invocation for sharing), (replaying a config via --config-load + extra overrides), (mass-generating one ship per biome-pack palette in a loop), (running a single palette × hull cross-axis test node by parametrize id); ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
 
 - [x] feat-palettes-biome-pack-2026-05-12c: add 2 new biome palettes (tundra_aurora, crimson_canopy)
       scope: `palettes/tundra_aurora.yaml`, `palettes/crimson_canopy.yaml`

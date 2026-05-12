@@ -344,6 +344,55 @@ Mine the `## Cross-link index` table in `docs/architecture.md` into a JSON
 grep -E '^\| \[' docs/architecture.md | awk -F '\\|' '{gsub(/^ +| +$/,"",$2); gsub(/^ +| +$/,"",$3); gsub(/^ +| +$/,"",$4); printf "\"%s\": [\"%s\", \"%s\"],\n", $2, $3, $4}' | sed '1s/^/{/; $s/,$/}/'
 ```
 
+### Recipe 31 — Capture an exact CLI invocation as a config bundle
+
+`--config-dump` emits the resolved generator-relevant args (post `--preset`
+and `--palette random` resolution) as one JSON document and exits 0 without
+producing a ship. Redirect to a file to share the exact reproducible
+invocation with a collaborator alongside a bug report or gallery entry.
+
+```bash
+python -m spaceship_generator --seed 42 --preset gunship --palette random --config-dump > ship_config.json
+```
+
+### Recipe 32 — Replay a saved manifest plus extra overrides
+
+`--from-manifest FILE` reproduces a ship from an `--export-manifest` JSON
+sidecar (seed, palette, dims). It is mutually exclusive with `--seed` /
+`--seeds` / `--seed-phrase` / `--repeat` / `--fleet-count`, but every other
+flag (palette overrides via re-pass, greeble density, styles) still layers
+on top — useful for "same shape, different paint".
+
+```bash
+python -m spaceship_generator --from-manifest ship_42.json --greeble-density 0.0 --no-weapons --out replay/
+```
+
+### Recipe 33 — Mass-generate one ship per biome-pack palette in a loop
+
+Iterate over a list of biome-pack palette names and write one ship per
+palette under a per-palette subdirectory. Reuse the same `--seed` so every
+ship shares its silhouette and only the palette-driven block mapping
+varies — handy for side-by-side palette gallery shots.
+
+```bash
+for p in arcane_library mistwood_grove obsidian_forge prismatic_reef shadow_citadel golden_savannah; do \
+    python -m spaceship_generator --seed 42 --palette "$p" --out "out/$p/"; \
+done
+```
+
+### Recipe 34 — Run a single cross-axis test node by parametrize id
+
+`pytest -k` matches against the parametrize id, not just the function
+name — combine `<test_name> and <id>` to drill down to one of the 27 nodes
+in a cross-axis grid. Test ids read `[seed-axis_b-axis_a]` (outermost
+parametrize first), e.g. `[0-arrow-abyss_deep]` for the palette × hull
+cross-axis test. Pair with `-v` so the parametrize tuple prints in the
+failure header.
+
+```bash
+pytest -q -v -k 'palette_x_hull_style and 0-arrow-abyss_deep'
+```
+
 ## See also
 
 - [quickstart.md](quickstart.md) — 5-minute getting-started walk
