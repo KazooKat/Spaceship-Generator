@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs
 
-- [ ] feat-tests-property-palette-x-wing-style-grid: add (palette × wing_style × seed) cross-axis property test
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over (3 palette × 3 wing_style × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
-      notes: completes palette × style trio (palette × hull, palette × engine already shipped)
-
 - [ ] feat-docs-recipes-extension-7: extend `docs/recipes.md` with 4 new task-oriented recipes
       scope: `docs/recipes.md` (extend, not restructure)
       accept: 4 new recipes cover (running palette x engine cross-axis test in isolation), (using --from-manifest to reproduce a bug report), (designing a 2-palette biome pack from scratch), (web UI presets drawer export to CLI --preset); ≤50 added lines; CHANGELOG bullet
@@ -78,6 +73,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-property-palette-x-wing-style-grid: add (palette × wing_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 palette × 3 wing_style × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
+      notes: completes palette × style trio (palette × hull, palette × engine already shipped)
 
 - [x] feat-palettes-biome-pack-2026-05-12d: add 2 new biome palettes (ironwood_grove, basalt_caldera)
       scope: `palettes/ironwood_grove.yaml`, `palettes/basalt_caldera.yaml`
