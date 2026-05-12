@@ -18,6 +18,36 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
+- [ ] feat-palettes-biome-pack-2026-05-12d: add 2 new biome palettes (ironwood_grove, basalt_caldera)
+      scope: `palettes/ironwood_grove.yaml`, `palettes/basalt_caldera.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
+
+- [ ] feat-tests-property-palette-x-engine-style-grid: add (palette × engine_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 palette × 3 engine_style × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
+      notes: extends cross-axis test pack with palette × engine enum pair (sibling of palette × hull just shipped)
+
+- [ ] feat-docs-faq-extension-5: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
+      scope: `docs/faq.md` (extend, not restructure)
+      accept: 4 new Q&As cover (palette × hull cross-axis test rationale), (--config-dump vs --from-manifest), (Biome packs section in palettes.md), (web UI palette/preset picker walkthrough); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate prior 4 extensions
+
+- [ ] feat-docs-glossary-extension-5: extend `docs/glossary.md` with 3-4 new entries
+      scope: `docs/glossary.md` (extend, not restructure)
+      accept: new entries for `--from-manifest`, biome-pack catalog, palette × hull cross-axis test, web UI presets drawer; alphabetized; ≤25 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate prior 4 extensions
+
+- [ ] feat-docs-troubleshooting-extension-5: extend `docs/troubleshooting.md` with 4-6 new entries
+      scope: `docs/troubleshooting.md` (extend, not restructure)
+      accept: 4-6 new rows covering (--config-dump output schema drift after CLI flag rename), (--from-manifest replay vs current preset/palette deltas), (palette × engine cross-axis test failures), (web UI preset localStorage corruption), (biome pack name collision in --list-palettes); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [ ] feat-docs-palette-authoring-extension-2: extend `docs/palette_authoring.md` with biome-pack design tips
+      scope: `docs/palette_authoring.md` (extend, not restructure)
+      accept: new "## Designing a biome pack" section covering (cohesion within a 2-palette pack — shared accent colors / shared dark palette), (avoiding overlap with existing biome packs), (testing your pack via cross-axis property tests); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; sibling to existing Common-pitfalls extension
+
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
       accept: at least 2 multi-body archetypes generate, pass property tests, render in preview, render in `.litematic`; new style enum + CLI flag; gallery sample committed
