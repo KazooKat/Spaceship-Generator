@@ -28,16 +28,6 @@ for one release cycle, then pruned during release prep.
       accept: parametrize over (3 greeble_style × 3 density × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
       notes: extends cross-axis property test pack with greeble_style × density pair
 
-- [ ] feat-docs-faq-extension-4: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
-      scope: `docs/faq.md` (extend, not restructure)
-      accept: 4 new Q&As cover (palette × greeble_density cross-axis test rationale), (arcane_library/mistwood_grove biome use-cases), (palette_lint --json schema fields), (cross-link footer in architecture.md); ≤60 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do not duplicate existing entries
-
-- [ ] feat-docs-glossary-extension-4: extend `docs/glossary.md` with 3-4 new entries
-      scope: `docs/glossary.md` (extend, not restructure)
-      accept: new entries for biome-palette-pack, cross-axis-test (extension), palette_lint-json-schema, cross-link-footer; alphabetized; ≤25 added lines; CHANGELOG bullet
-      notes: pure-docs unit; do not duplicate existing entries
-
 - [ ] feat-docs-recipes-extension-5: extend `docs/recipes.md` with 4 new task-oriented recipes
       scope: `docs/recipes.md` (extend, not restructure)
       accept: 4 new recipes cover (composing palette_lint --json with --all in CI for diff-only fail), (cross-axis property test scaffolding template), (combining --meta-json + --output-json in pipelines), (mining the architecture cross-link table for tooling); ≤50 added lines; CHANGELOG bullet
@@ -78,6 +68,16 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-glossary-extension-4: extend `docs/glossary.md` with 3-4 new entries
+      scope: `docs/glossary.md` (extend, not restructure)
+      accept: new entries for biome-palette-pack, cross-axis-test (extension), palette_lint-json-schema, cross-link-footer; alphabetized; ≤25 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing entries
+
+- [x] feat-docs-faq-extension-4: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
+      scope: `docs/faq.md` (extend, not restructure)
+      accept: 4 new Q&As cover (palette × greeble_density cross-axis test rationale), (arcane_library/mistwood_grove biome use-cases), (palette_lint --json schema fields), (cross-link footer in architecture.md); ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; do not duplicate existing entries
 
 - [x] feat-palettes-biome-pack-2026-05-08e: add arcane_library, mistwood_grove biome palettes
       scope: `palettes/arcane_library.yaml`, `palettes/mistwood_grove.yaml`
