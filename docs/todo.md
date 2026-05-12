@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs
 
-- [ ] feat-tests-property-palette-x-hull-style-grid: add (palette × hull_style × seed) cross-axis property test
-      scope: `tests/test_properties.py` (extend)
-      accept: parametrize over (3 palette × 3 hull_style × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
-      notes: extends cross-axis test pack with palette × hull enum pair (not yet covered per grep)
-
 - [ ] feat-docs-configuration-extension: extend `docs/configuration.md` with worked --config-dump / --config-load round-trip examples
       scope: `docs/configuration.md` (extend, not restructure)
       accept: 2-3 added subsections covering (capturing effective config of any CLI invocation via --config-dump), (replaying a captured config via --config-load), (overriding config-file values with explicit flags); ≤60 added lines; CHANGELOG bullet
@@ -78,6 +73,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-tests-property-palette-x-hull-style-grid: add (palette × hull_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 palette × 3 hull_style × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
+      notes: extends cross-axis test pack with palette × hull enum pair (not yet covered per grep)
 
 - [x] feat-docs-output-formats-extension-2: extend `docs/output-formats.md` with additional consumer examples
       scope: `docs/output-formats.md` (extend, not restructure)
