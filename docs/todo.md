@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-05-12d: add 2 new biome palettes (ironwood_grove, basalt_caldera)
-      scope: `palettes/ironwood_grove.yaml`, `palettes/basalt_caldera.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
 - [ ] feat-docs-glossary-extension-5: extend `docs/glossary.md` with 3-4 new entries
       scope: `docs/glossary.md` (extend, not restructure)
       accept: new entries for `--from-manifest`, biome-pack catalog, palette × hull cross-axis test, web UI presets drawer; alphabetized; ≤25 added lines; CHANGELOG bullet
@@ -68,6 +63,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palettes-biome-pack-2026-05-12d: add 2 new biome palettes (ironwood_grove, basalt_caldera)
+      scope: `palettes/ironwood_grove.yaml`, `palettes/basalt_caldera.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
 
 - [x] feat-docs-faq-extension-5: extend `docs/faq.md` with 4 new Q&As covering recently-shipped surfaces
       scope: `docs/faq.md` (extend, not restructure)

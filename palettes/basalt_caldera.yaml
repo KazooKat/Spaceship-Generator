@@ -1,0 +1,26 @@
+name: basalt_caldera
+description: Basalt-caldera volcanic-crater skimmer. Smooth-basalt hull, basalt HULL_DARK columnar-rock accent, yellow-stained-glass lava-glow windows, magma-block engines, glowstone bright caldera-fissure engine glow, orange-stained-glass ember-warm cockpit, polished-basalt wing accents, polished-blackstone-bricks crater-rim greebles, jack-o-lantern warm caldera-watch running lights, polished-blackstone obsidian-floor interior — volcanic-crater basalt-and-magma polished-stone theme with fire/lava warm tones and bright glowstone highlights.
+
+blocks:
+  HULL:          minecraft:smooth_basalt
+  HULL_DARK:     minecraft:basalt
+  WINDOW:        minecraft:yellow_stained_glass
+  ENGINE:        minecraft:magma_block
+  ENGINE_GLOW:   minecraft:glowstone
+  COCKPIT_GLASS: minecraft:orange_stained_glass
+  WING:          minecraft:polished_basalt
+  GREEBLE:       minecraft:polished_blackstone_bricks
+  LIGHT:         minecraft:jack_o_lantern
+  INTERIOR:      minecraft:polished_blackstone
+
+preview_colors:
+  HULL:          "#a8a6a8"
+  HULL_DARK:     "#3a3640"
+  WINDOW:        "#e5e533"
+  ENGINE:        "#8a3018"
+  ENGINE_GLOW:   "#f8d060"
+  COCKPIT_GLASS: "#d87f33"
+  WING:          "#6a6670"
+  GREEBLE:       "#1f1c22"
+  LIGHT:         "#f0a040"
+  INTERIOR:      "#26232a"

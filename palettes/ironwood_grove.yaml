@@ -1,0 +1,26 @@
+name: ironwood_grove
+description: Ironwood-grove old-growth-forest hauler. Spruce-planks hull, dark-oak-log HULL_DARK gnarled-bark accent, lime-stained-glass canopy-shaft windows, iron-block engines, lantern warm campfire engine glow, green-stained-glass forest-canopy cockpit, stripped-dark-oak-log wing accents, mossy-cobblestone moss-trim greebles, soul-lantern cool teal running lights, moss-block dark-green interior — dense old-growth-forest spruce-and-dark-oak planks-with-iron theme with mossy-cobblestone trim and lantern highlights.
+
+blocks:
+  HULL:          minecraft:spruce_planks
+  HULL_DARK:     minecraft:dark_oak_log
+  WINDOW:        minecraft:lime_stained_glass
+  ENGINE:        minecraft:iron_block
+  ENGINE_GLOW:   minecraft:lantern
+  COCKPIT_GLASS: minecraft:green_stained_glass
+  WING:          minecraft:stripped_dark_oak_log
+  GREEBLE:       minecraft:mossy_cobblestone
+  LIGHT:         minecraft:soul_lantern
+  INTERIOR:      minecraft:moss_block
+
+preview_colors:
+  HULL:          "#866526"
+  HULL_DARK:     "#3a2614"
+  WINDOW:        "#80c71f"
+  ENGINE:        "#d8d8d8"
+  ENGINE_GLOW:   "#f4c060"
+  COCKPIT_GLASS: "#5e7c2e"
+  WING:          "#4a3220"
+  GREEBLE:       "#6a7a5a"
+  LIGHT:         "#7ad6e0"
+  INTERIOR:      "#596d2d"

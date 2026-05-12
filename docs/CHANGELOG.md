@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- feat(palettes): add ironwood_grove, basalt_caldera biome palettes (feat-palettes-biome-pack-2026-05-12d)
 - docs(faq): extend with 4 Q&As on palette x hull cross-axis test, --config-dump vs --from-manifest, palettes Biome packs section, web UI palette/preset picker (feat-docs-faq-extension-5)
 - test(properties): add palette x engine_style x seed-grid stability property test (feat-tests-property-palette-x-engine-style-grid)
 - docs(recipes): extend with 4 recipes on --config-dump capture, --config-load replay, biome-pack mass-generation loop, single cross-axis test node targeting (feat-docs-recipes-extension-6)
