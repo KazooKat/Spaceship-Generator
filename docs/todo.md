@@ -23,11 +23,6 @@ for one release cycle, then pruned during release prep.
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs
 
-- [ ] feat-docs-recipes-extension-7: extend `docs/recipes.md` with 4 new task-oriented recipes
-      scope: `docs/recipes.md` (extend, not restructure)
-      accept: 4 new recipes cover (running palette x engine cross-axis test in isolation), (using --from-manifest to reproduce a bug report), (designing a 2-palette biome pack from scratch), (web UI presets drawer export to CLI --preset); ≤50 added lines; CHANGELOG bullet
-      notes: pure-docs unit
-
 - [ ] feat-docs-architecture-pipeline-graph: add ASCII / mermaid pipeline graph to `docs/architecture.md`
       scope: `docs/architecture.md` (extend, not restructure)
       accept: new "## Pipeline overview" or top-of-doc Mermaid diagram showing Shape → Texture → Palette → Output flow with per-component branches; ≤60 added lines; CHANGELOG bullet
@@ -68,6 +63,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-docs-recipes-extension-7: extend `docs/recipes.md` with 4 new task-oriented recipes
+      scope: `docs/recipes.md` (extend, not restructure)
+      accept: 4 new recipes cover (running palette x engine cross-axis test in isolation), (using --from-manifest to reproduce a bug report), (designing a 2-palette biome pack from scratch), (web UI presets drawer export to CLI --preset); ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
 
 - [x] feat-docs-bench-ci-extension: extend `docs/bench-ci.md` with sample GitHub Actions workflow snippet
       scope: `docs/bench-ci.md` (extend, not restructure)

@@ -393,6 +393,56 @@ failure header.
 pytest -q -v -k 'palette_x_hull_style and 0-arrow-abyss_deep'
 ```
 
+### Recipe 35 — Run only the palette × engine cross-axis test in isolation
+
+Drill straight into `test_property_palette_x_engine_style_seed_grid_*` in
+[tests/test_properties.py](../tests/test_properties.py) — 27 nodes (3 palettes ×
+3 engine styles × 3 seeds) instead of the full ~700-test suite. Add `-v` so
+the offending `(palette, engine_style, seed)` tuple prints in the failure
+header. See Recipe 16 for the full cross-axis naming convention.
+
+```bash
+pytest tests/test_properties.py -k palette_x_engine -v
+```
+
+### Recipe 36 — Use `--from-manifest` to reproduce a bug report
+
+When a user reports a bad ship, ask for the `--export-manifest` JSON
+sidecar and replay it byte-identical with `--from-manifest FILE` (mutex
+with `--seed` / `--seeds` / `--seed-phrase` / `--repeat` / `--fleet-count`,
+see Recipe 32). CI bots can wire the same one-liner against attached
+manifests for automated repro.
+
+```bash
+python -m spaceship_generator --from-manifest user_bug_42.json --out repro/
+```
+
+### Recipe 37 — Design a 2-palette biome pack from scratch
+
+Pick a biome theme + accent contrast not yet in [`docs/palettes.md` Biome
+packs](palettes.md#biome-packs), copy an existing pack as a template, lint
+with `--strict`, then smoke-test via the palette × engine cross-axis grid
+(Recipe 35). Full design checklist:
+[`palette_authoring.md#designing-a-biome-pack`](palette_authoring.md#designing-a-biome-pack).
+
+```bash
+cp palettes/arcane_library.yaml palettes/<theme>_<variant_a>.yaml && \
+    cp palettes/mistwood_grove.yaml palettes/<theme>_<variant_b>.yaml && \
+    python scripts/palette_lint.py --all --strict
+```
+
+### Recipe 38 — Export a web UI presets-drawer entry to a CLI `--preset` invocation
+
+Open DevTools on the running web UI, copy the JSON array from
+`localStorage["shipforge.presets.v1"]`, then translate `params.{seed,
+palette, length, ...}` fields one-to-one to `--seed` / `--palette` /
+`--length` CLI flags — drawer entries are client-side, so this is the only
+way to take one to a shell pipeline. See [web_ui.md](web_ui.md#picking-a-palette-and-preset).
+
+```bash
+python -c 'import json; p=json.loads(input())[0]["params"]; print(" ".join(f"--{k.replace(\"_\",\"-\")} {v}" for k,v in p.items()))'
+```
+
 ## See also
 
 - [quickstart.md](quickstart.md) — 5-minute getting-started walk
