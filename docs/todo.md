@@ -18,10 +18,35 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-05-12d: add 2 new biome palettes (ironwood_grove, basalt_caldera)
-      scope: `palettes/ironwood_grove.yaml`, `palettes/basalt_caldera.yaml`
+- [ ] feat-palettes-biome-pack-2026-05-12e: add 2 new biome palettes (sapphire_lagoon, ashen_steppes)
+      scope: `palettes/sapphire_lagoon.yaml`, `palettes/ashen_steppes.yaml`
       accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
       notes: standard new-biome-palette pattern matching prior packs
+
+- [ ] feat-tests-property-palette-x-wing-style-grid: add (palette × wing_style × seed) cross-axis property test
+      scope: `tests/test_properties.py` (extend)
+      accept: parametrize over (3 palette × 3 wing_style × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
+      notes: completes palette × style trio (palette × hull, palette × engine already shipped)
+
+- [ ] feat-docs-recipes-extension-7: extend `docs/recipes.md` with 4 new task-oriented recipes
+      scope: `docs/recipes.md` (extend, not restructure)
+      accept: 4 new recipes cover (running palette x engine cross-axis test in isolation), (using --from-manifest to reproduce a bug report), (designing a 2-palette biome pack from scratch), (web UI presets drawer export to CLI --preset); ≤50 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [ ] feat-docs-architecture-pipeline-graph: add ASCII / mermaid pipeline graph to `docs/architecture.md`
+      scope: `docs/architecture.md` (extend, not restructure)
+      accept: new "## Pipeline overview" or top-of-doc Mermaid diagram showing Shape → Texture → Palette → Output flow with per-component branches; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit
+
+- [ ] feat-docs-cli-list-palettes-json: document `--list-palettes-json` flag in `docs/cli.md` (if exists; verify first)
+      scope: `docs/cli.md` (extend, not restructure)
+      accept: if flag exists per `cli.py` → new row in machine-readable list-flag block describing it (cross-link `/api/palettes`); if NOT exists → switch to documenting any other unlisted machine-readable flag found via grep; ≤30 added lines; CHANGELOG bullet
+      notes: pure-docs unit; verify against real code first
+
+- [ ] feat-docs-bench-ci-extension: extend `docs/bench-ci.md` with sample GitHub Actions workflow snippet
+      scope: `docs/bench-ci.md` (extend, not restructure)
+      accept: new "## Sample GitHub Actions workflow" section with a self-contained yaml snippet running bench scripts and uploading CSV artifacts; ≤60 added lines; CHANGELOG bullet
+      notes: pure-docs unit; complements bench.md CI integration section already shipped
 
 - [ ] shapes-A-multibody: multi-body ships (twin-fuselage / catamaran / saucer-on-stick / mothership-with-pods)
       scope: `src/spaceship_generator/shape/`, `structure_styles.py`, new tests in `tests/`
@@ -53,6 +78,11 @@ for one release cycle, then pruned during release prep.
 (none tracked here yet)
 
 ## Closed (last cycle)
+
+- [x] feat-palettes-biome-pack-2026-05-12d: add 2 new biome palettes (ironwood_grove, basalt_caldera)
+      scope: `palettes/ironwood_grove.yaml`, `palettes/basalt_caldera.yaml`
+      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
+      notes: standard new-biome-palette pattern matching prior packs
 
 - [x] feat-docs-palette-authoring-extension-2: extend `docs/palette_authoring.md` with biome-pack design tips
       scope: `docs/palette_authoring.md` (extend, not restructure)
