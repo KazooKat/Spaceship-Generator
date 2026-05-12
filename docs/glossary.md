@@ -37,6 +37,12 @@ returning `{"version":"<X.Y.Z>"}` — narrower JSON sibling of
 `/api/health` / `/api/meta` for about-box dialogs and deploy probes.
 See [web_ui.md — Discovery & metadata](web_ui.md#discovery--metadata).
 
+## biome palette pack
+
+Process pattern: a periodically-shipped pair of themed palette YAMLs
+under `palettes/` landed in one `feat-palettes-biome-pack-<date>` cycle,
+both passing `palette_lint.py --strict`. See [palette_authoring.md](palette_authoring.md).
+
 ## `CockpitStyle`
 
 `StrEnum` declared in `src/spaceship_generator/shape/core.py` — picks the
@@ -64,6 +70,18 @@ shell `--output-json | jq` one-liner. See [output-formats.md — Consumer exampl
 Pytest parametrize-grid test in `tests/test_properties.py` pinning two
 ship-axis dials together (e.g. `cockpit_style × hull_style × seed`) for
 27 nodes, catching interaction-only regressions. See [faq.md](faq.md#why-do-cross-axis-property-tests-exist-alongside-single-axis-ones).
+
+## cross-axis test (extension)
+
+Process pattern: extending the cross-axis property test family in
+`tests/test_properties.py` with a new (axis × axis × seed) 3 × 3 × 3
+grid (27 nodes). See [recipes.md — Recipe 26](recipes.md).
+
+## cross-link footer (architecture.md)
+
+Trailing `## Cross-link index` table in `docs/architecture.md` mapping
+each pipeline section to its CLI flag(s) + web API endpoint(s). See
+[architecture.md — Cross-link index](architecture.md#cross-link-index).
 
 ## `EngineStyle`
 
@@ -124,6 +142,13 @@ optional preview hex color. Loaded into a `Palette` dataclass by
 `palette.py::load_palette`. See
 [configuration.md — Palette](configuration.md#palette) and the web
 endpoint [`GET /api/palettes`](web_ui.md#json-api-api).
+
+## palette_lint JSON schema
+
+Per-palette object emitted by `scripts/palette_lint.py --json` —
+`{"palette": "<name>", "ok": true|false, "errors": [...], "warnings": [...]}`.
+`--all --json` emits an array of these. CI gates branch on
+`jq -r '.[].ok'`. See [recipes.md — Recipe 23](recipes.md).
 
 ## `palette_diff.py`
 

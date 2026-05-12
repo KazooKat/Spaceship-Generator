@@ -18,11 +18,6 @@ for one release cycle, then pruned during release prep.
 
 ## Open — Features
 
-- [ ] feat-palettes-biome-pack-2026-05-12a: add 2 new biome palettes (obsidian_forge, prismatic_reef)
-      scope: `palettes/obsidian_forge.yaml`, `palettes/prismatic_reef.yaml`
-      accept: both palettes pass `scripts/palette_lint.py --strict`; `--list-palettes` enumerates them; CHANGELOG bullet
-      notes: standard new-biome-palette pattern matching prior packs
-
 - [ ] feat-tests-property-greeble-style-x-density-grid: add (greeble_style × greeble_density × seed) cross-axis property test
       scope: `tests/test_properties.py` (extend)
       accept: parametrize over (3 greeble_style × 3 density × 3 seed = 27 nodes); pure stability check; CHANGELOG bullet
