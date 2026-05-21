@@ -43,14 +43,25 @@ def export_litematic(
     # the filled voxels, pre-seed the region's block palette in that same
     # order, then vectorize the whole grid -> palette-index write.
     #
-    # Why we bypass region[x, y, z] = bs: litemapy's Region.__setitem__ does
-    # ``block in self.__palette`` + ``self.__palette.index(block)`` per write,
-    # which scans the palette linearly using BlockState.__eq__. For a grid of
-    # ~15k filled voxels, that is ~790k __eq__ calls (~31% of total time).
-    # We skip that entirely by assigning palette indices directly to the
-    # region's internal uint32 blocks array. The palette pre-seeding below
-    # reproduces the exact same palette ordering as the naive loop, so the
-    # resulting .litematic bytes are identical.
+    # Why we bypass region[x, y, z] = bs (and region.setblock): litemapy's
+    # per-voxel setters do ``block in self.__palette`` +
+    # ``self.__palette.index(block)`` per write, which scans the palette
+    # linearly using BlockState.__eq__. For a grid of ~15k filled voxels, that
+    # is ~790k __eq__ calls (~31% of total time). We skip that entirely by
+    # assigning palette indices directly to the region's internal uint32
+    # blocks array. The palette pre-seeding below reproduces the exact same
+    # palette ordering as the naive loop, so the resulting .litematic bytes
+    # are identical.
+    #
+    # NOTE (H1, iter3): ``_Region__palette`` / ``_Region__blocks`` are
+    # *name-mangled private* attributes on ``litemapy.Region``. They are an
+    # implementation detail and may be renamed in any litemapy release. We
+    # therefore probe for them defensively via ``getattr`` and fall back to a
+    # slow-but-correct per-voxel ``region.setblock(...)`` loop on
+    # AttributeError. If even ``setblock`` is missing on an older litemapy,
+    # the inner fallback uses ``region[x, y, z] = bs``. This degrades a
+    # litemapy upgrade that touches its internals from "every export crashes"
+    # to "exports are slower but still correct".
 
     # Role values present in the grid, in first-encounter (C-order) order.
     flat = role_grid.ravel(order="C")
@@ -66,11 +77,10 @@ def export_litematic(
     order = np.argsort(first_idx)
     roles_in_order = unique_roles[order].tolist()
 
-    # Resolve each role to its BlockState once, then append to the region's
-    # palette in encounter order. AIR already occupies index 0, so new entries
-    # start at index 1.
-    role_to_index: dict[int, int] = {}
-    pal_list = region._Region__palette  # type: ignore[attr-defined]
+    # Resolve each role -> BlockState up front. Surfacing missing-role
+    # mappings here (rather than mid-loop) keeps the error semantics the same
+    # whether we end up taking the fast or slow path.
+    role_to_block: dict[int, object] = {}
     for role_value in roles_in_order:
         try:
             role_enum = Role(role_value)
@@ -79,28 +89,69 @@ def export_litematic(
                 f"palette {palette.name!r} missing block for role {role_value!r}"
             ) from exc
         try:
-            bs = palette.block_state(role_enum)
+            role_to_block[int(role_value)] = palette.block_state(role_enum)
         except KeyError as exc:
             raise ValueError(
                 f"palette {palette.name!r} missing block for role {role_enum!r}"
             ) from exc
-        role_to_index[int(role_value)] = len(pal_list)
-        pal_list.append(bs)
 
-    # Build a small lookup table indexed by role_value -> palette index. Role
-    # values are small non-negative ints (IntEnum), so a dense array is fine.
-    max_role = int(max(roles_in_order))
-    lut = np.zeros(max_role + 1, dtype=np.uint32)
-    for rv, pi in role_to_index.items():
-        lut[rv] = pi
+    try:
+        # Fast path — direct manipulation of litemapy's internal palette
+        # list + blocks array. ``getattr`` with no default raises
+        # AttributeError on a rename, which the except clause below catches.
+        pal_list = getattr(region, "_Region__palette")
+        blocks = getattr(region, "_Region__blocks")
+        # Sanity-check that the attributes still look like what we expect;
+        # a rename to a non-list / non-ndarray would otherwise corrupt
+        # output silently. Re-raise as AttributeError to take the slow path.
+        if not isinstance(pal_list, list):  # pragma: no cover - defensive
+            raise AttributeError(
+                "litemapy Region.__palette is not a list (incompatible version)"
+            )
+        if not hasattr(blocks, "__setitem__"):  # pragma: no cover - defensive
+            raise AttributeError(
+                "litemapy Region.__blocks is not array-like (incompatible version)"
+            )
 
-    # Clamp role_grid values through the LUT. Cells equal to Role.EMPTY map to
-    # lut[0] == 0 (AIR), which matches the default zero-filled blocks array.
-    # Any role value beyond max_role would be out of range, but by construction
-    # every non-empty value in the grid is in ``roles_in_order``.
-    blocks = region._Region__blocks  # type: ignore[attr-defined]
-    # role_grid may be any int dtype; cast through intp for safe indexing.
-    blocks[...] = lut[role_grid.astype(np.intp, copy=False)]
+        # Append BlockStates to the palette in encounter order. ``len(pal_list)``
+        # before append is the index this entry will land at; AIR already
+        # occupies index 0, so new entries start at index 1.
+        role_to_index: dict[int, int] = {}
+        for role_value in roles_in_order:
+            bs = role_to_block[int(role_value)]
+            role_to_index[int(role_value)] = len(pal_list)
+            pal_list.append(bs)
+
+        # Build a small lookup table indexed by role_value -> palette index.
+        # Role values are small non-negative ints (IntEnum), so a dense array
+        # is fine.
+        max_role = int(max(roles_in_order))
+        lut = np.zeros(max_role + 1, dtype=np.uint32)
+        for rv, pi in role_to_index.items():
+            lut[rv] = pi
+
+        # Clamp role_grid values through the LUT. Cells equal to Role.EMPTY
+        # map to lut[0] == 0 (AIR), which matches the default zero-filled
+        # blocks array. Any role value beyond max_role would be out of range,
+        # but by construction every non-empty value in the grid is in
+        # ``roles_in_order``.
+        # role_grid may be any int dtype; cast through intp for safe indexing.
+        blocks[...] = lut[role_grid.astype(np.intp, copy=False)]
+    except AttributeError:
+        # Slow fallback: litemapy renamed / removed its private blocks array.
+        # Use the public per-voxel setter (or __setitem__ on even older
+        # versions). Empty cells default to AIR in a fresh Region, so we
+        # iterate only over filled voxels.
+        setblock_fn = getattr(region, "setblock", None)
+        if setblock_fn is None:
+            def setblock_fn(x: int, y: int, z: int, bs: object) -> None:  # type: ignore[misc]
+                region[x, y, z] = bs  # type: ignore[index]
+
+        # np.argwhere gives (N, 3) of (x, y, z) for filled cells.
+        filled_idx = np.argwhere(role_grid != Role.EMPTY)
+        for xi, yi, zi in filled_idx:
+            role_value = int(role_grid[xi, yi, zi])
+            setblock_fn(int(xi), int(yi), int(zi), role_to_block[role_value])
 
     schem = region.as_schematic(name=name, author=author, description=description)
     schem.save(str(out_path))

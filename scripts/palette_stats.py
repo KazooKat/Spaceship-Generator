@@ -49,7 +49,7 @@ if str(SRC) not in sys.path:
 import yaml  # noqa: E402
 from palette_lint import _match_blockstate  # noqa: E402
 
-from spaceship_generator.palette import REQUIRED_ROLES  # noqa: E402
+from spaceship_generator.palette import REQUIRED_ROLES, palettes_dir  # noqa: E402
 
 
 def _load_palette(path: Path) -> dict:
@@ -85,8 +85,8 @@ def _bare_block_id(spec: object) -> str | None:
     return m.group("id")
 
 
-def aggregate(palettes_dir: Path) -> tuple[int, Counter[str], Counter[str]]:
-    """Walk every ``*.yaml`` under ``palettes_dir`` and aggregate stats.
+def aggregate(pal_dir: Path) -> tuple[int, Counter[str], Counter[str]]:
+    """Walk every ``*.yaml`` under ``pal_dir`` and aggregate stats.
 
     Returns ``(palette_count, block_counter, role_counter)`` where:
 
@@ -100,7 +100,7 @@ def aggregate(palettes_dir: Path) -> tuple[int, Counter[str], Counter[str]]:
       (so a palette that defines an unknown extra role still surfaces
       in the table — handy for catching schema drift).
     """
-    palette_paths = sorted(palettes_dir.glob("*.yaml"))
+    palette_paths = sorted(pal_dir.glob("*.yaml"))
     block_counter: Counter[str] = Counter()
     role_counter: Counter[str] = Counter()
 
@@ -243,12 +243,12 @@ def main(argv: list[str] | None = None) -> int:
         print("--top must be >= 0", file=sys.stderr)
         return 2
 
-    palettes_dir = REPO_ROOT / "palettes"
-    if not palettes_dir.is_dir():
-        print(f"no palettes directory at {palettes_dir}", file=sys.stderr)
+    pal_dir = palettes_dir()
+    if not pal_dir.is_dir():
+        print(f"no palettes directory at {pal_dir}", file=sys.stderr)
         return 1
 
-    palette_count, block_counter, role_counter = aggregate(palettes_dir)
+    palette_count, block_counter, role_counter = aggregate(pal_dir)
 
     # Banner / progress goes to stderr in CSV mode so stdout stays a
     # clean CSV stream an operator can pipe straight into a spreadsheet.

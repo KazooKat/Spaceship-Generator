@@ -51,7 +51,12 @@ spaceship-generator = "spaceship_generator.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-spaceship_generator = ["py.typed", "data/*.json"]
+# palettes/*.yaml ships as package data so the wheel and Docker image
+# resolve the default --palette sci_fi_industrial out of the box. The
+# YAMLs live under src/spaceship_generator/palettes/ (moved there from
+# the repo-root palettes/ which never shipped in the wheel); palettes_dir()
+# resolves to <package>/palettes via Path(__file__).parent.
+spaceship_generator = ["py.typed", "data/*.json", "palettes/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

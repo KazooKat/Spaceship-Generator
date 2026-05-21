@@ -29,7 +29,25 @@ def _place_engines(grid: np.ndarray, rng: np.random.Generator, params: ShapePara
     xs = _engine_x_positions(n, W, engine_radius)
     cy_engine = max(engine_radius + 1, H // 2 - 1)
 
+    # Mirror every engine center about the true geometric centerline
+    # ``cx = (W - 1) / 2.0`` BEFORE the downstream ``_enforce_x_symmetry`` pass
+    # runs. For odd widths each center is its own mirror, so this is a no-op
+    # for the canonical layout. For even widths a single/center engine sits
+    # at ``W // 2`` (one cell off the true center); without mirroring here,
+    # ``_enforce_x_symmetry`` later copies the left half (which has no engine
+    # voxels at ``W // 2``) onto the right and erases the engine. By stamping
+    # both ``ex`` and ``W - 1 - ex`` cylinders, the engine becomes symmetric
+    # about ``cx`` and the symmetry pass preserves the full nozzle.
+    seen_centers: set[int] = set()
+    centers_to_draw: list[int] = []
     for ex in xs:
+        for cx_col in (ex, W - 1 - ex):
+            if cx_col in seen_centers:
+                continue
+            seen_centers.add(cx_col)
+            centers_to_draw.append(cx_col)
+
+    for ex in centers_to_draw:
         for x in range(ex - engine_radius - 1, ex + engine_radius + 2):
             for y in range(cy_engine - engine_radius - 1, cy_engine + engine_radius + 2):
                 for z in range(0, engine_length):

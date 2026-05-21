@@ -170,22 +170,31 @@ def _place_canopy_dome(grid: np.ndarray) -> None:
     ry = max(0.8, H / 14.0)
     rz = max(1.5, L / 10.0)
 
-    y_collar = max(0, int(math.floor(cy)))  # collar sits at dome equator row
+    # The dome must live strictly at or above the equator row. For integer
+    # ``cy`` this is just ``floor(cy) == ceil(cy)``; for fractional ``cy``
+    # (odd ``H``, e.g. ``H=11`` → ``cy=6.5``), ``floor`` lands one row BELOW
+    # the true equator. Because the ellipsoid test is squared in ``dy``, it
+    # cannot distinguish above-equator from below-equator and would glass
+    # voxels there, pre-empting the collar ring's HULL-on-EMPTY stamp.
+    # ``ceil`` keeps the dome's first row at-or-above midline regardless of
+    # ``cy``'s fractional part, and ``ring_y`` is then ``dome_floor - 1`` so
+    # the collar sits one row below the dome as the docstring promises.
+    dome_floor = max(0, int(math.ceil(cy)))
     for x in range(W):
-        for y in range(int(math.floor(cy)), H):
+        for y in range(dome_floor, H):
             for z in range(max(0, int(cz - rz - 1)), L):
                 dx = (x - cx) / rx
                 dy = (y - cy) / ry
                 dz = (z - cz) / rz
                 r2 = dx * dx + dy * dy + dz * dz
-                if r2 <= 1.1 and y >= y_collar:
+                if r2 <= 1.1:
                     # Upper-half ellipsoid → glass dome; never overwrite HULL.
                     if grid[x, y, z] != Role.HULL:
                         grid[x, y, z] = Role.COCKPIT_GLASS
 
     # Hull collar: thin ring of HULL one row below the dome equator, only on
     # EMPTY cells so existing hull is never erased.
-    ring_y = max(0, y_collar - 1)
+    ring_y = max(0, dome_floor - 1)
     for x in range(W):
         for z in range(max(0, int(cz - rz - 1)), L):
             dx = (x - cx) / rx
@@ -280,6 +289,19 @@ def _place_offset_turret(grid: np.ndarray) -> None:
 
     x_lo = max(0, turret_cx - half_x)
     x_hi = min(W - 1, turret_cx + half_x)
+    # The downstream ``_enforce_x_symmetry`` pass copies columns ``0..W//2 - 1``
+    # onto ``W//2..W - 1``, so any wall column we stamp at ``x >= W // 2``
+    # gets overwritten by an interior (no-wall) column on the left half —
+    # silently punching a one-voxel gap in the right wall on narrow widths
+    # where the turret footprint crosses the centerline. Clamp ``x_hi`` into
+    # the left half so the entire stamped footprint lives in the region the
+    # symmetry pass mirrors FROM rather than the region it overwrites.
+    x_hi = min(x_hi, W // 2 - 1)
+    # If clamping collapses the footprint, fall back to a one-cell-wide turret
+    # rather than an empty range.
+    if x_hi < x_lo:
+        x_lo = max(0, min(x_lo, W // 2 - 1))
+        x_hi = x_lo
     z_lo = max(0, turret_cz - half_z)
     z_hi = min(L - 1, turret_cz + half_z)
 

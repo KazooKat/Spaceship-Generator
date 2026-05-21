@@ -25,7 +25,7 @@ SRC = REPO_ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from spaceship_generator.palette import REQUIRED_ROLES  # noqa: E402
+from spaceship_generator.palette import REQUIRED_ROLES, palettes_dir  # noqa: E402
 
 _BLOCKSTATE_RE = re.compile(
     r"^(?P<id>[a-z0-9_]+:[a-z0-9_]+)(?:\[(?P<props>[^\]]*)\])?$"
@@ -231,7 +231,7 @@ def _result_to_machine_dict(result: LintResult, *, strict: bool) -> dict:
 def _collect_targets(file_arg: str | None) -> list[Path]:
     if file_arg:
         return [Path(file_arg)]
-    return sorted((REPO_ROOT / "palettes").glob("*.yaml"))
+    return sorted(palettes_dir().glob("*.yaml"))
 
 
 def _run_all(strict: bool) -> int:
@@ -242,8 +242,8 @@ def _run_all(strict: bool) -> int:
     summary line. Returns 0 if every palette is clean (strict-aware), 1 if any
     palette has an error (or warning under ``--strict``).
     """
-    palettes_dir = REPO_ROOT / "palettes"
-    targets = sorted(palettes_dir.glob("*.yaml"))
+    pal_dir = palettes_dir()
+    targets = sorted(pal_dir.glob("*.yaml"))
     if not targets:
         print("no palette files found", file=sys.stderr)
         return 1
@@ -295,7 +295,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.json:
         targets = (
-            sorted((REPO_ROOT / "palettes").glob("*.yaml"))
+            sorted(palettes_dir().glob("*.yaml"))
             if args.all
             else _collect_targets(args.file)
         )

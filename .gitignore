@@ -50,3 +50,6 @@ tmp/
 
 # Logs
 *.log
+
+# Swarm audit metadata (parallel agent bug-finding reports)
+.swarm-audit/

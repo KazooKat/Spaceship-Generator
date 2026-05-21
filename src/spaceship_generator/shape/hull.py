@@ -19,6 +19,17 @@ from .core import ShapeParams
 # blob of asteroid debris.
 _HULL_NOISE_MAX_DISPLACEMENT = 2
 
+# Per-iteration sub-seed mix: ``sub_seed ^ (it * _NOISE_ITER_PRIME)``. A
+# large high-entropy odd constant so successive iterations produce
+# uncorrelated noise fields (vs. the original sign-flip trick which
+# produced the *inverted* field, meaning iter 1 mostly undid iter 0 — see
+# iter3/agent-08 bug 1). Iteration 0 leaves ``sub_seed`` untouched
+# (``it * _NOISE_ITER_PRIME == 0`` when ``it == 0``) so the
+# single-iteration case (``amp <= 0.5``) is byte-identical to the prior
+# behaviour. The value is the SHA-512 sqrt(2) mixing constant: a
+# high-quality bit pattern that fits in signed int64.
+_NOISE_ITER_PRIME = 0x6A09E667F3BCC908
+
 
 def _place_hull(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
     """Fill a tapered ellipsoid-of-revolution along Z with HULL voxels.
@@ -158,17 +169,26 @@ def _apply_hull_noise(
 
     The cutoff ``threshold = 1.0 - amplitude`` shrinks toward zero (more
     cells flipped) as amplitude grows. To bound the silhouette displacement
-    the iteration runs at most :data:`_HULL_NOISE_MAX_DISPLACEMENT` times —
-    each iteration can only move the boundary by one cell so the cumulative
-    perturbation stays within ±2 cells. Cockpit / engine / wing voxels are
-    never overwritten because the post-pass runs *before* those parts are
-    placed.
+    the iteration runs at most :data:`_HULL_NOISE_MAX_DISPLACEMENT` times.
+    Each iteration draws an **independent** noise field (see "Determinism"
+    below) so the per-pass erode/grow targets are uncorrelated — the
+    cumulative perturbation stays bounded by ±N cells while still moving
+    the boundary by up to one fresh cell per pass. Cockpit / engine / wing
+    voxels are never overwritten because the post-pass runs *before* those
+    parts are placed.
 
-    Determinism: the noise sub-seed is drawn from ``rng`` (which itself is
-    seeded from the main pipeline seed), so two runs with the same
-    ``(seed, hull_noise)`` pair produce byte-identical grids. The single
-    ``rng.integers`` draw also keeps downstream RNG consumers in lockstep
-    with the legacy pipeline whenever ``hull_noise > 0`` is opted into.
+    Determinism: a single ``rng.integers`` draw produces ``sub_seed``. The
+    iteration-``it`` noise field is derived from ``sub_seed`` mixed with
+    the iteration index via XOR with a large fixed prime
+    (``sub_seed ^ (it * _NOISE_ITER_PRIME)``, masked back into the
+    signed-int64 range so the mix is overflow-safe under future
+    ``_HULL_NOISE_MAX_DISPLACEMENT`` bumps); iteration 0 uses ``sub_seed``
+    unchanged so the single-iteration regime (``amp <= 0.5``) is
+    byte-identical to the prior implementation. Two runs with the same
+    ``(seed, hull_noise)`` pair therefore produce byte-identical grids,
+    and the downstream RNG consumers stay in lockstep with the legacy
+    pipeline whenever ``hull_noise > 0`` is opted into — still exactly
+    one extra ``rng`` integer draw, regardless of iteration count.
     """
     amplitude = float(params.hull_noise)
     if amplitude <= 0.0:
@@ -188,7 +208,6 @@ def _apply_hull_noise(
     sub_seed = int(rng.integers(0, 2**63 - 1, dtype=np.int64))
 
     W, H, L = grid.shape
-    noise = _hash_noise_field(W, H, L, sub_seed)
 
     for it in range(iters):
         hull_mask = grid == Role.HULL
@@ -221,22 +240,33 @@ def _apply_hull_noise(
         inner_shell = hull_mask & empty_dilated
         outer_band = empty_mask & hull_dilated
 
-        # Vary the noise field per iteration so two passes don't reinforce
-        # exactly the same cells (which would just dilate by 2 in lockstep
-        # with the ``noise > threshold`` cells). XOR-flipping the sign
-        # gives a different mask without recomputing the field.
-        if it == 0:
-            field = noise
-        else:
-            field = -noise
+        # Draw a *fresh* noise field per iteration so the per-pass
+        # erode/grow targets are uncorrelated with prior passes. The old
+        # sign-flip trick (``field = -noise`` on ``it >= 1``) produced
+        # the *inverted* mask, which meant iter 1 mostly undid iter 0's
+        # boundary moves — see iter3/agent-08 bug 1. Mixing ``sub_seed``
+        # with ``it * _NOISE_ITER_PRIME`` keeps the RNG-stream contract
+        # (still exactly one ``rng.integers`` draw above) while giving
+        # each pass an independent draw. The mix is computed in Python
+        # ``int`` so the multiplication never overflows, then masked
+        # back into the signed-int64 range. Iteration 0 leaves
+        # ``sub_seed`` unchanged (``it == 0`` zeros the prime mix) so
+        # the single-iteration regime (``amp <= 0.5``) is byte-identical
+        # to the prior behaviour.
+        iter_seed = (sub_seed ^ (it * _NOISE_ITER_PRIME)) & 0x7FFFFFFFFFFFFFFF
+        field = _hash_noise_field(W, H, L, iter_seed)
 
         erode = inner_shell & (field < -threshold)
         grow = outer_band & (field > threshold)
 
-        # Apply: erosion first so a cell flipped to EMPTY this iteration
-        # cannot also be re-flipped to HULL by ``grow`` in the same pass
-        # (``grow`` was computed against the pre-erosion ``empty_mask``).
-        if erode.any():
-            grid[erode] = Role.EMPTY
-        if grow.any():
-            grid[grow] = Role.HULL
+        # ``erode`` and ``grow`` are disjoint by construction: no ``field``
+        # value can satisfy both ``< -threshold`` and ``> threshold`` for
+        # the non-negative ``threshold`` (``amplitude in [0, 1]``). The
+        # apply order is therefore immaterial — we keep erosion first
+        # purely for readability. ``grid[mask] = value`` is a no-op when
+        # ``mask`` is all-False, so we drop the ``.any()`` guards that
+        # earlier versions used as a micro-optimization — they hid the
+        # simpler write semantics without saving meaningful work (see
+        # iter3/agent-08 bug 4).
+        grid[erode] = Role.EMPTY
+        grid[grow] = Role.HULL

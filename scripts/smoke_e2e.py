@@ -32,11 +32,12 @@ from litemapy import Schematic  # noqa: E402
 
 from spaceship_generator.engine_styles import EngineStyle  # noqa: E402
 from spaceship_generator.generator import generate  # noqa: E402
+from spaceship_generator.palette import palettes_dir  # noqa: E402
 from spaceship_generator.shape import ShapeParams  # noqa: E402
 from spaceship_generator.structure_styles import HullStyle  # noqa: E402
 from spaceship_generator.wing_styles import WingStyle  # noqa: E402
 
-PALETTES_DIR = REPO_ROOT / "palettes"
+PALETTES_DIR = palettes_dir()
 
 #: Pinned combos. Stable across runs — changing these is a smoke-scope change.
 PINNED_COMBOS: list[dict] = [

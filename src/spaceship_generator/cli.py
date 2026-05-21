@@ -725,21 +725,53 @@ def _apply_weapons(
     palette_obj,
     author: str,
     schem_name: str,
+    texture_params: TextureParams | None = None,
 ) -> None:
     """Scatter weapons into ``result.role_grid`` (in place) and re-export.
 
     No-op when ``weapon_styles`` is missing, ``count == 0``, or the scatter
     produces zero placements. Callers are expected to have already warned
     on stderr if the module is missing.
+
+    Mirrors the placement filters used by ``generator.generate(...,
+    weapon_count=...)`` (see generator.py):
+
+      * Seed mask ``seed ^ 0x7A`` — matches the generator's
+        ``weapon_rng = default_rng(seed ^ 0x7A)`` so the same nominal
+        seed feeds the same RNG stream into ``scatter_weapons``,
+        producing byte-identical placements between CLI and library
+        callers.
+      * EMPTY-only writes — never overwrite a painted cell. Without
+        this gate the CLI silently clobbered WINDOW / HULL_DARK /
+        ENGINE_GLOW roles that ``assign_roles`` had just painted; the
+        same scatter, run pre-texture by ``generate()``, refuses those
+        writes outright. The non-EMPTY/EMPTY topology is preserved
+        across ``assign_roles`` (it only re-labels non-EMPTY cells, it
+        never introduces new occupied cells), so the same EMPTY-only
+        gate applied here on the post-texture grid is equivalent.
+      * Nose-tip-light guard — refuse any write that would shadow or
+        forward-extend the centerline nose-tip LIGHT slot. Without
+        this guard a plasma_core / missile_pod stamped near the
+        forward centerline silently dropped the single LIGHT painted
+        by ``_paint_nose_tip_light``.
+
+    Bug-fix iter3/agent-01 #2: previously this code path differed from
+    the generator's pre-texture scatter in (a) RNG mask (``0x7EA9`` vs
+    ``0x7A``), (b) cell protection (CLI overwrote, generator skipped),
+    and (c) nose-tip guard (CLI lacked it). The three asymmetries
+    silently broke the "same seed = same ship" determinism contract
+    between CLI and library callers.
     """
     import numpy as np
 
     from .export import export_litematic
+    from .generator import _nose_tip_anchor_cells
+    from .palette import Role
 
     if _weapon_styles is None or count <= 0:
         return
 
-    rng = np.random.default_rng(seed ^ 0x7EA9)
+    rng = np.random.default_rng(seed ^ 0x7A)
     placements = _weapon_styles.scatter_weapons(
         result.role_grid, rng, count, types=types
     )
@@ -748,9 +780,32 @@ def _apply_weapons(
 
     grid = result.role_grid
     W, H, L = grid.shape
+
+    # Compute the nose-tip guard against the post-texture grid.
+    # ``_nose_tip_anchor_cells`` only inspects EMPTY / non-EMPTY
+    # topology, which ``assign_roles`` preserves, so the post-texture
+    # grid yields the same anchor cells as the pre-texture one the
+    # generator inspects. Pass a default ``TextureParams`` when the
+    # caller doesn't supply one so the guard still engages on legacy
+    # callers (``nose_tip_light`` defaults to ``True``).
+    tex = texture_params if texture_params is not None else TextureParams()
+    nose_tips = _nose_tip_anchor_cells(grid, tex)
+
     for x, y, z, role in placements:
-        if 0 <= x < W and 0 <= y < H and 0 <= z < L:
-            grid[x, y, z] = role
+        if not (0 <= x < W and 0 <= y < H and 0 <= z < L):
+            continue
+        # Skip writes onto already-painted cells so we don't clobber
+        # WINDOW / HULL_DARK / ENGINE / etc.
+        if grid[x, y, z] != Role.EMPTY:
+            continue
+        # Skip writes that would shadow OR forward-extend a nose-tip
+        # LIGHT slot on a centerline column. Matches the geometry rule
+        # in ``generator._nose_tip_anchor_cells`` consumers.
+        if x in nose_tips:
+            z_tip, y_tip = nose_tips[x]
+            if z >= z_tip and y > y_tip:
+                continue
+        grid[x, y, z] = role
 
     # Re-export so the weapons persist into the on-disk .litematic.
     export_litematic(
@@ -937,6 +992,12 @@ def _run_one(
                     palette_obj=pal_obj,
                     author=args.author,
                     schem_name=args.name or f"Ship {seed}",
+                    # Bug-fix iter3/agent-01 #2: forward the same
+                    # texture params the generator used so the post-
+                    # texture nose-tip guard inside _apply_weapons sees
+                    # the same ``nose_tip_light`` flag the generator's
+                    # pre-texture guard saw.
+                    texture_params=texture_params,
                 )
             except TypeError as exc:
                 print(f"weapons unavailable: {exc}", file=sys.stderr)
@@ -984,6 +1045,16 @@ def _run_fleet_ship(
     ship_args.width = int(w)
     ship_args.height = int(h)
     ship_args.length = int(length)
+    # Bug-fix iter3/agent-01 #1: clear ``ship_args.ship_size`` so the
+    # per-ship dims set above actually win in ``_run_one``. Without this,
+    # ``_run_one``'s post-construction override (``if args.ship_size is
+    # not None: shape_params.width_max = ...``) silently replaces the
+    # fleet planner's varied ``planned.dims`` (e.g. ``--fleet-size-tier
+    # mixed`` was supposed to produce a small/mid/large/capital mix but
+    # collapsed to identical user-supplied dims). Matches the precedent
+    # at the ``--from-manifest`` branch, which clears ``args.ship_size``
+    # for the same reason.
+    ship_args.ship_size = None
     ship_args.palette = planned.palette
     if planned.hull_style is not None:
         ship_args.hull_style = planned.hull_style.value
@@ -1449,6 +1520,19 @@ def main(argv: list[str] | None = None) -> int:
             conflicts.append("--fleet-count")
         if args.seeds is not None:
             conflicts.append("--seeds")
+        # Bug-fix iter3/agent-01 #4: ``--preview`` silently lost the
+        # rendered PNG under ``--output -`` because the stream-stdout
+        # branch routes ``args.out`` through a ``TemporaryDirectory``
+        # that's deleted on context exit. ``_run_one`` wrote the PNG
+        # inside that tempdir via ``result.litematic_path.with_suffix
+        # (".png")``, but the bytes vanished when the ``with`` block
+        # ended (the .litematic survives only because we read it back
+        # into memory before the tempdir is unlinked — there's no
+        # equivalent rescue for the preview). Reject the combination
+        # up front, matching the ``--repeat`` / ``--seeds`` /
+        # ``--fleet-count`` rejection precedents.
+        if getattr(args, "preview", False):
+            conflicts.append("--preview")
         if conflicts:
             parser.error(
                 "--output - is single-ship only; mutually exclusive with "
@@ -1953,6 +2037,21 @@ def main(argv: list[str] | None = None) -> int:
         _emit(args, "Cockpit styles:")
         for c in CockpitStyle:
             _emit(args, f"  {c.value}")
+        # Bug-fix iter3/agent-01 #5: six ``--list-<x>-*`` help strings
+        # (``--list-weapon-types``, ``--list-cockpit-styles``,
+        # ``--list-structure-styles``, ``--list-engine-styles``,
+        # ``--list-hull-styles``, ``--list-wing-styles``) advertise
+        # ``--list-styles`` as also emitting ``greeble`` types. The
+        # previous handler only emitted hull / engine / wing / cockpit
+        # / weapon, so users following ``--help`` to discover greeble
+        # types found them missing from ``--list-styles`` output. Emit
+        # the Greeble types section here so the documented contract
+        # holds. ``--list-greeble-types`` is the only flag in the
+        # family whose help string correctly does NOT make this claim,
+        # so its docstring needs no edit.
+        _emit(args, "Greeble types:")
+        for gt in GreebleType:
+            _emit(args, f"  {gt.value}")
         # Weapon types only appear when the optional module is available.
         # The fallback message goes to stderr so piping ``--list-styles``
         # into another program still gets clean hull/engine/wing output.
@@ -2318,7 +2417,17 @@ def main(argv: list[str] | None = None) -> int:
                     "shape": list(result.shape),
                     "blocks": result.block_count,
                     "litematic": str(result.litematic_path),
-                    "timestamp": _dt.datetime.now(_dt.UTC).isoformat() + "Z",
+                    # Bug-fix iter3/agent-01 #3: ``datetime.UTC`` already
+                    # emits a ``+00:00`` suffix in ``isoformat()``, so
+                    # appending ``"Z"`` previously produced the invalid
+                    # ``...+00:00Z`` form (per ISO 8601 the UTC marker
+                    # is ``Z`` *or* ``+00:00``, never both). Strict
+                    # consumers (datetime.fromisoformat on older Pythons,
+                    # RFC3339 parsers, JSON Schema ``date-time``
+                    # validators) reject the doubled suffix; drop the
+                    # trailing ``"Z"`` so the field is plain ISO 8601
+                    # with a numeric UTC offset.
+                    "timestamp": _dt.datetime.now(_dt.UTC).isoformat(),
                 }
                 Path(result.litematic_path).with_suffix(".json").write_text(
                     _json.dumps(_manifest, indent=2), encoding="utf-8"
@@ -2415,7 +2524,16 @@ def main(argv: list[str] | None = None) -> int:
                 "shape": list(result.shape),
                 "blocks": result.block_count,
                 "litematic": str(result.litematic_path),
-                "timestamp": _dt.datetime.now(_dt.UTC).isoformat() + "Z",
+                # Bug-fix iter3/agent-01 #3: ``datetime.UTC`` already
+                # emits a ``+00:00`` suffix in ``isoformat()``, so
+                # appending ``"Z"`` previously produced the invalid
+                # ``...+00:00Z`` form (per ISO 8601 the UTC marker is
+                # ``Z`` *or* ``+00:00``, never both). Strict consumers
+                # (datetime.fromisoformat on older Pythons, RFC3339
+                # parsers, JSON Schema ``date-time`` validators) reject
+                # the doubled suffix; drop the trailing ``"Z"`` so the
+                # field is plain ISO 8601 with a numeric UTC offset.
+                "timestamp": _dt.datetime.now(_dt.UTC).isoformat(),
             }
             Path(result.litematic_path).with_suffix(".json").write_text(
                 _json.dumps(_manifest, indent=2), encoding="utf-8"

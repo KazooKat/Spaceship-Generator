@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import re
 import sys
 import threading
 import uuid
@@ -60,6 +61,19 @@ PARAM_HELP: dict[str, str] = {
     "rivet_period": "Block spacing of small rivet dots along edges. 0 disables them.",
     "engine_glow_ring": "Add a glowing ring around each engine nozzle.",
 }
+
+
+# Palette names map 1:1 to on-disk YAML filenames inside the palettes/
+# directory. The on-disk set uses ASCII letters, digits, underscore, and
+# hyphen only — no path separators, no NUL, no traversal segments. We
+# enforce that same shape here BEFORE calling ``load_palette`` so:
+#   (a) path-traversal probes via the ``palette`` field
+#       (``"../../tmp/foo"`` etc.) are rejected at the boundary, and
+#   (b) the related disclosure vector where ``Palette.load`` re-raises a
+#       wrapping ``ValueError`` with the absolute server filesystem path
+#       embedded in the message can never trigger from attacker input.
+# See .swarm-audit/iter3/phase1/agent-12.md bugs 1 + 2 for rationale.
+_VALID_PALETTE_NAME_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
 
 
 # Short human labels for legend entries — shown in the block-key panel.
@@ -506,6 +520,26 @@ def build_params_from_source(
             raise ValueError("no palettes available")
         palette_name = available[abs(int(seed)) % len(available)]
 
+    # Validate palette name at the boundary BEFORE forwarding to
+    # ``load_palette``. Without this, attacker-supplied values like
+    # ``"../../../tmp/foo"`` cause ``load_palette`` to build a path of
+    # ``<palettes-dir> / "../../../tmp/foo.yaml"`` — a path-traversal
+    # probe primitive that also leaks the install prefix via the
+    # ``FileNotFoundError`` / wrapping ``ValueError`` text.
+    # ``_safe_palette_error`` scrubs the error text downstream as defense
+    # in depth, but rejecting the malformed name here is the structural
+    # fix. Raise ``FileNotFoundError`` so the existing route-level
+    # handler routes the message through ``_safe_palette_error`` exactly
+    # like a real missing-palette case — denying the attacker an oracle
+    # that distinguishes "bad charset" from "well-formed-but-absent".
+    # See .swarm-audit/iter3/phase1/agent-12.md bug 1.
+    if not isinstance(palette_name, str):
+        raise ValueError(
+            f"palette must be a string; got {type(palette_name).__name__}"
+        )
+    if not _VALID_PALETTE_NAME_RE.fullmatch(palette_name):
+        raise FileNotFoundError(f"Palette {palette_name!r} not found")
+
     # Resolve structure_style. Default to FRIGATE for back-compat. Unknown
     # values raise ValueError here (converted to 400 by the caller).
     raw_structure = source.get("structure_style", StructureStyle.FRIGATE.value)
@@ -593,13 +627,35 @@ def _parse_weapon_count(source: Any) -> int:
 
     Coerces to int and clamps to ``[0, 8]`` so the generator's scatter loop
     can't be driven into pathological territory by a tampered URL or hand-
-    rolled JSON body. Non-numeric or missing values collapse to ``0``.
+    rolled JSON body. Non-numeric, missing, or non-finite values collapse
+    to ``0``.
+
+    Robustness note: ``float("inf")`` parses successfully, but
+    ``int(math.inf)`` raises :class:`OverflowError` — which is *not* a
+    subclass of either ``TypeError`` or ``ValueError``. Without the
+    explicit catch (and finite-check), a payload like
+    ``{"weapon_count": "inf"}`` would escape this helper, bypass the
+    route handler's narrow ``(ValueError, FileNotFoundError, TypeError)``
+    filter, and surface as an unauthenticated 500 + traceback in the
+    server logs. Mirror the ``_parse_bounded_int`` pattern: float first,
+    finite-check, then int() inside an ``(OverflowError, ValueError)``
+    catch. Pathological huge numerals (e.g. ``"1e400"``) also reach
+    ``OverflowError`` via the int() cast; same catch handles them.
+    See .swarm-audit/iter3/phase1/agent-12.md bug 5.
     """
     raw = source.get("weapon_count", 0)
+    if raw in (None, ""):
+        return 0
     try:
-        n = int(float(raw)) if raw not in (None, "") else 0
+        f = float(raw)
     except (TypeError, ValueError):
-        n = 0
+        return 0
+    if not math.isfinite(f):
+        return 0
+    try:
+        n = int(f)
+    except (OverflowError, ValueError):
+        return 0
     return int(clamp(n, 0, 8))
 
 

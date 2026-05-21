@@ -21,6 +21,7 @@ import numpy as np
 from flask import (
     Blueprint,
     abort,
+    current_app,
     jsonify,
     redirect,
     render_template,
@@ -44,6 +45,7 @@ from ...wing_styles import WingStyle
 from .ratelimit import check_rate_limit
 from .ship_support import (
     PARAM_HELP,
+    _VALID_PALETTE_NAME_RE,
     approximate_role_colors,
     build_params_from_source,
     clamp,
@@ -59,6 +61,67 @@ ship_bp = Blueprint("ship", __name__)
 # uptime_s = int(time.monotonic() - _START_MONOTONIC). monotonic() is the
 # right clock for elapsed-time math: immune to wall-clock skew/NTP jumps.
 _START_MONOTONIC: float = time.monotonic()
+
+
+def _safe_palette_error(name: str | None, exc: BaseException) -> str:
+    """Sanitize palette-loader exception text for client responses.
+
+    Multiple exception shapes from ``palette.load_palette`` / ``Palette.load``
+    carry the server's absolute filesystem path in their message text, and
+    every one of them must be scrubbed before reaching the network:
+
+    * ``FileNotFoundError``: ``load_palette`` builds the message as
+      ``f"Palette {name!r} not found at {path}"`` — full absolute path.
+    * ``IsADirectoryError`` / ``OSError`` (permission denied, ELOOP,
+      etc.): raised by ``Path.open`` inside ``Palette.load``, message
+      text from CPython embeds the offending path verbatim.
+    * ``ValueError`` from ``Palette.load``: wraps the underlying
+      ``from_dict`` ValueError as ``f"{path}: {exc}"`` — the leading
+      segment is the absolute server filesystem path, *including any
+      attacker-controlled ``../`` segments*. This is the exact
+      disclosure vector flagged by the iter-3 path-traversal audit.
+
+    Echoing any of these would disclose the install prefix and package
+    layout (recon for an attacker) and confirm existence of arbitrary
+    files on the host (a probe primitive). Legitimate clients only need
+    to know the palette is missing or malformed — no path is required.
+
+    Strategy: collapse the OS-error family (and anything in OSError-
+    subclass land) to a generic "palette not found" line; for
+    ``ValueError`` messages, strip the leading ``"<abs-path>.yaml: "``
+    prefix (preserving the useful "missing block roles: [...]" tail).
+    As a belt-and-braces fallback, if the message still contains a
+    path-shaped token, collapse to the generic form.
+
+    See .swarm-audit/iter3/phase1/agent-12.md bug 1 for full rationale.
+    """
+    # OS-level failures always embed a filesystem path in their message
+    # (FileNotFoundError + IsADirectoryError + every other OSError
+    # subclass). Never echo. Single isinstance check catches all three.
+    if isinstance(exc, OSError):
+        return f"palette {name!r} not found"
+
+    raw = str(exc)
+    # ``Palette.load`` wraps inner ``ValueError`` from ``from_dict`` as
+    # ``f"{path}: {exc}"``. Strip the leading absolute-path prefix so
+    # the client sees only the underlying "Palette 'X' missing block
+    # roles: [...]" tail (no install prefix, no traversal echo). The
+    # path always ends in ``.yaml`` (built as ``directory / f"{name}.yaml"``)
+    # so splitting on ``".yaml: "`` cleanly separates path from message
+    # without parsing the path itself (works for both POSIX and Windows).
+    sep = ".yaml: "
+    idx = raw.find(sep)
+    if idx >= 0:
+        return raw[idx + len(sep):]
+
+    # Defense-in-depth: if a future palette-loader regression smuggles
+    # an absolute-path-shaped token into a ValueError message we haven't
+    # seen, collapse to the generic form rather than risk a fresh leak.
+    # A path token starts with "/" or matches ``X:\`` (Windows drive).
+    for tok in raw.split():
+        if tok.startswith("/") or (len(tok) >= 3 and tok[1:3] == ":\\"):
+            return f"palette {name!r} not found"
+    return raw
 
 
 def _ship_metadata(seed: int, shape_params, palette_name: str) -> dict:
@@ -145,10 +208,23 @@ def do_generate():
         return limited
     st = state()
     is_htmx = request.headers.get("HX-Request", "").lower() == "true"
+    # Track the parsed palette name so the FileNotFoundError sanitizer can
+    # echo it back in a generic "palette 'X' not found" message instead of
+    # exposing the server filesystem path. Seed from the raw request form
+    # *before* calling ``build_params_from_source`` so even a validator
+    # rejection inside the helper (attacker passes ``"../tmp/foo"``) has
+    # a usable label for the sanitized error.
+    raw_palette_field = request.form.get("palette") if hasattr(
+        request.form, "get"
+    ) else None
+    palette_for_error: str | None = (
+        raw_palette_field if isinstance(raw_palette_field, str) else None
+    )
     try:
         seed, palette_name, shape_params, texture_params, extra_gen_kwargs = (
             build_params_from_source(request.form)
         )
+        palette_for_error = palette_name
 
         # Skip eager matplotlib render: the client uses the WebGL canvas
         # which pulls voxel data from ``/voxels/<gen_id>.json``. The
@@ -162,10 +238,18 @@ def do_generate():
             with_preview=False,
             extra_gen_kwargs=extra_gen_kwargs,
         )
-    except (ValueError, FileNotFoundError) as exc:
+    except (ValueError, FileNotFoundError, TypeError) as exc:
+        # TypeError mirrors the JSON twins (api_generate / api_batch):
+        # build_params_from_source can surface TypeError for non-string
+        # coercions (e.g. htmx hx-vals='{"length": null}'). Without this
+        # the HTML route 500s instead of returning the intended 400.
+        # FileNotFoundError / wrapping-ValueError text from ``load_palette``
+        # embeds the absolute server filesystem path — sanitize via
+        # ``_safe_palette_error`` before echoing back.
+        error_msg = _safe_palette_error(palette_for_error, exc)
         if is_htmx:
             return (
-                render_template("_error.html", error=str(exc)),
+                render_template("_error.html", error=error_msg),
                 400,
             )
         return (
@@ -181,7 +265,7 @@ def do_generate():
                 weapon_types=[w.value for w in WeaponType],
                 param_help=PARAM_HELP,
                 defaults=request.form.to_dict(),
-                error=str(exc),
+                error=error_msg,
             ),
             400,
         )
@@ -229,6 +313,18 @@ def preview(gen_id: str):
             result.preview_png = png
         return send_file(io.BytesIO(result.preview_png), mimetype="image/png")
 
+    # Custom-view branch: each request forces a fresh matplotlib render
+    # at 700x700 — multiple orders of magnitude more expensive than
+    # serving a cached PNG, and the cache key never fires here (elev/azim
+    # are deliberately not part of the result.preview_png memo). Without
+    # a rate-limit cost, a caller with any valid gen_id could trivially
+    # pin a worker by sweeping ``?elev=22.0&azim=-62.X`` across a range.
+    # Mirror every other generation route by gating on the shared per-IP
+    # limiter. See .swarm-audit/iter3/phase1/agent-12.md bug 4.
+    limited = check_rate_limit(as_json=False)
+    if limited is not None:
+        return limited
+
     try:
         elev = clamp(float(raw_elev) if raw_elev is not None else 22.0, -89.0, 89.0)
         azim = float(raw_azim) if raw_azim is not None else -62.0
@@ -275,19 +371,40 @@ def preview_lite():
     limited = check_rate_limit(as_json=False)
     if limited is not None:
         return limited
+    # Seed ``palette_for_error`` from the raw query string BEFORE the
+    # helper runs, so a validator rejection (attacker-supplied traversal
+    # probe) still has a usable label for the sanitized message.
+    raw_palette_field = request.args.get("palette") if hasattr(
+        request.args, "get"
+    ) else None
+    palette_for_error: str | None = (
+        raw_palette_field if isinstance(raw_palette_field, str) else None
+    )
     try:
         seed, palette_name, shape_params, texture_params, extras = (
             build_params_from_source(request.args)
         )
-    except (ValueError, KeyError) as exc:
-        # Bad param value (ValueError from parsers) or a required key that
-        # downstream code can't cope with. Either way it's a 400.
-        return (str(exc), 400)
+        palette_for_error = palette_name
+    except (ValueError, FileNotFoundError, KeyError) as exc:
+        # Bad param value (ValueError from parsers), a required key that
+        # downstream code can't cope with, OR a palette-name traversal
+        # probe rejected by the validator (FileNotFoundError — subclass
+        # of OSError, NOT ValueError — must be caught explicitly).
+        # Sanitize via ``_safe_palette_error`` before echoing so we
+        # never leak filesystem paths to clients. KeyError is the only
+        # variant whose message is structural ("'foo'") rather than a
+        # potentially-leaking string from the palette loader; pass it
+        # through untouched.
+        if isinstance(exc, KeyError):
+            return (str(exc), 400)
+        return (_safe_palette_error(palette_for_error, exc), 400)
 
     try:
         pal = load_palette(palette_name)
     except (FileNotFoundError, ValueError) as exc:
-        return (str(exc), 400)
+        # Sanitize FileNotFoundError + wrapping-ValueError text — both
+        # embed the server filesystem path in their messages.
+        return (_safe_palette_error(palette_name, exc), 400)
 
     # Mirror the relevant pieces of ``generate`` without the export step.
     # This stays structurally parallel to ``scripts/gen_gallery.py`` so
@@ -764,10 +881,19 @@ def api_generate():
         return limited
     st = state()
     payload = request.get_json(silent=True) or {}
+    # Seed ``palette_for_error`` from the raw payload BEFORE
+    # ``build_params_from_source`` runs, so that a validator rejection
+    # inside the helper (attacker passes ``"../tmp/foo"``) still has a
+    # usable label for the sanitized error message.
+    raw_palette_field = payload.get("palette") if isinstance(payload, dict) else None
+    palette_for_error: str | None = (
+        raw_palette_field if isinstance(raw_palette_field, str) else None
+    )
     try:
         seed, palette_name, shape_params, texture_params, extra_gen_kwargs = (
             build_params_from_source(payload)
         )
+        palette_for_error = palette_name
 
         # Preview PNG is rendered lazily by the /preview/<id>.png route
         # when a consumer actually fetches it. The default web flow now
@@ -782,7 +908,10 @@ def api_generate():
             extra_gen_kwargs=extra_gen_kwargs,
         )
     except (ValueError, FileNotFoundError, TypeError) as exc:
-        return jsonify({"error": str(exc)}), 400
+        # FileNotFoundError / OSError / wrapping-ValueError text from
+        # ``load_palette`` embeds the server filesystem path — sanitize
+        # (see ``_safe_palette_error`` for the full scrubbing rules).
+        return jsonify({"error": _safe_palette_error(palette_for_error, exc)}), 400
 
     gen_id = st.store(result)
     return jsonify(
@@ -818,10 +947,20 @@ def api_batch():
             item.pop("seed", None)  # let build_params_from_source pick random
         else:
             item["seed"] = base_seed + i  # deterministic range from base_seed
+        # Seed ``palette_for_error`` from the raw item BEFORE the helper
+        # runs (see api_generate for the rationale — attacker-supplied
+        # traversal probes hit the validator inside
+        # ``build_params_from_source`` and would otherwise lose the
+        # label by the time ``_safe_palette_error`` formats the message).
+        raw_palette_field = item.get("palette") if isinstance(item, dict) else None
+        palette_for_error: str | None = (
+            raw_palette_field if isinstance(raw_palette_field, str) else None
+        )
         try:
             seed, palette_name, shape_params, texture_params, extra_gen_kwargs = (
                 build_params_from_source(item)
             )
+            palette_for_error = palette_name
             result = _generate_with_extras(
                 seed,
                 palette=palette_name,
@@ -832,7 +971,13 @@ def api_batch():
                 extra_gen_kwargs=extra_gen_kwargs,
             )
         except (ValueError, FileNotFoundError, TypeError) as exc:
-            return jsonify({"error": str(exc), "ship_index": i}), 400
+            # FileNotFoundError / wrapping-ValueError text from
+            # ``load_palette`` embeds the server filesystem path —
+            # sanitize via ``_safe_palette_error`` before echoing.
+            return jsonify({
+                "error": _safe_palette_error(palette_for_error, exc),
+                "ship_index": i,
+            }), 400
         gen_id = st.store(result)
         ships.append({
             "seed": result.seed,
@@ -1777,13 +1922,24 @@ def _parse_download_fleet_args(args) -> tuple[int, str, int, str, float]:
     palette_name = (args.get("palette") or "sci_fi_industrial").strip()
     if not palette_name:
         raise ValueError("palette must be a non-empty string")
+    # Validate at the boundary BEFORE forwarding to ``load_palette`` —
+    # without this check, attacker-supplied values like ``"../tmp/foo"``
+    # let ``load_palette`` open arbitrary YAML files and the resulting
+    # FileNotFoundError / wrapping-ValueError leaks the absolute server
+    # filesystem path back through ``str(exc)``. Mirror the
+    # ``build_params_from_source`` validator. See
+    # .swarm-audit/iter3/phase1/agent-12.md bug 1.
+    if not _VALID_PALETTE_NAME_RE.fullmatch(palette_name):
+        raise ValueError(f"palette {palette_name!r} not found")
     # Confirm the palette actually resolves before we spend any generate()
     # cycles. load_palette raises FileNotFoundError / ValueError for missing
-    # or malformed YAML; either maps to a 400.
+    # or malformed YAML; either maps to a 400. Both exception messages
+    # embed the absolute server filesystem path — sanitize via
+    # ``_safe_palette_error`` so we never echo paths to the client.
     try:
         load_palette(palette_name)
     except (FileNotFoundError, ValueError) as exc:
-        raise ValueError(str(exc)) from exc
+        raise ValueError(_safe_palette_error(palette_name, exc)) from exc
 
     raw_count = args.get("count", "1")
     try:
@@ -1910,6 +2066,16 @@ def fleet_plan():
 @ship_bp.route("/api/compare", methods=["GET"], endpoint="compare")
 def api_compare():
     """Compare two ships by seed — returns metadata side-by-side without generating files."""
+    # ``_ship_metadata`` calls ``generate_shape`` + ``assign_roles`` once per
+    # seed — i.e. *two* full CPU-heavy voxel pipelines per request. Every
+    # other generation route (do_generate / api_generate / api_batch /
+    # preview_lite / download_fleet) is gated on ``check_rate_limit``; this
+    # one was missed, letting attackers consume ~2x the per-call CPU cost
+    # outside the limiter budget. See .swarm-audit/iter3/phase1/agent-12.md
+    # bug 3.
+    limited = check_rate_limit(as_json=True)
+    if limited is not None:
+        return limited
     # seed_a
     raw_a = request.args.get("seed_a")
     if raw_a is None:
@@ -1926,7 +2092,9 @@ def api_compare():
         seed_b = int(raw_b)
     except (TypeError, ValueError):
         return jsonify({"error": f"seed_b must be an integer; got {raw_b!r}"}), 400
-    # palette
+    # palette — membership check against ``list_palettes()`` doubles as a
+    # path-traversal guard (only validated names ever reach load_palette
+    # downstream), so we don't need the regex validator here.
     palette_name = (request.args.get("palette") or "sci_fi_industrial").strip()
     if palette_name not in list_palettes():
         return jsonify({"error": f"unknown palette {palette_name!r}"}), 400
@@ -1946,8 +2114,16 @@ def api_compare():
     try:
         meta_a = _ship_metadata(seed_a, shape_params, palette_name)
         meta_b = _ship_metadata(seed_b, shape_params, palette_name)
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except (ValueError, FileNotFoundError, TypeError) as exc:
+        # Mirror the JSON-API siblings (api_generate / api_batch) and
+        # only echo expected validation / lookup errors. Sanitize via
+        # ``_safe_palette_error`` so any wrapping-ValueError from the
+        # palette loader cannot leak the install prefix.
+        return jsonify({"error": _safe_palette_error(palette_name, exc)}), 400
+    except Exception:
+        # Genuine internal error — never echo the message text (it may
+        # contain filesystem paths, numpy diagnostic strings, etc.).
+        return jsonify({"error": "comparison failed"}), 500
     return jsonify({"palette": palette_name, "ship_a": meta_a, "ship_b": meta_b})
 
 
@@ -2032,7 +2208,14 @@ def download_fleet():
             # Anything that trips mid-pipeline (bad palette at load time,
             # corrupt YAML, disk full) is a 500 — the request was shaped
             # correctly but the server failed to satisfy it.
-            return jsonify({"error": f"fleet generation failed: {exc}"}), 500
+            # Log the full exception text server-side, but return a generic
+            # message to the client so absolute filesystem paths embedded in
+            # FileNotFoundError / OSError messages don't leak to the network.
+            # See .swarm-audit/iter3/phase1/agent-12.md bug 1.
+            current_app.logger.warning(
+                "fleet generation failed: %s", exc, exc_info=True
+            )
+            return jsonify({"error": "fleet generation failed"}), 500
 
         # Pack results into an in-memory zip. Use ZIP_DEFLATED so the zip is
         # noticeably smaller than a stored-only pack — .litematic payloads

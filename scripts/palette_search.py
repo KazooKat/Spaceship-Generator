@@ -55,6 +55,8 @@ if str(SRC) not in sys.path:
 import yaml  # noqa: E402
 from palette_lint import _match_blockstate  # noqa: E402
 
+from spaceship_generator.palette import palettes_dir  # noqa: E402
+
 
 def _load_palette(path: Path) -> dict:
     """Load a single palette YAML, returning ``{}`` on read/parse failure.
@@ -90,8 +92,8 @@ def _bare_block_id(spec: object) -> str | None:
     return m.group("id")
 
 
-def search(palettes_dir: Path, target: str) -> list[tuple[str, str]]:
-    """Walk every ``*.yaml`` under ``palettes_dir`` and collect hits.
+def search(pal_dir: Path, target: str) -> list[tuple[str, str]]:
+    """Walk every ``*.yaml`` under ``pal_dir`` and collect hits.
 
     Returns a list of ``(palette_name, role)`` tuples sorted
     alphabetically by ``(palette_name, role)`` so output is deterministic
@@ -99,7 +101,7 @@ def search(palettes_dir: Path, target: str) -> list[tuple[str, str]]:
     directory, no ``.yaml`` extension) to match the naming convention
     used by ``palette_diff.py`` / ``palette_stats.py``.
     """
-    palette_paths = sorted(palettes_dir.glob("*.yaml"))
+    palette_paths = sorted(pal_dir.glob("*.yaml"))
     hits: list[tuple[str, str]] = []
     for path in palette_paths:
         data = _load_palette(path)
@@ -192,9 +194,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
-    palettes_dir = REPO_ROOT / "palettes"
-    if not palettes_dir.is_dir():
-        print(f"no palettes directory at {palettes_dir}", file=sys.stderr)
+    pal_dir = palettes_dir()
+    if not pal_dir.is_dir():
+        print(f"no palettes directory at {pal_dir}", file=sys.stderr)
         return 1
 
     # Strip any blockstate suffix from the user's query too, so that
@@ -204,8 +206,8 @@ def main(argv: list[str] | None = None) -> int:
     query = args.block.strip()
     bare_query = _bare_block_id(query) or query
 
-    hits = search(palettes_dir, bare_query)
-    palette_count = len(sorted(palettes_dir.glob("*.yaml")))
+    hits = search(pal_dir, bare_query)
+    palette_count = len(sorted(pal_dir.glob("*.yaml")))
 
     # Banner / progress goes to stderr in CSV mode so stdout stays a
     # clean CSV stream an operator can pipe straight into a spreadsheet.

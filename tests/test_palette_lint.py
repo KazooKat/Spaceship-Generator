@@ -32,7 +32,7 @@ palette_lint = _load_module()
 # Helpers
 # ---------------------------------------------------------------------------
 
-from spaceship_generator.palette import REQUIRED_ROLES  # noqa: E402
+from spaceship_generator.palette import REQUIRED_ROLES, palettes_dir  # noqa: E402
 
 
 def _write_full(
@@ -89,7 +89,7 @@ def _write_full(
 
 def test_all_shipped_palettes_have_zero_errors():
     """Every palette in ``palettes/`` must lint with 0 errors (warnings ok)."""
-    paths = sorted((REPO_ROOT / "palettes").glob("*.yaml"))
+    paths = sorted(palettes_dir().glob("*.yaml"))
     assert paths, "no shipped palettes found"
     for p in paths:
         result = palette_lint.lint_palette(p)
@@ -100,7 +100,7 @@ def test_all_shipped_palettes_have_zero_errors():
 
 def test_shipped_palettes_covered_by_lint_report():
     """Lint reports should cover every shipped palette (smoke check)."""
-    paths = sorted((REPO_ROOT / "palettes").glob("*.yaml"))
+    paths = sorted(palettes_dir().glob("*.yaml"))
     results = [palette_lint.lint_palette(p) for p in paths]
     assert len(results) == len(paths)
     # At least one should be completely clean (no warnings either).
@@ -289,7 +289,7 @@ def test_palette_lint_all_clean():
     """``--all`` against the shipped palette suite exits 0 (errors-clean)."""
     cp = _run_cli("--all")
     assert cp.returncode == 0, cp.stdout + cp.stderr
-    paths = sorted((REPO_ROOT / "palettes").glob("*.yaml"))
+    paths = sorted(palettes_dir().glob("*.yaml"))
     n = len(paths)
     assert f"{n}/{n} palettes clean" in cp.stdout
 
@@ -297,7 +297,10 @@ def test_palette_lint_all_clean():
 def test_palette_lint_all_with_dirty_palette(tmp_path: Path, monkeypatch):
     """``--all`` exits 1 with at least one ``error:``-prefixed line when any
     palette is broken."""
-    # Sandbox: redirect REPO_ROOT/palettes to a tmp dir holding one broken file.
+    # Sandbox: redirect the bundled palettes dir to a tmp dir holding one
+    # broken file. After the package migration (palettes/ -> bundled package
+    # data) the script resolves the dir via ``palettes_dir()`` rather than
+    # ``REPO_ROOT / "palettes"``, so we monkeypatch that helper instead.
     fake_palettes = tmp_path / "palettes"
     fake_palettes.mkdir()
     bad = fake_palettes / "broken.yaml"
@@ -306,14 +309,14 @@ def test_palette_lint_all_with_dirty_palette(tmp_path: Path, monkeypatch):
         encoding="utf-8",
     )
 
-    # Re-import the module fresh and patch its REPO_ROOT to tmp_path so the
-    # `--all` glob picks up only our broken file.
+    # Re-import the module fresh and patch the bundled ``palettes_dir()``
+    # helper it imports so the ``--all`` glob picks up only our broken file.
     spec = importlib.util.spec_from_file_location("palette_lint_sandbox", LINT_SCRIPT)
     assert spec and spec.loader
     sandbox = importlib.util.module_from_spec(spec)
     sys.modules["palette_lint_sandbox"] = sandbox
     spec.loader.exec_module(sandbox)
-    monkeypatch.setattr(sandbox, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(sandbox, "palettes_dir", lambda: fake_palettes)
 
     # Capture stdout via redirect.
     buf = io.StringIO()
@@ -373,7 +376,7 @@ def test_palette_lint_json_all():
     assert cp.returncode == 0, cp.stdout + cp.stderr
     payload = json.loads(cp.stdout)
     assert isinstance(payload, list)
-    paths = sorted((REPO_ROOT / "palettes").glob("*.yaml"))
+    paths = sorted(palettes_dir().glob("*.yaml"))
     assert len(payload) == len(paths)
     for entry in payload:
         assert set(entry) == {"palette", "ok", "errors", "warnings"}

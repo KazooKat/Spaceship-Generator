@@ -531,6 +531,17 @@ def test_generate_weapon_count_positive_adds_cells_and_preserves_existing(
     # Existing hull/cockpit/engine/wing cells must be preserved: every cell
     # that held one of those roles in the baseline must still hold the same
     # role in the armed grid.
+    #
+    # HULL ↔ INTERIOR equivalence: the weapon writer itself only touches
+    # EMPTY cells, but adding a weapon cell adjacent to a baseline HULL cell
+    # can remove that cell's last EMPTY neighbor. When ``assign_roles`` then
+    # recomputes the surface mask, the now-fully-surrounded baseline HULL is
+    # legitimately reclassified to INTERIOR by ``_fill_interior`` (see
+    # ``texture.py::_fill_interior``). That is a side effect of the surface
+    # recompute, not a clobber by the weapon writer — INTERIOR cells use the
+    # same HULL block id via the fallback chain in ``palette.py``. So when
+    # checking HULL preservation we accept either HULL or INTERIOR in the
+    # armed grid.
     for role in (
         Role.HULL,
         Role.COCKPIT_GLASS,
@@ -539,9 +550,18 @@ def test_generate_weapon_count_positive_adds_cells_and_preserves_existing(
         Role.WING,
     ):
         mask = baseline.role_grid == role
-        assert np.array_equal(
-            armed.role_grid[mask], baseline.role_grid[mask]
-        ), f"weapon scatter clobbered existing {role.name} cells"
+        if role is Role.HULL:
+            armed_values = armed.role_grid[mask]
+            assert bool(
+                np.isin(armed_values, [Role.HULL, Role.INTERIOR]).all()
+            ), (
+                f"weapon scatter clobbered existing {role.name} cells "
+                "(expected HULL or INTERIOR via surface-recompute fallback)"
+            )
+        else:
+            assert np.array_equal(
+                armed.role_grid[mask], baseline.role_grid[mask]
+            ), f"weapon scatter clobbered existing {role.name} cells"
 
 
 def test_generate_weapon_count_negative_raises(tmp_path: Path):
