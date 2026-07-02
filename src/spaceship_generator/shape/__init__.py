@@ -32,12 +32,7 @@ from .assembly import (
     _enforce_x_symmetry,
     _label_components,
 )
-from .cockpit import (
-    _place_cockpit,
-    _place_cockpit_bubble,
-    _place_cockpit_integrated,
-    _place_cockpit_pointed,
-)
+from .cockpit import _place_cockpit
 from .core import CockpitStyle, ShapeParams, _body_profile, generate_shape
 from .blueprint import ShipPlan, build_plan
 from .engines import _place_engines
@@ -61,9 +56,6 @@ __all__ = [
     "_enforce_x_symmetry",
     "_label_components",
     "_place_cockpit",
-    "_place_cockpit_bubble",
-    "_place_cockpit_integrated",
-    "_place_cockpit_pointed",
     "_place_engines",
     "_place_greebles",
     "_place_hull",

@@ -200,7 +200,7 @@ def generate_shape(
     # final perturbed hull silhouette. Skipped entirely at zero amplitude.
     if params.hull_noise > 0.0:
         _apply_hull_noise(grid, rng, params)
-    _place_cockpit(grid, rng, params)
+    _place_cockpit(grid, rng, params, plan)
     _place_engines(grid, rng, params, plan)
     # Wing presence is decided in the plan (single rng draw there) so the
     # wing geometry and the presence roll always agree.

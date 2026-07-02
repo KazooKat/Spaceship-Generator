@@ -389,7 +389,7 @@ def test_new_cockpit_variant_does_not_reduce_hull_count(style):
     _place_hull(grid, rng, p, plan)
     hull_before = int((grid == Role.HULL).sum())
     assert hull_before > 0  # sanity: hull exists before cockpit
-    _place_cockpit(grid, rng, p)
+    _place_cockpit(grid, rng, p, plan)
     hull_after = int((grid == Role.HULL).sum())
     # New variants ADD hull cells (dome collar / bridge frame / turret walls),
     # and never erase existing hull — so count is strictly non-decreasing.
@@ -685,16 +685,17 @@ def test_generate_shape_hull_blend_arrow_saucer_touches_both_silhouettes():
         f"({saucer_x}) within tolerance"
     )
 
-    # Nose: blended HULL count near z=L-1 must be small (ARROW tapers
-    # nearly to a point).
+    # Nose: ARROW's massing tapers hard, so the blended nose slice must be
+    # far thinner than the mid-ship slice. (The old byte-exact comparison
+    # against the legacy apply_hull_style stamp no longer applies to the
+    # v2 massing hull — the check is now relative to the blend itself.)
     nose_z = L - 1 - L // 12
+    mid_z = L // 2
     blended_nose = int((blended[:, :, nose_z] == Role.HULL).sum())
-    arrow_nose = int((arrow[:, :, nose_z] == Role.HULL).sum())
-    # Be tolerant of the cockpit slab adding a few extra cells in the
-    # blended ship; we just need the nose to be thin.
-    assert blended_nose <= arrow_nose + 6, (
-        f"blend nose count ({blended_nose}) should be near ARROW's "
-        f"({arrow_nose})"
+    blended_mid = int((blended[:, :, mid_z] == Role.HULL).sum())
+    assert blended_nose <= blended_mid * 0.5, (
+        f"blend nose slice ({blended_nose}) should be much thinner than "
+        f"mid-ship ({blended_mid})"
     )
 
 
