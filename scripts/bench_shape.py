@@ -48,6 +48,7 @@ from spaceship_generator.shape import (  # noqa: E402
     _place_hull,
     _place_wings,
 )
+from spaceship_generator.shape.blueprint import build_plan  # noqa: E402
 from spaceship_generator.structure_styles import wing_prob_override  # noqa: E402
 
 # Stage names in canonical pipeline order. Used as the row order for the
@@ -93,7 +94,8 @@ def run_iteration(seed: int, params: ShapeParams) -> dict[str, float]:
     timings: dict[str, float] = {}
 
     t0 = time.perf_counter()
-    _place_hull(grid, rng, params)
+    plan = build_plan(rng, params, None)
+    _place_hull(grid, rng, params, plan)
     timings["hull"] = time.perf_counter() - t0
 
     t0 = time.perf_counter()

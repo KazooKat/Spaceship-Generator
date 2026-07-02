@@ -20,7 +20,7 @@ from enum import StrEnum
 
 import numpy as np
 
-from ..structure_styles import HullStyle, StructureStyle, apply_hull_style, wing_prob_override
+from ..structure_styles import HullStyle, StructureStyle, wing_prob_override
 from ..wing_styles import WingStyle
 
 
@@ -168,6 +168,7 @@ def generate_shape(
         _connect_floaters,
         _enforce_x_symmetry,
     )
+    from .blueprint import build_plan
     from .cockpit import _place_cockpit
     from .engines import _place_engines
     from .greebles import _place_greebles
@@ -180,23 +181,23 @@ def generate_shape(
     grid = np.zeros((W, H, L), dtype=np.int8)
 
     if hull_style_front is not None and hull_style_rear is not None:
-        # Z-axis blend wins over both legacy hull and single hull_style so
-        # users opting in to the blend get exactly what they asked for.
-        _place_hull_blend(
+        # Z-axis blend wins over a single hull_style so users opting in to
+        # the blend get exactly what they asked for. The blend returns the
+        # rear style's plan for downstream part anchoring.
+        plan = _place_hull_blend(
             grid,
             rng,
+            params,
             hull_style_front,
             hull_style_rear,
             midband=hull_blend_midband,
         )
-    elif hull_style is None:
-        _place_hull(grid, rng, params)
     else:
-        apply_hull_style(grid, hull_style)
+        plan = build_plan(rng, params, hull_style)
+        _place_hull(grid, rng, params, plan)
     # Optional procedural-noise post-pass on the hull membrane. Runs before
     # cockpit/engines/wings/greebles so those parts always sit on top of the
-    # final perturbed hull silhouette. Skipped entirely when ``hull_noise``
-    # is zero so the legacy pipeline stays byte-identical.
+    # final perturbed hull silhouette. Skipped entirely at zero amplitude.
     if params.hull_noise > 0.0:
         _apply_hull_noise(grid, rng, params)
     _place_cockpit(grid, rng, params)

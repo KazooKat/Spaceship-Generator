@@ -530,9 +530,11 @@ def test_generate_weapon_count_positive_adds_cells_and_preserves_existing(
     assert armed.block_count > baseline.block_count
     # Existing hull/cockpit/engine/wing cells must be preserved: every cell
     # that held one of those roles in the baseline must still hold the same
-    # role in the armed grid.
+    # role in the armed grid. Exception: a baseline surface-HULL cell that a
+    # weapon voxel buries is legitimately reclassified HULL -> INTERIOR by
+    # the texture pass (it is no longer on the surface); that is not a
+    # clobber, so HULL cells may become INTERIOR but nothing else.
     for role in (
-        Role.HULL,
         Role.COCKPIT_GLASS,
         Role.ENGINE,
         Role.ENGINE_GLOW,
@@ -542,6 +544,10 @@ def test_generate_weapon_count_positive_adds_cells_and_preserves_existing(
         assert np.array_equal(
             armed.role_grid[mask], baseline.role_grid[mask]
         ), f"weapon scatter clobbered existing {role.name} cells"
+    hull_mask = baseline.role_grid == Role.HULL
+    armed_hull_vals = armed.role_grid[hull_mask]
+    ok = (armed_hull_vals == Role.HULL) | (armed_hull_vals == Role.INTERIOR)
+    assert ok.all(), "weapon scatter clobbered existing HULL cells"
 
 
 def test_generate_weapon_count_negative_raises(tmp_path: Path):

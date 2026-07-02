@@ -389,6 +389,7 @@ def test_new_cockpit_variant_does_not_reduce_hull_count(style):
     # We can't easily inspect mid-pipeline state via generate_shape, so compare
     # a hull-only grid against the hull+cockpit grid by running the cockpit
     # stage directly on a fresh copy.
+    from spaceship_generator.shape.blueprint import build_plan
     from spaceship_generator.shape.cockpit import _place_cockpit
     from spaceship_generator.shape.hull import _place_hull
 
@@ -399,7 +400,8 @@ def test_new_cockpit_variant_does_not_reduce_hull_count(style):
     )
     rng = np.random.default_rng(99)
     grid = np.zeros((p.width_max, p.height_max, p.length), dtype=np.int8)
-    _place_hull(grid, rng, p)
+    plan = build_plan(rng, p, None)
+    _place_hull(grid, rng, p, plan)
     hull_before = int((grid == Role.HULL).sum())
     assert hull_before > 0  # sanity: hull exists before cockpit
     _place_cockpit(grid, rng, p)
