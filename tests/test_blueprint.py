@@ -84,3 +84,62 @@ def test_wall_z_positive_and_small():
     params = ShapeParams(length=40)
     plan = _plan(42, params)
     assert 2 <= plan.engine.wall_z <= params.length // 6
+
+
+def test_segments_never_inverted_at_minimum_sizes():
+    """Regression: on minimum ships (L=8, W=4, H=4) the cramped-ship shrink
+    used to leave the mid segment inverted (z0 > z1), kinking the hull."""
+    params = ShapeParams(length=8, width_max=4, height_max=4)
+    for style in list(HullStyle) + [None]:
+        for seed in range(15):
+            plan = _plan(seed, params, style)
+            for s in plan.segments:
+                assert s.z0 <= s.z1, (
+                    f"inverted segment {(s.z0, s.z1)} for style={style} seed={seed}"
+                )
+            for prev, nxt in zip(plan.segments, plan.segments[1:], strict=False):
+                assert prev.z1 == nxt.z0
+
+
+def test_invalid_hull_style_raises_value_error():
+    """Regression: garbage hull_style used to escape as KeyError; the
+    documented contract is ValueError."""
+    import pytest
+
+    with pytest.raises(ValueError):
+        _plan(1, ShapeParams(), "not-a-style")  # type: ignore[arg-type]
+
+
+def test_hull_style_string_value_accepted():
+    a = _plan(1, ShapeParams(), HullStyle.ARROW)
+    b = _plan(1, ShapeParams(), "arrow")  # type: ignore[arg-type]
+    assert a == b
+
+
+def test_structure_style_scales_engine_radius():
+    """Regression: DREADNOUGHT's 1.6x nozzle multiplier was dropped in v2."""
+    from spaceship_generator.structure_styles import StructureStyle
+
+    base = ShapeParams(length=40, width_max=20, height_max=12)
+    dread = ShapeParams(
+        length=40, width_max=20, height_max=12,
+        structure_style=StructureStyle.DREADNOUGHT,
+    )
+    r_frigate = _plan(3, base).engine.radius
+    r_dread = _plan(3, dread).engine.radius
+    assert r_dread >= r_frigate
+
+
+def test_structure_style_scales_wing_thickness():
+    """Regression: wing_size_scale (thickness 1.4x for DREADNOUGHT) was
+    dropped in v2."""
+    from spaceship_generator.structure_styles import StructureStyle
+
+    base = ShapeParams(length=40, width_max=20, height_max=12, wing_prob=1.0)
+    dread = ShapeParams(
+        length=40, width_max=20, height_max=12, wing_prob=1.0,
+        structure_style=StructureStyle.DREADNOUGHT,
+    )
+    t_frigate = _plan(3, base).wing.thickness
+    t_dread = _plan(3, dread).wing.thickness
+    assert t_dread > t_frigate

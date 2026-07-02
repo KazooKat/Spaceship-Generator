@@ -20,7 +20,9 @@ from ..structure_styles import (
     HullStyle,
     StructureStyle,
     engine_count_override,
+    engine_radius_scale,
     wing_prob_override,
+    wing_size_scale,
 )
 from ..wing_styles import WingStyle
 from .core import CockpitStyle, ShapeParams
@@ -150,6 +152,17 @@ class ShipPlan:
 
 def _pick_config(params: ShapeParams, hull_style: HullStyle | None) -> MassingConfig:
     if hull_style is not None:
+        # Accept enum members or their string values; anything else is a
+        # caller error and must raise ValueError (the documented contract —
+        # web/CLI layers catch ValueError, not KeyError).
+        if not isinstance(hull_style, HullStyle):
+            try:
+                hull_style = HullStyle(hull_style)
+            except ValueError as exc:
+                raise ValueError(
+                    f"hull_style must be a HullStyle or one of "
+                    f"{[s.value for s in HullStyle]}; got {hull_style!r}"
+                ) from exc
         return MASSING[hull_style]
     return _STRUCTURE_MASSING[params.structure_style]
 
@@ -189,14 +202,21 @@ def build_plan(
     tail_len = max(3, int(round(L * cfg.tail_frac)))
     body_len = L - wall_z - nose_len - tail_len
     if body_len < 6:
-        # Cramped ship: shrink nose/tail until the body has room.
+        # Cramped ship: shrink nose/tail (down to a floor of 3 each) until
+        # the body has room. On minimum-size ships this may still leave a
+        # small or zero body — the clamps below keep every segment
+        # non-negative so the z-ranges stay monotone (an inverted segment
+        # would be silently skipped by hull_half_at, kinking the hull).
         deficit = 6 - body_len
         take_nose = min(deficit, max(0, nose_len - 3))
         nose_len -= take_nose
         deficit -= take_nose
-        tail_len = max(3, tail_len - deficit)
+        take_tail = min(deficit, max(0, tail_len - 3))
+        tail_len -= take_tail
         body_len = L - wall_z - nose_len - tail_len
+    body_len = max(0, body_len)
     fore_len = max(2, int(round(body_len * 0.38)))
+    fore_len = min(fore_len, body_len)  # never exceed the body budget
     mid_len = body_len - fore_len
 
     z_engine0 = wall_z
@@ -231,7 +251,10 @@ def build_plan(
     n = engine_count_override(params.structure_style, params.engine_count)
     half_w_eng = segments[0].half_w0
     half_h_eng = segments[0].half_h0
-    radius = max(2, int(round(half_h_eng * 0.55)))
+    # Nozzle size scales with hull height *and* the structure style's
+    # archetype multiplier (DREADNOUGHT 1.6x, SHUTTLE 0.6x, ...).
+    r_scale = engine_radius_scale(params.structure_style)
+    radius = max(2, int(round(half_h_eng * 0.55 * r_scale)))
     radius = min(radius, max(1, int(half_h_eng)))
     nozzle_xs = _nozzle_positions(n, cx, half_w_eng, radius)
     nozzle_y = int(round(y_center))
@@ -264,13 +287,17 @@ def build_plan(
     eff_prob = wing_prob_override(params.structure_style, params.wing_prob)
     eff_prob = min(1.0, eff_prob * cfg.wing_bias)
     present = wing_roll < eff_prob
-    root_chord = max(4, L // 4)
+    # Per-archetype wing proportions (FIGHTER long-span, DREADNOUGHT stubby
+    # and thick, ...). Span is the outboard reach from the hull surface and
+    # is clamped to the grid by the wing placer.
+    span_s, thick_s, len_s = wing_size_scale(params.structure_style)
+    root_chord = max(4, int(round((L // 4) * len_s)))
     lo = z_engine1
     hi = max(lo + 1, z_mid1 - root_chord)
     root_z = lo + int(wing_z_jitter * (hi - lo))
     root_z = max(0, min(L - root_chord - 1, root_z))
-    span = max(2, int(W / 2.0 - half_w_mid) - 1)
-    thickness = max(2, H // 6)
+    span = max(2, int(round((W / 2.0 - half_w_mid - 1) * span_s)))
+    thickness = max(2, int(round((H // 6) * thick_s)))
     wing = WingPlan(
         present=present,
         style=params.wing_style,
@@ -286,14 +313,48 @@ def build_plan(
     cp_z1 = min(z_fore1 + max(2, nose_len // 3), L - 2)
     cp_z1 = max(cp_z1, cp_z0 + 3)
     cp_z1 = min(cp_z1, L - 1)
+    # Guarantee a rect wide/long enough for a framed recessed cockpit
+    # whenever the fore hull can support one (half-width >= 2 needs hull
+    # half-width >= ~3.5, z-span >= 4 needs the length). Without this,
+    # INTEGRATED silently drops its hull border on small ships.
+    cp_half_w = max(1, int(round(segments[2].half_w0 * 0.45)))
+    if segments[2].half_w0 >= 3.5:
+        cp_half_w = max(2, cp_half_w)
+    if cp_z1 - cp_z0 < 4:
+        cp_z0 = max(1, min(cp_z0, cp_z1 - 4))
     cockpit = CockpitPlan(
         style=params.cockpit_style,
         z0=cp_z0,
         z1=cp_z1,
-        half_w=max(1, int(round(segments[2].half_w0 * 0.45))),
+        half_w=cp_half_w,
     )
 
     return ShipPlan(segments=segments, cockpit=cockpit, engine=engine, wing=wing)
+
+
+def plan_for(
+    seed: int,
+    params: ShapeParams,
+    *,
+    hull_style: HullStyle | None = None,
+    hull_style_front: HullStyle | None = None,
+    hull_style_rear: HullStyle | None = None,
+) -> ShipPlan:
+    """Reproduce the exact :class:`ShipPlan` that ``generate_shape`` uses.
+
+    ``generate_shape`` derives its plan from ``default_rng(seed)`` — for the
+    single-style path directly, and for the blend path from a sub-seed drawn
+    as that rng's first ``integers`` call. This helper mirrors both draws so
+    post-pipeline callers (e.g. the ``engine_style`` override in
+    ``generator.generate``) can anchor to the same geometry (rear wall,
+    nozzle radius, deck line) without re-running the pipeline.
+    """
+    rng = np.random.default_rng(seed)
+    if hull_style_front is not None and hull_style_rear is not None:
+        # Match _place_hull_blend: one integers draw → sub-seeded rear plan.
+        sub_seed = int(rng.integers(0, 2**63 - 1, dtype=np.int64))
+        return build_plan(np.random.default_rng(sub_seed), params, hull_style_rear)
+    return build_plan(rng, params, hull_style)
 
 
 def _nozzle_positions(n: int, cx: float, half_w: float, radius: int) -> tuple[int, ...]:

@@ -14,7 +14,6 @@ running lights) is the job of :mod:`spaceship_generator.texture`.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -111,20 +110,6 @@ class ShapeParams:
             )
 
 
-def _body_profile(t: float) -> float:
-    """Taper profile along ship length.
-
-    ``t = 0`` is the rear, ``t = 1`` is the nose. Peaks a little forward of
-    the middle so the nose tapers more than the tail. This is the legacy
-    (``FRIGATE``) profile; per-style profiles live in
-    :mod:`spaceship_generator.structure_styles`.
-    """
-    peak = 0.55
-    sigma = 0.32
-    f = math.exp(-((t - peak) ** 2) / (2 * sigma * sigma))
-    return max(0.0, min(1.0, f))
-
-
 def generate_shape(
     seed: int,
     params: ShapeParams | None = None,
@@ -143,20 +128,21 @@ def generate_shape(
     Parameters
     ----------
     hull_style:
-        Optional :class:`HullStyle` archetype. When set, the base hull is
-        stamped by :func:`apply_hull_style` *instead of* the default
-        :func:`_place_hull`. All downstream parts (cockpit, engines, wings,
-        greebles) are then placed on top of that hull. ``None`` (default)
-        preserves the original behavior byte-for-byte.
+        Optional :class:`HullStyle` archetype (enum member or its string
+        value). When set, it selects that style's massing configuration in
+        the blueprint stage (:data:`spaceship_generator.shape.blueprint.MASSING`);
+        ``None`` (default) uses the massing defaults for
+        :attr:`ShapeParams.structure_style`. Invalid values raise
+        :class:`ValueError`.
     hull_style_front, hull_style_rear:
         Optional pair of :class:`HullStyle` archetypes for blending two
         silhouettes along Z. **Both** must be provided for the blend to
-        engage; if either is ``None`` the legacy hull selection (driven by
-        ``hull_style`` / :attr:`ShapeParams.structure_style`) is used so
-        existing call-sites are unchanged. When both are set, the blend
-        takes precedence over ``hull_style``. ``rear`` shapes the engine
-        end (``z = 0``); ``front`` shapes the nose (``z = L - 1``); the
-        crossover is a cosine ramp centred at ``z = L/2``.
+        engage; if either is ``None`` the single-style massing selection
+        (driven by ``hull_style`` / :attr:`ShapeParams.structure_style`) is
+        used so existing call-sites are unchanged. When both are set, the
+        blend takes precedence over ``hull_style``. ``rear`` shapes the
+        engine end (``z = 0``); ``front`` shapes the nose (``z = L - 1``);
+        the crossover is a cosine ramp centred at ``z = L/2``.
     hull_blend_midband:
         Fraction of the ship's length over which the front/rear crossover
         is centred. Default ``0.25`` — a 25% midband. Ignored unless both

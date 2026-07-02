@@ -52,8 +52,14 @@ def _place_greebles(
     if z_hi - z_lo < 4:
         return
 
-    attempts = max(1, int(round(params.greeble_density * 40)))
     tops = _deck_tops(grid)
+    # Scale patch attempts with the actual exposed deck area in the patch
+    # zone so the same density gives comparable visual coverage on a small
+    # scout and a capital ship (a fixed multiplier under-greebles large
+    # hulls by ~100x). 0.17 reproduces the old default of ~40 attempts at
+    # density 1.0 on the default 20x12x40 hull.
+    deck_cols = int((tops[:, z_lo:z_hi] >= 0).sum())
+    attempts = max(1, int(round(params.greeble_density * deck_cols * 0.17)))
 
     for _ in range(attempts):
         motif = int(rng.integers(0, 4))

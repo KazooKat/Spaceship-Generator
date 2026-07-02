@@ -10,7 +10,6 @@ from spaceship_generator.shape import (
     CockpitStyle,
     ShapeParams,
     StructureStyle,
-    _body_profile,
     _label_components,
     _surface_mask,
     generate_shape,
@@ -132,23 +131,6 @@ def test_generate_shape_accepts_none_params():
 
 
 # ----- Helpers -----
-
-def test_body_profile_peaks_in_middle():
-    # Peak around t=0.55
-    samples = [(_body_profile(t), t) for t in np.linspace(0, 1, 21)]
-    peak_val, peak_t = max(samples)
-    assert 0.4 < peak_t < 0.7
-    assert 0.95 <= peak_val <= 1.0
-    # Endpoints should be smaller
-    assert _body_profile(0.0) < 0.4
-    assert _body_profile(1.0) < 0.4
-
-
-def test_body_profile_returns_unit_range():
-    for t in np.linspace(0, 1, 11):
-        v = _body_profile(float(t))
-        assert 0.0 <= v <= 1.0
-
 
 def test_nozzle_positions_symmetric_pairs():
     from spaceship_generator.shape.blueprint import _nozzle_positions

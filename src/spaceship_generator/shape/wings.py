@@ -41,7 +41,11 @@ def _place_wings(
     mid_z = min(L - 1, wing.root_z + wing.root_chord // 2)
     half_w, _, _, _ = plan.hull_half_at(mid_z)
     x_surface = int(np.floor(cx - half_w))
-    total_span = max(2, x_surface + 3)  # columns [0, total_span) — 2 inside hull
+    # The planned span is the outboard reach from the hull surface; when it
+    # is shorter than the room available, the wing tip starts inboard of the
+    # grid edge (stubby DREADNOUGHT wings) instead of always spanning to it.
+    x_tip = max(0, x_surface - wing.span)
+    total_span = max(2, (x_surface + 3) - x_tip)  # columns [x_tip, x_tip+total_span)
 
     thickness = wing.thickness
     y_lo = max(0, wing.y_anchor - thickness // 2)
@@ -59,5 +63,11 @@ def _place_wings(
         y_lo=y_lo,
         y_hi=y_hi,
     )
+    if x_tip > 0:
+        # Outline generators draw from x=0; shift the stamp outboard-edge →
+        # inboard so the tip lands at x_tip.
+        shifted = np.zeros_like(scratch)
+        shifted[x_tip:, :, :] = scratch[:-x_tip, :, :]
+        scratch = shifted
     merge = (scratch == Role.WING) & (grid == Role.EMPTY)
     grid[merge] = Role.WING

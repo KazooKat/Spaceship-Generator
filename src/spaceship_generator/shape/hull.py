@@ -120,6 +120,18 @@ def _place_hull_blend(
     return plan_rear
 
 
+def _dilate6(mask: np.ndarray) -> np.ndarray:
+    """Return ``mask`` dilated by one cell in 6-connectivity (in-bounds only)."""
+    out = mask.copy()
+    out[1:, :, :] |= mask[:-1, :, :]
+    out[:-1, :, :] |= mask[1:, :, :]
+    out[:, 1:, :] |= mask[:, :-1, :]
+    out[:, :-1, :] |= mask[:, 1:, :]
+    out[:, :, 1:] |= mask[:, :, :-1]
+    out[:, :, :-1] |= mask[:, :, 1:]
+    return out
+
+
 def _hash_noise_field(W: int, H: int, L: int, sub_seed: int) -> np.ndarray:
     """Return a ``(W, H, L)`` ``float32`` noise field in ``[-1, 1]``.
 
@@ -172,26 +184,8 @@ def _apply_hull_noise(
             return
 
         empty_mask = grid == Role.EMPTY
-        empty_dilated = np.zeros_like(empty_mask)
-        empty_dilated[:, :, :] = empty_mask
-        empty_dilated[1:, :, :] |= empty_mask[:-1, :, :]
-        empty_dilated[:-1, :, :] |= empty_mask[1:, :, :]
-        empty_dilated[:, 1:, :] |= empty_mask[:, :-1, :]
-        empty_dilated[:, :-1, :] |= empty_mask[:, 1:, :]
-        empty_dilated[:, :, 1:] |= empty_mask[:, :, :-1]
-        empty_dilated[:, :, :-1] |= empty_mask[:, :, 1:]
-
-        hull_dilated = np.zeros_like(hull_mask)
-        hull_dilated[:, :, :] = hull_mask
-        hull_dilated[1:, :, :] |= hull_mask[:-1, :, :]
-        hull_dilated[:-1, :, :] |= hull_mask[1:, :, :]
-        hull_dilated[:, 1:, :] |= hull_mask[:, :-1, :]
-        hull_dilated[:, :-1, :] |= hull_mask[:, 1:, :]
-        hull_dilated[:, :, 1:] |= hull_mask[:, :, :-1]
-        hull_dilated[:, :, :-1] |= hull_mask[:, :, 1:]
-
-        inner_shell = hull_mask & empty_dilated
-        outer_band = empty_mask & hull_dilated
+        inner_shell = hull_mask & _dilate6(empty_mask)
+        outer_band = empty_mask & _dilate6(hull_mask)
 
         field = noise if it == 0 else -noise
 

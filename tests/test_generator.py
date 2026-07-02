@@ -550,6 +550,43 @@ def test_generate_weapon_count_positive_adds_cells_and_preserves_existing(
     assert ok.all(), "weapon scatter clobbered existing HULL cells"
 
 
+def test_engine_style_override_never_carves_hull(tmp_path: Path):
+    """Regression: the engine_style override used hardcoded pre-v2 geometry
+    (length L//8 > wall_z) and unconditional writes, gouging ENGINE holes
+    into the solid rear hull. It must write into EMPTY cells only."""
+
+    from spaceship_generator.generator import generate
+    from spaceship_generator.palette import Role
+    from spaceship_generator.presets import apply_preset
+
+    kw = apply_preset("corvette")
+    base = generate(
+        5,
+        palette="sci_fi_industrial",
+        shape_params=kw["shape_params"],
+        hull_style=kw.get("hull_style"),
+        out_dir=tmp_path,
+        filename="base.litematic",
+    )
+    styled = generate(
+        5,
+        palette="sci_fi_industrial",
+        shape_params=kw["shape_params"],
+        hull_style=kw.get("hull_style"),
+        engine_style=kw.get("engine_style"),
+        out_dir=tmp_path,
+        filename="styled.litematic",
+    )
+    solid = (base.role_grid == Role.HULL) | (base.role_grid == Role.INTERIOR)
+    carved = solid & (styled.role_grid == Role.ENGINE)
+    assert int(carved.sum()) == 0, (
+        f"engine_style override carved {int(carved.sum())} holes into the hull"
+    )
+    assert (styled.role_grid == Role.ENGINE).any() or (
+        styled.role_grid == Role.ENGINE_GLOW
+    ).any(), "override still must place engine cells"
+
+
 def test_generate_weapon_count_negative_raises(tmp_path: Path):
     """weapon_count < 0 must raise ValueError eagerly."""
     from spaceship_generator.generator import generate

@@ -28,6 +28,7 @@ from ..palette import Role
 from ..structure_styles import default_cockpit_for
 from .blueprint import ShipPlan
 from .core import CockpitStyle, ShapeParams
+from .greebles import _deck_tops
 
 
 def _place_cockpit(
@@ -52,20 +53,13 @@ def _place_cockpit(
         _place_bubble(grid, plan)
 
 
-def _deck_top(grid: np.ndarray, x: int, z: int) -> int:
-    """Y of the topmost HULL voxel in column ``(x, z)``; -1 if none."""
-    H = grid.shape[1]
-    for y in range(H - 1, -1, -1):
-        if grid[x, y, z] == Role.HULL:
-            return y
-    return -1
-
-
 def _rect_columns(grid: np.ndarray, plan: ShipPlan, *, inset: int = 0):
     """Yield ``(x, z, deck_y)`` for every column of the cockpit rect.
 
     ``inset > 0`` shrinks the rect on all four sides — used to leave a hull
-    frame around recessed glass.
+    frame around recessed glass. Deck lookup shares greebles'
+    :func:`_deck_tops` (one vectorized pass) so 'topmost exposed hull' has
+    exactly one definition in the codebase.
     """
     W, H, L = grid.shape
     cp = plan.cockpit
@@ -73,11 +67,12 @@ def _rect_columns(grid: np.ndarray, plan: ShipPlan, *, inset: int = 0):
     z0 = max(0, cp.z0 + inset)
     z1 = min(L, cp.z1 - inset)
     half_w = max(0.0, cp.half_w - inset)
+    tops = _deck_tops(grid)
     for z in range(z0, z1):
         for x in range(W):
             if abs(x - cx) > half_w:
                 continue
-            top = _deck_top(grid, x, z)
+            top = int(tops[x, z])
             if top >= 0:
                 yield x, z, top
 
@@ -121,13 +116,14 @@ def _place_pointed(grid: np.ndarray, plan: ShipPlan) -> None:
     z0 = cp.z0
     z1 = min(L, cp.z1 + 2)
     denom = max(1, z1 - 1 - z0)
+    tops = _deck_tops(grid)
     for z in range(z0, z1):
         t = (z - z0) / denom  # 0 at rear of strip → 1 at nose end
         local_half = max(0.51, cp.half_w * (1.0 - t))
         for x in range(W):
             if abs(x - cx) > local_half:
                 continue
-            top = _deck_top(grid, x, z)
+            top = int(tops[x, z])
             if top >= 0:
                 grid[x, top, z] = Role.COCKPIT_GLASS
 
@@ -167,11 +163,12 @@ def _place_wrap_bridge(grid: np.ndarray, plan: ShipPlan) -> None:
     cp = plan.cockpit
     cx = (W - 1) / 2.0
     z_end = L  # panoramic: run the strip out to the nose tip
+    tops = _deck_tops(grid)
     for z in range(cp.z0, z_end):
         for x in range(W):
             if abs(x - cx) > cp.half_w:
                 continue
-            top = _deck_top(grid, x, z)
+            top = int(tops[x, z])
             if top < 0:
                 continue
             y1 = top + 1
@@ -204,9 +201,10 @@ def _place_offset_turret(grid: np.ndarray, plan: ShipPlan) -> None:
     half = max(1, cp.half_w // 2 + 1)
     z_mid = (cp.z0 + cp.z1) // 2
     half_z = max(1, (cp.z1 - cp.z0) // 3)
+    tops = _deck_tops(grid)
     for z in range(max(0, z_mid - half_z), min(L, z_mid + half_z + 1)):
         for x in range(max(0, t_cx - half), min(W, t_cx + half + 1)):
-            top = _deck_top(grid, x, z)
+            top = int(tops[x, z])
             if top < 0:
                 continue
             y1 = top + 1

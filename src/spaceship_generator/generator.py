@@ -246,19 +246,34 @@ def generate(
     )
 
     # Optional engine override: wipe the default engine cells and rewrite
-    # using the chosen EngineStyle. Engines sit at the rear slab (z=0).
+    # using the chosen EngineStyle. Geometry is anchored to the same
+    # ShipPlan the pipeline used (rear wall depth, planned nozzle radius,
+    # deck line), and placements are merged into EMPTY cells only — the
+    # override must never carve holes into the solid hull the v2 placer
+    # deliberately avoids touching. Later placements for the same cell win
+    # (styles layer glow inside their own engine bodies), which is why the
+    # placements are collapsed per-cell before the EMPTY gate is applied.
     if engine_style is not None:
+        from .shape.blueprint import plan_for
+
         W, H, L = shape_grid.shape
         engine_mask = (shape_grid == Role.ENGINE) | (shape_grid == Role.ENGINE_GLOW)
         shape_grid[engine_mask] = Role.EMPTY
         engine_rng = np.random.default_rng(seed ^ 0xE5)
-        # Match the geometry conventions used by the default engine placer:
-        # radius = max(1, min(W, H) // 10), length = max(2, L // 8), spread
-        # across half the width so multi-engine layouts don't collide.
-        base_radius = max(1, min(W, H) // 10)
-        engine_length = max(2, L // 8)
+        plan = plan_for(
+            seed,
+            shape_params,
+            hull_style=hull_style,
+            hull_style_front=hull_style_front,
+            hull_style_rear=hull_style_rear,
+        )
+        wall_z = plan.engine.wall_z
+        base_radius = max(1, plan.engine.radius)
+        # One slice of overlap into the wall welds the nozzles to the hull;
+        # anything deeper would stamp inside the solid hull volume.
+        engine_length = wall_z + 1
         spread = max(2, W // 4)
-        cy_engine = max(base_radius + 1, H // 2 - 1)
+        cy_engine = plan.engine.nozzle_y
         placements = build_engines(
             shape_grid,
             engine_style,
@@ -266,8 +281,12 @@ def generate(
             size=(base_radius, engine_length, spread),
             rng=engine_rng,
         )
+        final: dict[tuple[int, int, int], Role] = {}
         for x, y, z, role in placements:
             if 0 <= x < W and 0 <= y < H and 0 <= z < L:
+                final[(x, y, z)] = role
+        for (x, y, z), role in final.items():
+            if shape_grid[x, y, z] == Role.EMPTY:
                 shape_grid[x, y, z] = role
 
     # Optional scattered greebles. Write into empty cells only so existing
