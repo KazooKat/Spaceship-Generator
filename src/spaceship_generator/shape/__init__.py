@@ -32,9 +32,9 @@ from .assembly import (
     _enforce_x_symmetry,
     _label_components,
 )
+from .blueprint import ShipPlan, build_plan
 from .cockpit import _place_cockpit
 from .core import CockpitStyle, ShapeParams, _body_profile, generate_shape
-from .blueprint import ShipPlan, build_plan
 from .engines import _place_engines
 from .greebles import _place_greebles, _surface_mask
 from .hull import _apply_hull_noise, _place_hull

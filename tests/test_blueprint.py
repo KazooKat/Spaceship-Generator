@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from spaceship_generator.shape.blueprint import (
     MASSING,
@@ -36,7 +35,7 @@ def test_segments_cover_hull_z_range_contiguously():
     segs = plan.segments
     assert segs[0].z0 == plan.engine.wall_z
     assert segs[-1].z1 == params.length
-    for prev, nxt in zip(segs, segs[1:]):
+    for prev, nxt in zip(segs, segs[1:], strict=False):
         assert prev.z1 == nxt.z0
 
 

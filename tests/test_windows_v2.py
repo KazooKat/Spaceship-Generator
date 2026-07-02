@@ -18,7 +18,7 @@ def test_windows_share_single_row():
     out = assign_roles(_slab_grid(), TextureParams())
     windows = np.argwhere(out == Role.WINDOW)
     assert len(windows) > 0
-    ys = set(int(y) for y in windows[:, 1])
+    ys = {int(y) for y in windows[:, 1]}
     assert len(ys) == 1, f"windows must sit in one row, got rows {sorted(ys)}"
 
 
@@ -30,25 +30,23 @@ def test_window_runs_at_least_two_long():
     by_col: dict[tuple[int, int], list[int]] = {}
     for x, y, z in windows:
         by_col.setdefault((int(x), int(y)), []).append(int(z))
-    for (x, y), zs in by_col.items():
+    for (x, _y), zs in by_col.items():
         zs = sorted(zs)
         run = 1
         runs: list[int] = []
-        for a, b in zip(zs, zs[1:]):
+        for a, b in zip(zs, zs[1:], strict=False):
             if b == a + 1:
                 run += 1
             else:
                 runs.append(run)
                 run = 1
         runs.append(run)
-        assert all(r >= 2 for r in runs), (
-            f"isolated window at x={x}: z-runs {runs}"
-        )
+        assert all(r >= 2 for r in runs), f"isolated window at x={x}: z-runs {runs}"
 
 
 def test_windows_only_on_side_faces():
     out = assign_roles(_slab_grid(), TextureParams())
     windows = np.argwhere(out == Role.WINDOW)
-    xs = set(int(x) for x in windows[:, 0])
+    xs = {int(x) for x in windows[:, 0]}
     # Slab spans x in [2, 8); side faces are x == 2 and x == 7.
     assert xs <= {2, 7}, f"windows must be side-facing only, got x={sorted(xs)}"

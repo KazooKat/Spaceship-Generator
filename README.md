@@ -11,14 +11,15 @@ New here? See [docs/quickstart.md](docs/quickstart.md) for a 5-minute getting-st
 ## Pipeline
 
 ```
-seed + params  →  3D voxel shape  →  role assignment  →  palette lookup  →  .litematic
-                  (parts + mirror     (hull / window /    (YAML config)
-                   symmetry)           engine / etc.)
+seed + params  →  ship blueprint  →  3D voxel shape  →  role assignment  →  palette lookup  →  .litematic
+                  (segments, wings,   (superellipse hull   (hull / window /    (YAML config)
+                   engines, cockpit)   + planned parts)      engine / etc.)
 ```
 
 ## Features
 
-- Parts-based procedural generation (hull, cockpit, engines, wings, greebles)
+- Blueprint-driven structured massing: segmented superellipse hulls with flat panels and chamfered corners, so parts align by construction
+- Visible thrusters (protruding nozzles + optional side nacelles), framed deck cockpits, hull-rooted wings, clustered machinery greebles, window rows
 - Bilateral symmetry for recognisable ship silhouettes
 - Seed-reproducible — same seed always produces the same ship
 - 10 hull silhouettes, 9 engine styles, 6 wing silhouettes (see [Styles](#styles))

@@ -7,8 +7,8 @@ import pytest
 
 from spaceship_generator.palette import Role
 from spaceship_generator.shape.blueprint import build_plan
-from spaceship_generator.shape.core import CockpitStyle, ShapeParams
 from spaceship_generator.shape.cockpit import _place_cockpit
+from spaceship_generator.shape.core import CockpitStyle, ShapeParams
 from spaceship_generator.shape.hull import _place_hull
 
 _NEIGHBORS = ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))

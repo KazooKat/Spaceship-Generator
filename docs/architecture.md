@@ -304,25 +304,47 @@ greeble_density / cockpit_style / structure_style / wing_style, validated in
 `integrated`, `canopy_dome`, `wrap_bridge`, `offset_turret`), the legacy
 `_body_profile(t)` taper, and the top-level `generate_shape(seed, params,
 *, hull_style=None) -> np.ndarray`. `generate_shape` constructs the
-`np.random.default_rng(seed)`, allocates the empty `(W, H, L)` int8 grid,
-dispatches each placement stage in order, and applies the symmetry +
-floater-bridging finalization. When `hull_style` is `None` it calls
-`_place_hull`; when set, it stamps the base hull via
-`apply_hull_style(grid, hull_style)` from `structure_styles` instead, then
-runs the rest of the pipeline unchanged.
+`np.random.default_rng(seed)`, builds the `ShipPlan` blueprint via
+`build_plan(rng, params, hull_style)`, allocates the empty `(W, H, L)` int8
+grid, dispatches each placement stage in order (each receives the plan),
+and applies the symmetry + floater-bridging finalization.
+
+### `blueprint.py`
+
+The v2 planning stage. `build_plan(rng, params, hull_style)` draws all
+per-seed variation up front and returns a frozen `ShipPlan`:
+
+* `segments` — 3–4 `HullSegment`s (engine / mid / fore / nose), each with a
+  z-range, linearly-interpolated cross-section half-sizes, and a
+  superellipse exponent. `ShipPlan.hull_half_at(z)` resolves the
+  cross-section for any slice.
+* `engine` — `EnginePlan`: rear-wall z (`wall_z`), symmetric nozzle X
+  positions (`_nozzle_positions`), nozzle radius, and optional side-nacelle
+  pod geometry.
+* `wing` — `WingPlan`: presence roll, planform style, root z / chord /
+  span / thickness / vertical anchor.
+* `cockpit` — `CockpitPlan`: deck rectangle (z-range + half-width) + style.
+
+Per-`HullStyle` massing lives in the `MASSING` config table
+(`MassingConfig`: width/height fractions, superellipse exponent, nose/tail
+fractions, tip fraction, wing bias, nacelle probability); a parallel
+`_STRUCTURE_MASSING` table supplies defaults per `StructureStyle` when no
+hull style is given. Because every placer reads the same plan, parts align
+by construction — the cockpit knows its deck rect, engines know the rear
+wall, wings know the hull half-width at their root.
 
 ### `hull.py`
 
-Single function: `_place_hull(grid, rng, params)`. Inputs the empty grid,
-the seeded RNG (used only for a small `0.9 + rng.random() * 0.1` thickness
-jitter), and `ShapeParams`. Output: the grid with `Role.HULL` voxels filling
-a tapered ellipsoid-of-revolution along Z. The taper profile and the X / Y
-radius scales are picked per `params.structure_style` via
-`profile_fn(structure_style)` and `hull_rx_ry_scale(structure_style)` from
-`structure_styles`; `FRIGATE` reproduces the legacy profile byte-for-byte.
-This stage is the membrane of the ship — every later stage either modifies
-hull voxels (cockpit, integrated/wrap variants) or attaches new voxels
-adjacent to it.
+`_place_hull(grid, rng, params, plan)` fills each planned segment with
+superellipse cross-sections: `|dx/half_w|^n + |dy/half_h|^n <= 1`.
+Exponent `n = 2` is an ellipse, `n ≈ 4` a rounded rectangle with flat side
+panels and a flat deck, `n >= 8` a chamfered box. Flat faces are the point:
+they give windows, greeble patches, and cockpits something to sit on. The
+hull starts at `plan.engine.wall_z`, leaving `[0, wall_z)` empty for the
+engine nozzles to protrude into. `_place_hull_blend(grid, rng, params,
+front, rear, midband=...)` cosine-blends two styles' planned cross-sections
+along Z (both planned from one derived sub-seed so their jitters match) and
+returns the rear style's plan for downstream part anchoring.
 
 ### `assembly.py`
 
@@ -342,61 +364,56 @@ bridged back to the main mass before the final mirror pass.
 
 ### `cockpit.py`
 
-`_place_cockpit(grid, rng, params)` dispatches on
+`_place_cockpit(grid, rng, params, plan)` dispatches on
 `default_cockpit_for(structure_style, cockpit_style)` from `structure_styles`
-(structure style can override the requested cockpit). Six concrete
-placers, each writing `Role.COCKPIT_GLASS` (and occasionally framing
-`Role.HULL`) on the forward upper hull: `_place_cockpit_bubble` (small
-ellipsoidal bulge), `_place_cockpit_pointed` (tapered cone canopy
-narrowing to the nose), `_place_cockpit_integrated` (flat strip — converts
-the topmost hull voxels into glass without growing the silhouette),
-`_place_canopy_dome` (low half-ellipsoid dome with a one-row hull collar),
-`_place_wrap_bridge` (panoramic glass band one row above the hull top with a
-hull roof on its edges), and `_place_offset_turret` (asymmetric raised
-turret — deliberately breaks X-symmetry, restored later by the assembly
-mirror). RNG is unused here; cockpit shape is purely a function of
-`ShapeParams` and grid dimensions.
+(structure style can override the requested cockpit). Every variant is
+*framed*: it finds the hull's top deck inside `plan.cockpit`'s rectangle and
+places glass such that every glass voxel touches HULL. Recessed variants —
+`_place_bubble` (elliptical footprint), `_place_pointed` (nose-tapering
+strip that runs 2 slices past the rect), `_place_integrated` (full-rect
+strip with a 1-cell hull border, border dropped on cramped rects) — replace
+deck-top hull cells. Raised variants — `_place_canopy_dome` (glass dome
+core + hull collar ring one row above deck), `_place_wrap_bridge`
+(2-high hull bridge with a wrap-around glass band, extended to the nose),
+`_place_offset_turret` (offset hull turret with glass cap; asymmetry
+restored by the assembly mirror) — grow up from the deck. RNG is unused.
 
 ### `wings.py`
 
-Single function: `_place_wings(grid, rng, params)`. This module owns only
-the placement-box math; the actual cell-writing pattern lives in
-`spaceship_generator.wing_styles.place_wings`. Reads
-`wing_size_scale(params.structure_style)` to scale span / thickness /
-length, computes `cy` from grid height, draws `cz` from a small RNG
-integer offset around `L // 3`, clamps the wing length so it fits the grid,
-and calls `wing_styles.place_wings(grid, params.wing_style, span=...,
-thickness=..., length=..., cy=..., cz=..., y_lo=..., y_hi=...)` to write
-the left wing as `Role.WING`. The right wing is produced later by
-`_enforce_x_symmetry`. Whether this stage runs at all is decided in
-`generate_shape` against `wing_prob_override(structure_style, wing_prob)`.
+`_place_wings(grid, rng, params, plan)`. The planform outline still comes
+from `spaceship_generator.wing_styles.place_wings` (straight / swept /
+delta / tapered / gull / split); v2 changes the box it is drawn in. The
+wing runs from the grid edge (`x = 0`, the tip) all the way *into* the hull
+volume — 2 voxels past the hull surface at the chord midpoint — so the root
+is embedded. The outline is stamped on a scratch grid and merged into EMPTY
+cells only, so hull voxels are never overwritten; the embedded root
+guarantees face contact at every chord slice. Geometry (root z, chord,
+span, thickness ≥ 2, y anchor) comes from `plan.wing`; whether the stage
+runs is `plan.wing.present` (single roll drawn in `build_plan`).
 
 ### `engines.py`
 
-`_place_engines(grid, rng, params)` and the helper `_engine_x_positions(n,
-width, radius)`. Reads
-`engine_count_override(structure_style, params.engine_count)` for `n` (zero
-short-circuits the stage), then computes `engine_length = max(2, L // 8)`,
-a base radius from `min(W, H) // 10`, and the final radius from
-`engine_radius_scale(structure_style)`. `_engine_x_positions` lays out
-`n` symmetric X positions clamped into `[radius, W - 1 - radius]` (and
-collapses every engine to the ship center if the grid is too narrow to fit
-`n` distinct positions). Each position stamps a circular cross-section of
-`Role.ENGINE` voxels from `z = 0` for `engine_length` steps along Z. RNG is
-not consumed — engine geometry is fully deterministic in style + dimensions.
+`_place_engines(grid, rng, params, plan)`. Nozzles are stamped as ENGINE
+discs protruding into the empty `[0, wall_z)` zone behind the hull's rear
+wall (plus one slice of overlap to weld), with a HULL rim ring on the wall
+face so each thruster reads as mounted structure. Nozzle count / radius /
+positions come from `plan.engine`. When `plan.engine.nacelles` is set,
+`_place_nacelles` adds two side pods (HULL discs per slice) welded to the
+hull by 2-voxel-thick pylons, each pod with its own small rear nozzle.
+RNG is not consumed — engine geometry is fully deterministic in the plan.
 
 ### `greebles.py`
 
-`_place_greebles(grid, rng, params)` and the helper `_surface_mask(grid)`.
-Skips the stage when `params.greeble_density <= 0`. `_surface_mask` returns
-a boolean grid of "filled voxels with at least one empty 6-neighbor"
-(out-of-bounds counts as empty so the outer shell qualifies). The placer
-shuffles those surface coordinates with `rng.permutation`, walks the first
-`int(len(coords) * greeble_density)` of them, and on cells whose role is
-`HULL` or `WING` it picks the first 6-direction neighbor (preferring up,
-then sideways, then forward / back) that is `Role.EMPTY` and writes
-`Role.GREEBLE` there. Greebles therefore protrude *outside* existing
-geometry and never overwrite hull/wing/engine/cockpit voxels.
+`_place_greebles(grid, rng, params, plan)` and the helper
+`_surface_mask(grid)`. v2 replaces the old single-voxel sprinkle with
+rectangular *patches* stamped on flat deck areas of the engine + mid
+segments (clear of the cockpit rect). `_deck_tops` finds exposed flat hull;
+each of `round(greeble_density * 40)` attempts picks a rect and a motif:
+`panel_outline` (raised border ring), `vent_row` (alternating raised rows),
+`pipe_run` (centerline pipe with end couplings), `antenna_cluster` (2–4
+voxel corner masts). A flatness gate skips uneven ground, and every motif
+writes contiguous GREEBLE cells above HULL into EMPTY space only — no
+isolated one-voxel bumps survive.
 
 ### `assembly.py` (final pass)
 
@@ -477,9 +494,9 @@ preserve legacy behavior byte-for-byte. CLI plumbing: `--hull-style`,
 
 ### Relationship to symmetry
 
-All three hull placers stamp voxels via the centred ellipsoid test
-`((x-cx)/rx)**2 + ((y-cy)/ry)**2 <= 1.0` with `cx = (W-1)/2`, so the
-membrane is bilaterally symmetric in X by construction. The final
+All hull placers stamp voxels via the centred superellipse test
+`|(x-cx)/half_w|**n + |(y-y_center)/half_h|**n <= 1.0` with `cx = (W-1)/2`,
+so the membrane is bilaterally symmetric in X by construction. The final
 `_enforce_x_symmetry` → `_connect_floaters` → `_enforce_x_symmetry`
 restamps symmetry against asymmetry from `_place_offset_turret`, the
 greeble/wing pickers, and `_apply_hull_noise`.
@@ -501,8 +518,8 @@ and the right wing is produced later by the assembly mirror.
 ```mermaid
 flowchart LR
   engines[shape/engines.py<br/>_place_engines]
-  gate[generate_shape<br/>rng.random&lt;wing_prob_override]
-  wings[shape/wings.py<br/>_place_wings<br/>placement-box math]
+  gate[generate_shape<br/>plan.wing.present]
+  wings[shape/wings.py<br/>_place_wings<br/>plan-driven wing box]
   styles[wing_styles.py<br/>place_wings dispatch]
   greebles[shape/greebles.py<br/>_place_greebles]
   mirror[assembly.py<br/>mirror+connect+mirror]
@@ -510,12 +527,12 @@ flowchart LR
   engines --> gate --> wings --> styles --> greebles --> mirror
 ```
 
-Whether the stage runs at all is decided in `generate_shape`
-(`shape/core.py`) against `rng.random() <
-wing_prob_override(structure_style, params.wing_prob)`, so some
-structure styles can suppress wings entirely. When it runs, only the
-left half (`x < W/2`) is written; the right wing is produced by the
-final `_enforce_x_symmetry` pass.
+Whether the stage runs at all is decided by `plan.wing.present` — a
+single probability roll drawn in `build_plan` against
+`wing_prob_override(structure_style, params.wing_prob)` (times the hull
+style's `wing_bias`), so some structure styles can suppress wings
+entirely. When it runs, only the left half (`x < W/2`) is written; the
+right wing is produced by the final `_enforce_x_symmetry` pass.
 
 ### `WingStyle` (in `wing_styles.py`)
 
@@ -532,21 +549,22 @@ writing only `Role.WING` on the left half: `_place_straight`
 (rectangular slab), `_place_swept` (parallelogram, tip shifted rearward
 ~60% of span), `_place_delta` (triangle in plan view, root `span`
 shrinking to 1 at the nose-side tip), `_place_tapered` (straight
-leading edge, chord shrinks to ~40% at tip), `_place_gull` (inner half
-flat, outer half rises one Y per X past the knee), and `_place_split`
+leading edge, chord shrinks to ~40% at tip), `_place_gull` (root half
+flat against the hull, tip half rises one Y per X toward the wing tip),
+and `_place_split`
 (two thinner wings stacked with a vertical gap — biplane-style). All
 styles clip to grid bounds, so pathologically small inputs cannot write
 out-of-bounds.
 
 ### `shape/wings.py`
 
-Single function `_place_wings(grid, rng, params)` owns only the
+Single function `_place_wings(grid, rng, params, plan)` owns only the
 placement-box math — the cell-writing pattern lives in
-`wing_styles.place_wings`. Reads `wing_size_scale(params.structure_style)`
-from `structure_styles.py` to scale span / thickness / length, computes
-`cy` from grid height, draws `cz` from a small `rng.integers` offset
-around `L // 3`, clamps wing length to fit the grid, then forwards
-`params.wing_style` and the computed box to `wing_styles.place_wings`.
+`wing_styles.place_wings`. The wing box runs from the grid edge into the
+hull volume (2 voxels past the hull surface at the chord midpoint) so the
+root is embedded; geometry comes from `plan.wing`. The outline is stamped
+on a scratch grid and merged into EMPTY cells only, so hull voxels are
+never overwritten.
 
 ### `wing_style` and `ShapeParams.wing_style`
 
@@ -753,22 +771,19 @@ import away in `shape/cockpit.py` and the public knob is the
 
 ### `shape/cockpit.py`
 
-Single entry point: `_place_cockpit(grid, rng, params)` — *"Attach a
-cockpit to the nose of the ship."* It calls `default_cockpit_for(
-params.structure_style, params.cockpit_style)` from `structure_styles`
-(currently a pass-through hook so the user's choice always wins) and
-dispatches to one of six concrete placers, each writing
-`Role.COCKPIT_GLASS` (and occasionally framing `Role.HULL`) on the
-forward upper hull: `_place_cockpit_bubble` (small ellipsoidal bulge),
-`_place_cockpit_pointed` (tapered cone canopy narrowing to the nose),
-`_place_cockpit_integrated` (flat strip — converts the topmost hull
-voxels into glass without growing the silhouette), `_place_canopy_dome`
-(low half-ellipsoid dome with a one-row hull collar), `_place_wrap_bridge`
-(panoramic glass band one row above the hull top with a hull roof on its
-edges), and `_place_offset_turret` (asymmetric raised turret —
-deliberately breaks X-symmetry, restored later by the assembly mirror).
-RNG is unused; cockpit shape is purely a function of `ShapeParams` and
-grid dimensions.
+Single entry point: `_place_cockpit(grid, rng, params, plan)`. It calls
+`default_cockpit_for(params.structure_style, plan.cockpit.style)` from
+`structure_styles` (currently a pass-through hook so the user's choice
+always wins) and dispatches to one of six concrete placers, all anchored
+to the deck rectangle in `plan.cockpit` and all guaranteeing that every
+glass voxel touches HULL: `_place_bubble` (recessed elliptical canopy),
+`_place_pointed` (recessed nose-tapering strip), `_place_integrated`
+(recessed full-rect strip with hull border), `_place_canopy_dome` (raised
+glass dome + hull collar), `_place_wrap_bridge` (raised 2-high bridge with
+wrap-around glass band, extended to the nose), and `_place_offset_turret`
+(offset raised turret with glass cap — deliberately breaks X-symmetry,
+restored later by the assembly mirror). RNG is unused; cockpit shape is
+purely a function of the plan and grid dimensions.
 
 ### `cockpit_style` and `ShapeParams.cockpit_style`
 
@@ -804,7 +819,7 @@ the caller asked for an `EngineStyle` archetype.
 ```mermaid
 flowchart LR
   cockpit[shape/cockpit.py<br/>_place_cockpit]
-  default[shape/engines.py<br/>_place_engines<br/>cylinder fallback]
+  default[shape/engines.py<br/>_place_engines<br/>planned nozzles + nacelles]
   rest[wings → greebles → mirror+connect+mirror]
   wipe[generator.py<br/>clear ENGINE/ENGINE_GLOW<br/>if engine_style set]
   override[engine_styles.py<br/>build_engines dispatch]

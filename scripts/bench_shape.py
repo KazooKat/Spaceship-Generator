@@ -49,7 +49,6 @@ from spaceship_generator.shape import (  # noqa: E402
     _place_wings,
 )
 from spaceship_generator.shape.blueprint import build_plan  # noqa: E402
-from spaceship_generator.structure_styles import wing_prob_override  # noqa: E402
 
 # Stage names in canonical pipeline order. Used as the row order for the
 # summary table so output is deterministic across runs.
