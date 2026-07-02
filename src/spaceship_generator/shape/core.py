@@ -20,7 +20,7 @@ from enum import StrEnum
 
 import numpy as np
 
-from ..structure_styles import HullStyle, StructureStyle, wing_prob_override
+from ..structure_styles import HullStyle, StructureStyle
 from ..wing_styles import WingStyle
 
 
@@ -202,9 +202,10 @@ def generate_shape(
         _apply_hull_noise(grid, rng, params)
     _place_cockpit(grid, rng, params)
     _place_engines(grid, rng, params, plan)
-    effective_wing_prob = wing_prob_override(params.structure_style, params.wing_prob)
-    if rng.random() < effective_wing_prob:
-        _place_wings(grid, rng, params)
+    # Wing presence is decided in the plan (single rng draw there) so the
+    # wing geometry and the presence roll always agree.
+    if plan.wing.present:
+        _place_wings(grid, rng, params, plan)
     _place_greebles(grid, rng, params)
     _enforce_x_symmetry(grid)
     _connect_floaters(grid)

@@ -1,49 +1,63 @@
-"""Wing slab placement — mirrored on X via the final symmetry pass."""
+"""Wing placement — rooted into the hull, spanning to the grid edge.
+
+The planform outline still comes from :mod:`spaceship_generator.wing_styles`
+(straight / swept / delta / tapered / gull / split). v2 changes the box the
+outline is drawn in: the wing runs from the grid edge (``x = 0``) all the
+way *into* the hull volume, so the root is embedded rather than floating.
+The outline is stamped onto a scratch grid and merged into EMPTY cells only,
+so hull voxels are never overwritten — the embedded root simply guarantees
+face contact with the hull surface at every z-slice of the chord.
+"""
 
 from __future__ import annotations
 
 import numpy as np
 
-from ..structure_styles import wing_size_scale
+from ..palette import Role
 from ..wing_styles import place_wings as _place_wing_cells
+from .blueprint import ShipPlan
 from .core import ShapeParams
 
 
-def _place_wings(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
-    """Flat slabs protruding from the hull on the X axis. Mirrored.
+def _place_wings(
+    grid: np.ndarray,
+    rng: np.random.Generator,
+    params: ShapeParams,
+    plan: ShipPlan,
+) -> None:
+    """Stamp the left wing per the plan; the mirror pass makes the right.
 
-    Wing span/thickness/length are scaled per
-    :attr:`ShapeParams.structure_style`; ``FRIGATE`` uses the original
-    values. The actual cell-writing pattern is chosen by
-    :attr:`ShapeParams.wing_style` and implemented in
-    :mod:`spaceship_generator.wing_styles` — this function is just the
-    placement-box math.
+    ``rng`` is unused (variation lives in the plan) but kept for signature
+    symmetry with the other placers.
     """
+    if not plan.wing.present:
+        return
     W, H, L = grid.shape
-    span_s, thick_s, length_s = wing_size_scale(params.structure_style)
-    wing_span = max(2, int(round((W // 5) * span_s)))
-    wing_thickness = max(1, int(round((H // 10) * thick_s)))
-    wing_length = max(4, int(round((L // 3) * length_s)))
-    # Guard: on very short ships ``L - wing_length`` may be <= 0, which would
-    # collapse ``cz`` to 0 and truncate the wing. Clamp wing_length so the
-    # wing still has a valid placement window.
-    wing_length = max(2, min(wing_length, L - 1))
-    cy = (H - 1) // 2
-    cz = L // 3 + int(rng.integers(-L // 12, L // 12 + 1))
-    cz = max(0, min(L - wing_length, cz))
+    wing = plan.wing
+    cx = (W - 1) / 2.0
 
-    y_lo = cy - wing_thickness // 2
-    y_hi = y_lo + wing_thickness
+    # Hull half-width at the wing's chord midpoint decides how deep the
+    # wing box reaches: 2 voxels past the hull surface (embedded root).
+    mid_z = min(L - 1, wing.root_z + wing.root_chord // 2)
+    half_w, _, _, _ = plan.hull_half_at(mid_z)
+    x_surface = int(np.floor(cx - half_w))
+    total_span = max(2, x_surface + 3)  # columns [0, total_span) — 2 inside hull
 
-    # Left wing — right side is produced by the final mirror pass.
+    thickness = wing.thickness
+    y_lo = max(0, wing.y_anchor - thickness // 2)
+    y_hi = min(H - 1, y_lo + thickness - 1)
+
+    scratch = np.zeros_like(grid)
     _place_wing_cells(
-        grid,
-        params.wing_style,
-        span=wing_span,
-        thickness=wing_thickness,
-        length=wing_length,
-        cy=cy,
-        cz=cz,
+        scratch,
+        wing.style,
+        span=total_span,
+        thickness=thickness,
+        length=wing.root_chord,
+        cy=wing.y_anchor,
+        cz=wing.root_z,
         y_lo=y_lo,
         y_hi=y_hi,
     )
+    merge = (scratch == Role.WING) & (grid == Role.EMPTY)
+    grid[merge] = Role.WING

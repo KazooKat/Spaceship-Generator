@@ -160,14 +160,16 @@ def _place_gull(
     y_hi: int,
     cz: int,
 ) -> None:
-    """Inner half is flat; outer half rises one Y per X past the knee.
-    Mimics a gull-wing silhouette when viewed head-on. ``thickness`` is
-    absorbed into the rise step so gull reads as one thicker structure
-    rather than a thin line."""
+    """Inner half is flat; the outer (tip) half rises one Y per X past the
+    knee. Mimics a gull-wing silhouette when viewed head-on. ``x = 0`` is
+    the wing TIP (grid edge) and x grows toward the hull, so the rise is
+    applied *below* the knee — the tip section climbs, the root stays flat
+    against the hull. ``thickness`` is absorbed into the rise step so gull
+    reads as one thicker structure rather than a thin line."""
     W, H, L = grid.shape
     knee = span // 2
     for x in range(0, span):
-        y_shift = 0 if x <= knee else (x - knee)
+        y_shift = (knee - x) if x < knee else 0
         for y in range(max(0, y_lo + y_shift), min(H, y_hi + y_shift + 1)):
             for z in range(cz, min(L, cz + length)):
                 grid[x, y, z] = Role.WING

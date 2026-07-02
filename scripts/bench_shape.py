@@ -106,14 +106,13 @@ def run_iteration(seed: int, params: ShapeParams) -> dict[str, float]:
     _place_engines(grid, rng, params, plan)
     timings["engines"] = time.perf_counter() - t0
 
-    # Wings only fire probabilistically — match the gating in generate_shape
-    # so timings reflect realistic per-iteration cost. Iterations that skip
-    # wings record 0.0 and are still counted in the mean (this is what an
-    # operator wants: "what does this stage cost, amortized over a run?").
-    effective_wing_prob = wing_prob_override(params.structure_style, params.wing_prob)
+    # Wings only fire probabilistically — the presence roll lives in the
+    # plan, matching generate_shape. Iterations that skip wings record 0.0
+    # and are still counted in the mean (this is what an operator wants:
+    # "what does this stage cost, amortized over a run?").
     t0 = time.perf_counter()
-    if rng.random() < effective_wing_prob:
-        _place_wings(grid, rng, params)
+    if plan.wing.present:
+        _place_wings(grid, rng, params, plan)
     timings["wings"] = time.perf_counter() - t0
 
     t0 = time.perf_counter()
