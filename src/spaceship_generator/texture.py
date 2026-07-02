@@ -147,20 +147,38 @@ def _fill_interior(grid: np.ndarray, surface: np.ndarray) -> None:
 def _paint_windows(
     grid: np.ndarray, surface: np.ndarray, params: TextureParams
 ) -> None:
-    """Place windows on side-facing HULL surface cells in the upper hull band."""
+    """Paint one row of window *runs* along the ship's sides.
+
+    v2: all windows share a single Y row (just above mid-height, like a
+    deck's viewport line) and come in 2-on / (period-2)-off runs along Z.
+    Any position whose run would be shorter than 2 is dropped, so no
+    isolated one-block speckle survives.
+    """
     H = grid.shape[1]
-    cy = (H - 1) / 2.0
-    period = max(2, params.window_period_cells)
-    # Offset so windows don't land exactly on the nose tip (z == 0 phase).
-    phase = period // 2
+    y_row = H // 2  # one row above the (H-1)/2 midline on even heights
+    period = max(4, params.window_period_cells + 1)
 
     hull_surf = (grid == Role.HULL) & surface
-    y_indices = np.arange(H).reshape(1, H, 1)
-    upper_band = np.broadcast_to(y_indices > cy, grid.shape)
     side_facing = _side_facing_mask(grid)
-    z_phase = _z_phase_mask(grid.shape, period, phase)
 
-    mask = hull_surf & upper_band & side_facing & z_phase
+    # 2-on / rest-off phase pattern along z.
+    L = grid.shape[2]
+    z_idx = np.arange(L).reshape(1, 1, L)
+    z_on = np.broadcast_to(((z_idx % period) == 1) | ((z_idx % period) == 2),
+                           grid.shape)
+
+    band = _y_band_mask(grid.shape, y_row)
+    mask = hull_surf & side_facing & band & z_on
+
+    # Drop runs shorter than 2: a candidate survives only when its z-pair
+    # partner (the other half of the 2-on window) is also a candidate.
+    partner = np.zeros_like(mask)
+    is_first = np.broadcast_to((z_idx % period) == 1, grid.shape)
+    is_second = np.broadcast_to((z_idx % period) == 2, grid.shape)
+    partner[:, :, :-1] |= mask[:, :, 1:] & is_first[:, :, :-1]
+    partner[:, :, 1:] |= mask[:, :, :-1] & is_second[:, :, 1:]
+    mask &= partner
+
     grid[mask] = Role.WINDOW
 
 
