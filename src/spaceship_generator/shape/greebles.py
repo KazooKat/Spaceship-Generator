@@ -1,43 +1,146 @@
-"""Greeble sprinkling and surface-mask computation."""
+"""Greeble placement — clustered machinery patches, plus surface-mask helper.
+
+v2 replaces the old single-voxel sprinkle with rectangular *patches* stamped
+on flat deck areas of the rear/mid hull. Each patch carries one motif:
+
+* ``panel_outline`` — a raised rectangular border ring (hatch / access panel)
+* ``vent_row``      — alternating raised rows (heat-sink louvres)
+* ``pipe_run``      — a raised centerline pipe with end couplings
+* ``antenna_cluster`` — 2–4-voxel masts at the patch corners (deck sensors)
+
+Every motif writes contiguous GREEBLE cells into EMPTY space directly above
+flat HULL, so no greeble voxel is ever isolated or floating.
+``greeble_density`` scales the number of patch attempts.
+"""
 
 from __future__ import annotations
 
 import numpy as np
 
 from ..palette import Role
+from .blueprint import ShipPlan
 from .core import ShapeParams
 
 
-def _place_greebles(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
-    """Sprinkle 1-voxel bumps on the hull surface."""
+def _deck_tops(grid: np.ndarray) -> np.ndarray:
+    """Return ``(W, L)`` int array: y of the topmost HULL cell with EMPTY
+    above it, or -1 where the column has no exposed hull deck."""
+    W, H, L = grid.shape
+    tops = np.full((W, L), -1, dtype=np.int32)
+    hull = grid == Role.HULL
+    for y in range(H - 1):
+        exposed = hull[:, y, :] & (grid[:, y + 1, :] == Role.EMPTY)
+        tops[exposed] = y
+    # Top row: hull at the very top of the grid has no room for greebles.
+    return tops
+
+
+def _place_greebles(
+    grid: np.ndarray,
+    rng: np.random.Generator,
+    params: ShapeParams,
+    plan: ShipPlan,
+) -> None:
+    """Stamp clustered greeble patches on flat decks of the rear/mid hull."""
     if params.greeble_density <= 0:
         return
-
-    surface = _surface_mask(grid)
-    coords = np.argwhere(surface)
-    if coords.size == 0:
-        return
-
-    count = int(len(coords) * params.greeble_density)
-    if count == 0:
-        return
-
-    order = rng.permutation(len(coords))
     W, H, L = grid.shape
-    directions = [(0, 1, 0), (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1)]
 
-    for i in range(count):
-        x, y, z = coords[order[i]]
-        # Don't drop greebles on engines or cockpit glass.
-        if grid[x, y, z] not in (Role.HULL, Role.WING):
+    # Patch zone: engine + mid segments, keeping clear of the cockpit rect.
+    z_lo = plan.segments[0].z0 + 1
+    z_hi = min(plan.segments[1].z1 - 1, plan.cockpit.z0 - 1)
+    if z_hi - z_lo < 4:
+        return
+
+    attempts = max(1, int(round(params.greeble_density * 40)))
+    tops = _deck_tops(grid)
+
+    for _ in range(attempts):
+        motif = int(rng.integers(0, 4))
+        pw = int(rng.integers(2, 5))            # patch width  (x)
+        pl = int(rng.integers(3, 8))            # patch length (z)
+        px = int(rng.integers(0, max(1, W - pw)))
+        pz = int(rng.integers(z_lo, max(z_lo + 1, z_hi - pl)))
+        pz1 = min(z_hi, pz + pl)
+        if pz1 - pz < 3:
             continue
-        for dx, dy, dz in directions:
-            nx, ny, nz = int(x + dx), int(y + dy), int(z + dz)
-            if not (0 <= nx < W and 0 <= ny < H and 0 <= nz < L):
-                continue
-            if grid[nx, ny, nz] == Role.EMPTY:
-                grid[nx, ny, nz] = Role.GREEBLE
-                break
+
+        # Flatness gate: every column in the rect must expose deck at the
+        # same height. Uneven ground → skip; another attempt will land.
+        patch_tops = tops[px : px + pw, pz:pz1]
+        if (patch_tops < 0).any():
+            continue
+        y0 = int(patch_tops.flat[0])
+        if not (patch_tops == y0).all():
+            continue
+        y = y0 + 1
+        if y >= H:
+            continue
+
+        if motif == 0:
+            _motif_panel_outline(grid, px, pw, pz, pz1, y)
+        elif motif == 1:
+            _motif_vent_row(grid, px, pw, pz, pz1, y)
+        elif motif == 2:
+            _motif_pipe_run(grid, px, pw, pz, pz1, y)
+        else:
+            _motif_antenna_cluster(grid, rng, px, pw, pz, pz1, y)
+
+
+def _put(grid: np.ndarray, x: int, y: int, z: int) -> None:
+    if grid[x, y, z] == Role.EMPTY:
+        grid[x, y, z] = Role.GREEBLE
+
+
+def _motif_panel_outline(
+    grid: np.ndarray, px: int, pw: int, pz: int, pz1: int, y: int
+) -> None:
+    """Raised border ring around the patch rect."""
+    for x in range(px, px + pw):
+        for z in range(pz, pz1):
+            on_edge = x in (px, px + pw - 1) or z in (pz, pz1 - 1)
+            if on_edge:
+                _put(grid, x, y, z)
+
+
+def _motif_vent_row(
+    grid: np.ndarray, px: int, pw: int, pz: int, pz1: int, y: int
+) -> None:
+    """Alternating raised full-width rows (louvres) along z."""
+    for z in range(pz, pz1, 2):
+        for x in range(px, px + pw):
+            _put(grid, x, y, z)
+
+
+def _motif_pipe_run(
+    grid: np.ndarray, px: int, pw: int, pz: int, pz1: int, y: int
+) -> None:
+    """Centerline pipe along z with 2-high couplings at both ends."""
+    H = grid.shape[1]
+    x_mid = px + pw // 2
+    for z in range(pz, pz1):
+        _put(grid, x_mid, y, z)
+    for z in (pz, pz1 - 1):
+        if y + 1 < H:
+            _put(grid, x_mid, y + 1, z)
+
+
+def _motif_antenna_cluster(
+    grid: np.ndarray,
+    rng: np.random.Generator,
+    px: int,
+    pw: int,
+    pz: int,
+    pz1: int,
+    y: int,
+) -> None:
+    """Masts (height 2-4) at two opposite patch corners."""
+    H = grid.shape[1]
+    for x, z in ((px, pz), (px + pw - 1, pz1 - 1)):
+        height = int(rng.integers(2, 5))
+        for dy in range(height):
+            if y + dy < H:
+                _put(grid, x, y + dy, z)
 
 
 def _surface_mask(grid: np.ndarray) -> np.ndarray:

@@ -116,7 +116,7 @@ def run_iteration(seed: int, params: ShapeParams) -> dict[str, float]:
     timings["wings"] = time.perf_counter() - t0
 
     t0 = time.perf_counter()
-    _place_greebles(grid, rng, params)
+    _place_greebles(grid, rng, params, plan)
     timings["greebles"] = time.perf_counter() - t0
 
     # Assembly = symmetry enforce -> connect floaters -> symmetry enforce.

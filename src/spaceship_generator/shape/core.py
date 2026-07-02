@@ -206,7 +206,7 @@ def generate_shape(
     # wing geometry and the presence roll always agree.
     if plan.wing.present:
         _place_wings(grid, rng, params, plan)
-    _place_greebles(grid, rng, params)
+    _place_greebles(grid, rng, params, plan)
     _enforce_x_symmetry(grid)
     _connect_floaters(grid)
     _enforce_x_symmetry(grid)
