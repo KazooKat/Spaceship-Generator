@@ -304,6 +304,18 @@ def test_property_high_density_shape_stays_connected_region_hull_exists(seed):
     assert (grid == Role.HULL).sum() > 0
 
 
+@given(seed=_seeds, params=shape_param_strategy())
+@_SHAPE_SETTINGS
+def test_property_ship_is_single_connected_component(seed, params):
+    """Every filled voxel — hull, wings, engines, cockpit, greebles — is
+    6-connected to the rest of the ship. No floating parts, ever."""
+    from spaceship_generator.shape import _label_components
+
+    grid = generate_shape(seed, params)
+    _labels, n = _label_components(grid)
+    assert n <= 1, f"ship split into {n} disconnected components"
+
+
 # ----------- additional regression: deterministic snapshot of a known seed -----------
 
 

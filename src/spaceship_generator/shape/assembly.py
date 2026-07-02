@@ -127,34 +127,47 @@ def _label_components(grid: np.ndarray) -> tuple[np.ndarray, int]:
     return labels, int(_roots.size)
 
 
-def _draw_line_hull(grid: np.ndarray, a: tuple[int, int, int], b: tuple[int, int, int]) -> None:
-    """Stamp :class:`Role.HULL` along a 6-connected path between ``a`` and ``b``.
+def _stamp_strut_cell(grid: np.ndarray, x: int, y: int, z: int) -> None:
+    """Stamp a 2×2 HULL block (in the X/Y plane) anchored at ``(x, y, z)``.
 
-    Empty voxels on the path are set to ``HULL``; already-filled voxels are left
-    alone. The path moves axis-by-axis (x, then y, then z), guaranteeing
-    6-connectivity.
+    Only EMPTY cells are written. The 2×2 footprint makes bridge struts
+    read as structure rather than a 1-voxel wire.
+    """
+    W, H, L = grid.shape
+    if not (0 <= z < L):
+        return
+    for dx in (0, 1):
+        for dy in (0, 1):
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < W and 0 <= ny < H and grid[nx, ny, z] == Role.EMPTY:
+                grid[nx, ny, z] = Role.HULL
+
+
+def _draw_line_hull(grid: np.ndarray, a: tuple[int, int, int], b: tuple[int, int, int]) -> None:
+    """Stamp a 2×2 HULL strut along a 6-connected path between ``a`` and ``b``.
+
+    Empty voxels on the path (and their 2×2 companions) are set to ``HULL``;
+    already-filled voxels are left alone. The path moves axis-by-axis
+    (x, then y, then z), guaranteeing 6-connectivity of the strut core.
     """
     x0, y0, z0 = a
     x1, y1, z1 = b
     x, y, z = x0, y0, z0
     W, H, L = grid.shape
-    if 0 <= x < W and 0 <= y < H and 0 <= z < L and grid[x, y, z] == Role.EMPTY:
-        grid[x, y, z] = Role.HULL
+    if 0 <= x < W and 0 <= y < H and 0 <= z < L:
+        _stamp_strut_cell(grid, x, y, z)
     sx = 1 if x1 >= x0 else -1
     while x != x1:
         x += sx
-        if 0 <= x < W and grid[x, y, z] == Role.EMPTY:
-            grid[x, y, z] = Role.HULL
+        _stamp_strut_cell(grid, x, y, z)
     sy = 1 if y1 >= y0 else -1
     while y != y1:
         y += sy
-        if 0 <= y < H and grid[x, y, z] == Role.EMPTY:
-            grid[x, y, z] = Role.HULL
+        _stamp_strut_cell(grid, x, y, z)
     sz = 1 if z1 >= z0 else -1
     while z != z1:
         z += sz
-        if 0 <= z < L and grid[x, y, z] == Role.EMPTY:
-            grid[x, y, z] = Role.HULL
+        _stamp_strut_cell(grid, x, y, z)
 
 
 def _connect_floaters(grid: np.ndarray) -> None:
