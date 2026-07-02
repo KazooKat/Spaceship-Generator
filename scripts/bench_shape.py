@@ -103,7 +103,7 @@ def run_iteration(seed: int, params: ShapeParams) -> dict[str, float]:
     timings["cockpit"] = time.perf_counter() - t0
 
     t0 = time.perf_counter()
-    _place_engines(grid, rng, params)
+    _place_engines(grid, rng, params, plan)
     timings["engines"] = time.perf_counter() - t0
 
     # Wings only fire probabilistically — match the gating in generate_shape

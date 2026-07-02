@@ -1,91 +1,140 @@
-"""Engine cylinder placement at the rear of the ship."""
+"""Engine placement — nozzles protruding behind the hull's rear wall.
+
+The hull starts at ``plan.engine.wall_z``; nozzles are stamped into the
+empty protrusion zone ``[0, wall_z)`` plus one slice of overlap into the
+wall so they weld to the hull. Each nozzle gets a HULL rim ring on the wall
+face so it reads as a mounted thruster, not a floating cylinder. Optional
+side nacelle pods (HULL) hang off the rear hull on thick pylons, each with
+its own small nozzle.
+"""
 
 from __future__ import annotations
 
 import numpy as np
 
 from ..palette import Role
-from ..structure_styles import engine_count_override, engine_radius_scale
+from .blueprint import ShipPlan
 from .core import ShapeParams
 
 
-def _place_engines(grid: np.ndarray, rng: np.random.Generator, params: ShapeParams) -> None:
-    """Add N engine cylinders at the rear of the ship.
+def _stamp_disc(
+    grid: np.ndarray,
+    cx: float,
+    cy: float,
+    z0: int,
+    z1: int,
+    radius: float,
+    role: Role,
+    *,
+    only_empty: bool = True,
+) -> None:
+    """Stamp a filled circle of ``role`` into every slice ``z in [z0, z1)``."""
+    W, H, L = grid.shape
+    z0 = max(0, z0)
+    z1 = min(L, z1)
+    if z1 <= z0:
+        return
+    xs = np.arange(W, dtype=np.float64).reshape(W, 1)
+    ys = np.arange(H, dtype=np.float64).reshape(1, H)
+    inside = (xs - cx) ** 2 + (ys - cy) ** 2 <= radius * radius
+    for z in range(z0, z1):
+        view = grid[:, :, z]
+        if only_empty:
+            view[inside & (view == Role.EMPTY)] = role
+        else:
+            view[inside] = role
 
-    Engine count and nozzle size are modulated by :attr:`ShapeParams.structure_style`.
+
+def _place_engines(
+    grid: np.ndarray,
+    rng: np.random.Generator,
+    params: ShapeParams,
+    plan: ShipPlan,
+) -> None:
+    """Place planned nozzles and (optionally) nacelle pods.
+
+    ``rng`` is unused — all variation is in the plan — but kept so every
+    placer shares one signature.
     """
-    style = params.structure_style
-    n = engine_count_override(style, params.engine_count)
-    if n == 0:
+    eng = plan.engine
+    if not eng.nozzle_xs:
         return
     W, H, L = grid.shape
+    wall_z = eng.wall_z
+    r = eng.radius
+    cy = eng.nozzle_y
 
-    engine_length = max(2, L // 8)
-    base_radius = max(1, min(W, H) // 10)
-    engine_radius = max(
-        1, int(round(base_radius * engine_radius_scale(style)))
-    )
+    for ex in eng.nozzle_xs:
+        # Nozzle body: protrusion zone plus one slice into the wall (weld).
+        _stamp_disc(grid, ex, cy, 0, wall_z + 1, r, Role.ENGINE)
+        # Rim ring on the wall face: annulus of HULL one voxel wider than
+        # the nozzle, only where empty, so the mount reads as structure.
+        _stamp_ring(grid, ex, cy, wall_z, r + 1.4, r, Role.HULL)
 
-    xs = _engine_x_positions(n, W, engine_radius)
-    cy_engine = max(engine_radius + 1, H // 2 - 1)
-
-    for ex in xs:
-        for x in range(ex - engine_radius - 1, ex + engine_radius + 2):
-            for y in range(cy_engine - engine_radius - 1, cy_engine + engine_radius + 2):
-                for z in range(0, engine_length):
-                    if not (0 <= x < W and 0 <= y < H and 0 <= z < L):
-                        continue
-                    dx = x - ex
-                    dy = y - cy_engine
-                    if dx * dx + dy * dy <= engine_radius * engine_radius:
-                        grid[x, y, z] = Role.ENGINE
+    if eng.nacelles:
+        _place_nacelles(grid, plan)
 
 
-def _engine_x_positions(n: int, width: int, radius: int) -> list[int]:
-    """Return engine X positions spread symmetrically across the ship width.
+def _stamp_ring(
+    grid: np.ndarray,
+    cx: float,
+    cy: float,
+    z: int,
+    r_outer: float,
+    r_inner: float,
+    role: Role,
+) -> None:
+    """Stamp an annulus of ``role`` into slice ``z`` (empty cells only)."""
+    W, H, L = grid.shape
+    if not (0 <= z < L):
+        return
+    xs = np.arange(W, dtype=np.float64).reshape(W, 1)
+    ys = np.arange(H, dtype=np.float64).reshape(1, H)
+    d2 = (xs - cx) ** 2 + (ys - cy) ** 2
+    ring = (d2 <= r_outer * r_outer) & (d2 > r_inner * r_inner)
+    view = grid[:, :, z]
+    view[ring & (view == Role.EMPTY)] = role
 
-    Positions are clamped to ``[radius, width - 1 - radius]`` so that the
-    engine cylinder stays in-bounds. If the width is too narrow to hold
-    ``n`` distinct clamped positions (for example the pathological
-    ``n=4, width=4, radius=2`` case where ``usable`` would be negative),
-    all engines collapse to the ship's X center.
-    """
-    if n <= 0:
-        return []
-    if n == 1:
-        return [width // 2]
-    cx = (width - 1) / 2.0
-    half = n // 2
-    # Space from center to the outermost valid engine x. Clamp to >= 0 so a
-    # negative ``usable`` (cramped grid) does not flip offsets and create
-    # duplicates.
-    usable = max(0.0, (width - 2 * radius - 2) / 2.0)
-    spacing = usable / max(half, 1)
 
-    # Valid in-bounds range for an engine of this radius.
-    lo = max(0, radius)
-    hi = min(width - 1, width - 1 - radius)
+def _place_nacelles(grid: np.ndarray, plan: ShipPlan) -> None:
+    """Two side pods on thick pylons, each with a small rear nozzle."""
+    W, H, L = grid.shape
+    eng = plan.engine
+    cx = (W - 1) / 2.0
+    y_center = eng.nozzle_y
+    hw = eng.nacelle_half_w
+    hh = eng.nacelle_half_h
+    z0 = max(eng.wall_z, eng.nacelle_z0)
+    z1 = min(L, eng.nacelle_z1)
+    if z1 <= z0:
+        return
 
-    xs: list[int] = []
-    for i in range(1, half + 1):
-        offset = spacing * i
-        xs.append(int(round(cx - offset)))
-        xs.append(int(round(cx + offset)))
-    if n % 2 == 1:
-        xs.append(int(round(cx)))
-
-    # Clamp all positions into the valid in-bounds window.
-    if hi >= lo:
-        xs = [max(lo, min(hi, x)) for x in xs]
-    else:
-        # No valid window: fall back to ship center for every engine.
-        return [width // 2] * n
-
-    # Detect collisions introduced by cramped widths. If any duplicates
-    # remain we cannot cleanly separate the engines, so collapse them all
-    # to the ship center (matches the n == 1 behavior and keeps the shape
-    # symmetric and deterministic).
-    if len(set(xs)) != n:
-        return [width // 2] * n
-
-    return xs
+    pod_r = max(1.0, min(hw, hh) + 0.4)
+    # Left pod center; right pod comes from the mirror pass but we stamp
+    # both anyway so the pre-mirror grid is already symmetric.
+    for side in (-1, 1):
+        pcx = cx + side * eng.nacelle_cx_off
+        if not (0 <= pcx - hw and pcx + hw < W):
+            continue
+        # Pod body: rounded box (disc per slice).
+        _stamp_disc(grid, pcx, y_center, z0, z1, pod_r, Role.HULL)
+        # Pod nozzle: small ENGINE disc protruding behind the pod.
+        noz_r = max(1.0, pod_r * 0.7)
+        _stamp_disc(grid, pcx, y_center, max(0, z0 - (eng.wall_z - 0)), z0 + 1,
+                    noz_r, Role.ENGINE)
+        # Pylon: 2-voxel-thick horizontal slab welding pod to hull, placed
+        # mid-pod in Z with a 3-slice depth.
+        pz0 = min(z1 - 1, z0 + (z1 - z0) // 2 - 1)
+        pz1 = min(z1, pz0 + 3)
+        half_w_hull, _, _, _ = plan.hull_half_at(pz0)
+        x_inner = cx + side * max(0.0, half_w_hull - 2.0)
+        x_outer = pcx
+        x_lo = int(round(min(x_inner, x_outer)))
+        x_hi = int(round(max(x_inner, x_outer)))
+        y_lo = max(0, int(round(y_center)) )
+        y_hi = min(H - 1, y_lo + 1)
+        for z in range(pz0, pz1):
+            for x in range(max(0, x_lo), min(W - 1, x_hi) + 1):
+                for y in (y_lo, y_hi):
+                    if grid[x, y, z] == Role.EMPTY:
+                        grid[x, y, z] = Role.HULL

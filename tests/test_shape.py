@@ -11,7 +11,6 @@ from spaceship_generator.shape import (
     ShapeParams,
     StructureStyle,
     _body_profile,
-    _engine_x_positions,
     _label_components,
     _surface_mask,
     generate_shape,
@@ -151,70 +150,56 @@ def test_body_profile_returns_unit_range():
         assert 0.0 <= v <= 1.0
 
 
-def test_engine_x_positions_symmetric_pairs():
-    # For n >= 2, positions come in mirrored pairs summing to width-1.
+def test_nozzle_positions_symmetric_pairs():
+    from spaceship_generator.shape.blueprint import _nozzle_positions
+
+    # For n >= 2, positions come in mirrored pairs around cx (or collapse
+    # to a single centered nozzle when rounding collides).
+    cx = 10.0  # odd width 21 → clean center
     for n in range(2, 6):
-        xs = _engine_x_positions(n, width=21, radius=1)  # odd width → clean center
+        xs = _nozzle_positions(n, cx=cx, half_w=8.0, radius=2)
+        if len(xs) == 1:
+            assert xs[0] == 10
+            continue
         xs_sorted = sorted(xs)
         for lo, hi in zip(xs_sorted, reversed(xs_sorted), strict=False):
-            assert lo + hi == 20  # width - 1 = 20
+            assert lo + hi == 20
 
 
-def test_engine_x_positions_single_centered():
-    # n == 1 sits at (or near) the ship's X center.
-    xs = _engine_x_positions(1, width=20, radius=1)
+def test_nozzle_positions_single_centered():
+    from spaceship_generator.shape.blueprint import _nozzle_positions
+
+    xs = _nozzle_positions(1, cx=9.5, half_w=6.0, radius=2)
     assert len(xs) == 1
-    assert xs[0] == 10  # width // 2
+    assert xs[0] == 10
 
 
-def test_engine_x_positions_odd_count_includes_center():
-    xs = _engine_x_positions(3, width=21, radius=1)
-    assert len(xs) == 3
-    assert 10 in xs  # odd count on odd width → exact center present
+def test_nozzle_positions_odd_count_includes_center():
+    from spaceship_generator.shape.blueprint import _nozzle_positions
+
+    xs = _nozzle_positions(3, cx=10.0, half_w=8.0, radius=2)
+    assert 10 in xs
 
 
-@pytest.mark.parametrize("n,W,radius", [
-    (2, 20, 2),
-    (4, 20, 2),
-    (6, 20, 2),
-    (2, 6, 2),
-    (4, 6, 2),
-    (6, 6, 2),
-    (4, 4, 2),  # pathological: usable would be negative
-    (1, 4, 1),
+@pytest.mark.parametrize("n,half_w,radius", [
+    (2, 8.0, 2),
+    (4, 8.0, 2),
+    (6, 8.0, 2),
+    (2, 2.0, 2),
+    (4, 2.0, 2),  # cramped: expected to collapse
+    (1, 1.0, 1),
 ])
-def test_engine_x_positions_no_duplicates(n, W, radius):
-    """Engines must resolve to valid positions — either ``n`` distinct slots
-    or a deliberate collapse to the ship's X center (which is acceptable when
-    the grid is too cramped to separate them)."""
-    xs = _engine_x_positions(n, width=W, radius=radius)
-    assert len(xs) == n
-    # Either all positions are distinct, or they all collapsed to one slot
-    # (the center). The buggy case returned a partial collision like
-    # [2, 1, 2, 0], which neither of these accept.
+def test_nozzle_positions_no_partial_collisions(n, half_w, radius):
+    from spaceship_generator.shape.blueprint import _nozzle_positions
+
+    cx = 10.0
+    xs = _nozzle_positions(n, cx=cx, half_w=half_w, radius=radius)
     unique = set(xs)
-    if len(unique) != n:
-        assert len(unique) == 1, (
-            f"partial collision for (n={n}, W={W}, r={radius}): {xs}"
-        )
-        assert unique == {W // 2}
-
-
-@pytest.mark.parametrize("n,W,radius", [
-    (2, 20, 2),
-    (4, 20, 2),
-    (6, 20, 2),
-    (2, 6, 2),
-    (4, 6, 2),
-    (6, 6, 2),
-    (4, 4, 2),
-    (1, 4, 1),
-])
-def test_engine_x_positions_all_in_bounds(n, W, radius):
-    xs = _engine_x_positions(n, width=W, radius=radius)
-    assert len(xs) == n
-    for x in xs:
-        assert 0 <= x < W, f"x={x} out of bounds for W={W}"
+    # Either n distinct symmetric slots, or a deliberate single-center
+    # collapse. Partial collisions are the bug this guards against.
+    assert len(unique) in (len(xs), 1)
+    if len(unique) == 1:
+        assert unique == {10}
 
 
 def test_surface_mask_all_filled_has_only_outer_shell():

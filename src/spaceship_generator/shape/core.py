@@ -201,7 +201,7 @@ def generate_shape(
     if params.hull_noise > 0.0:
         _apply_hull_noise(grid, rng, params)
     _place_cockpit(grid, rng, params)
-    _place_engines(grid, rng, params)
+    _place_engines(grid, rng, params, plan)
     effective_wing_prob = wing_prob_override(params.structure_style, params.wing_prob)
     if rng.random() < effective_wing_prob:
         _place_wings(grid, rng, params)

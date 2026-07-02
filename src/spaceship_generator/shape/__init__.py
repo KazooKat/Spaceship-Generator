@@ -39,7 +39,8 @@ from .cockpit import (
     _place_cockpit_pointed,
 )
 from .core import CockpitStyle, ShapeParams, _body_profile, generate_shape
-from .engines import _engine_x_positions, _place_engines
+from .blueprint import ShipPlan, build_plan
+from .engines import _place_engines
 from .greebles import _place_greebles, _surface_mask
 from .hull import _apply_hull_noise, _place_hull
 from .wings import _place_wings
@@ -48,14 +49,15 @@ __all__ = [
     # Public API.
     "CockpitStyle",
     "ShapeParams",
+    "ShipPlan",
     "StructureStyle",
+    "build_plan",
     "generate_shape",
     # Internal helpers consumed by other modules / tests.
     "_apply_hull_noise",
     "_body_profile",
     "_connect_floaters",
     "_draw_line_hull",
-    "_engine_x_positions",
     "_enforce_x_symmetry",
     "_label_components",
     "_place_cockpit",
