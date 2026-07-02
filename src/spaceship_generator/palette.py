@@ -151,8 +151,26 @@ class Palette:
 
 
 def palettes_dir() -> Path:
-    """Return the default palettes directory (``<repo>/palettes``)."""
-    return Path(__file__).resolve().parents[2] / "palettes"
+    """Return the default palettes directory.
+
+    Palette YAMLs ship as package data under
+    ``spaceship_generator/palettes/`` (see ``pyproject.toml``
+    ``[tool.setuptools.package-data]``). The previous
+    ``parents[2] / "palettes"`` layout resolved to
+    ``<python-prefix>/lib/python3.X/palettes`` under a wheel install — a
+    path that does not exist — so the default
+    ``--palette sci_fi_industrial`` invocation crashed on first use from
+    a fresh PyPI install or inside the Docker image.
+
+    Resolved via ``Path(__file__).parent`` so it works identically across
+    editable installs, regular wheels, and on-disk imports. For pure
+    zip-import installs (uncommon for setuptools wheels)
+    ``importlib.resources.files("spaceship_generator") / "palettes"`` is
+    the equivalent zip-safe call; on-disk resolution is preferred here
+    because the directory is then directly usable by code paths that
+    glob YAMLs (``list_palettes`` / scripts).
+    """
+    return Path(__file__).resolve().parent / "palettes"
 
 
 def load_palette(name: str, search_dir: str | Path | None = None) -> Palette:

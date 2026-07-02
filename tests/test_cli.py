@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from spaceship_generator.cli import main
+from spaceship_generator.palette import palettes_dir
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -1506,8 +1507,7 @@ def test_cli_validate_palette_clean(capsys):
     is known to clear without warnings, so this test pins the happy-path
     contract: clean lint -> exit 0 + ``OK`` on stdout (un-silenced because
     we deliberately omit ``--quiet``)."""
-    repo_root = Path(__file__).resolve().parent.parent
-    palette_path = repo_root / "palettes" / "sci_fi_industrial.yaml"
+    palette_path = palettes_dir() / "sci_fi_industrial.yaml"
     assert palette_path.exists(), (
         f"baseline palette missing: {palette_path}"
     )

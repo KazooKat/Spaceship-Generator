@@ -17,9 +17,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from spaceship_generator.palette import palettes_dir
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "palette_to_json.py"
-PALETTE = REPO_ROOT / "palettes" / "desert_oasis.yaml"
+PALETTE = palettes_dir() / "desert_oasis.yaml"
 
 
 def test_palette_to_json_stdout_parses() -> None:

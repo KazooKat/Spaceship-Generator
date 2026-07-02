@@ -18,10 +18,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+from spaceship_generator.palette import palettes_dir
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "palette_diff.py"
-PALETTE_A = REPO_ROOT / "palettes" / "desert_oasis.yaml"
-PALETTE_B = REPO_ROOT / "palettes" / "foggy_marsh.yaml"
+PALETTE_A = palettes_dir() / "desert_oasis.yaml"
+PALETTE_B = palettes_dir() / "foggy_marsh.yaml"
 
 
 def test_palette_diff_runs_text_mode() -> None:

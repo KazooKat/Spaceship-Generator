@@ -28,6 +28,12 @@ from .core import ShapeParams
 # Maximum hull-noise displacement, in cells, at amplitude == 1.0.
 _HULL_NOISE_MAX_DISPLACEMENT = 2
 
+# Per-iteration sub-seed mix for hull noise: ``sub_seed ^ (it * PRIME)``.
+# High-entropy odd constant (the SHA-512 sqrt(2) mixing constant) so
+# successive iterations draw uncorrelated fields; iteration 0 leaves the
+# sub-seed untouched.
+_NOISE_ITER_PRIME = 0x6A09E667F3BCC908
+
 
 def _fill_superellipse_slice(
     grid: np.ndarray,
@@ -176,7 +182,6 @@ def _apply_hull_noise(
     sub_seed = int(rng.integers(0, 2**63 - 1, dtype=np.int64))
 
     W, H, L = grid.shape
-    noise = _hash_noise_field(W, H, L, sub_seed)
 
     for it in range(iters):
         hull_mask = grid == Role.HULL
@@ -187,7 +192,15 @@ def _apply_hull_noise(
         inner_shell = hull_mask & _dilate6(empty_mask)
         outer_band = empty_mask & _dilate6(hull_mask)
 
-        field = noise if it == 0 else -noise
+        # Fresh, independent noise field per iteration (audit fix ported
+        # from the pre-v2 branch): the old sign-flip trick used the
+        # *inverted* field on iter 1, whose erode targets were exactly
+        # iter 0's grow targets — so the second pass mostly undid the
+        # first. Mixing the sub-seed with the iteration index keeps the
+        # one-rng-draw contract while decorrelating passes; iter 0 leaves
+        # sub_seed unchanged so the single-iteration regime is identical.
+        iter_seed = (sub_seed ^ (it * _NOISE_ITER_PRIME)) & 0x7FFFFFFFFFFFFFFF
+        field = _hash_noise_field(W, H, L, iter_seed)
 
         erode = inner_shell & (field < -threshold)
         grow = outer_band & (field > threshold)

@@ -58,8 +58,15 @@ def _label_components(grid: np.ndarray) -> tuple[np.ndarray, int]:
     # those positions below, so masking is unnecessary.
     prov_flat = (np.cumsum(filled_flat) - 1).astype(np.int32)
     prov = prov_flat.reshape(W, H, L)
-    # Highest provisional id + 1 == number of filled voxels.
-    n_filled = int(prov_flat[-1]) + 1 if filled_flat[-1] else int(prov_flat.max()) + 1
+    # Highest provisional id + 1 == number of filled voxels. Because
+    # ``filled_flat`` is boolean and ``np.cumsum`` is monotonically
+    # non-decreasing, ``prov_flat.max()`` is *always* ``(total filled
+    # count) - 1`` regardless of whether the last cell is filled — so the
+    # old ``filled_flat[-1] ? prov_flat[-1] : prov_flat.max()`` ternary
+    # (see iter3/agent-08 bug 3) had two arms that computed the same
+    # value. Compute it directly from the cumsum tail to make that
+    # explicit.
+    n_filled = int(prov_flat.max()) + 1
 
     # --- Pass 2: enumerate all equivalence pairs along each axis ---
     lo_parts: list[np.ndarray] = []
